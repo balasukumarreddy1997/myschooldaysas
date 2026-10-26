@@ -5,7 +5,7 @@ const basePath = configuredBasePath && configuredBasePath !== "/" ? configuredBa
 
 const nextConfig: NextConfig = {
   ...(basePath ? { basePath } : {}),
-  allowedDevOrigins: ["127.0.0.1", "localhost"],
+  allowedDevOrigins: ["127.0.0.1", "localhost", ...(process.env.REPLIT_DEV_DOMAIN ? [process.env.REPLIT_DEV_DOMAIN] : [])],
   poweredByHeader: false,
 };
 

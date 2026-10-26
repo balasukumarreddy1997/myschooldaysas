@@ -1,5 +1,6 @@
 import { loadRuntimeConfig } from "./lib/config";
 import Fastify from "fastify";
+import websocket from "@fastify/websocket";
 
 const config = loadRuntimeConfig();
 const [routesModule, loggerModule, dbModule] = await Promise.all([
@@ -84,6 +85,7 @@ async function shutdown(signal: string) {
 }
 
 try {
+  await server.register(websocket, { options: { maxPayload: 64 * 1024 } });
   await server.register(routes, { prefix: "/api" });
   await assertLeastPrivilegeDatabaseRole(pool);
   await server.listen({ port, host: "0.0.0.0" });

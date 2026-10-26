@@ -4,7 +4,7 @@
 
 ## Current build
 
-This build covers sign-in, a role-scoped dashboard, class/section directories, a paginated student roster, live-session scheduling and state changes, and board-template configuration.
+This build covers sign-in, a role-scoped dashboard, class/section directories, a paginated student roster, live-session scheduling and state changes, board-template configuration, and the first live-classroom implementation described below.
 
 | Area | Current implementation | Target in `MASTER_SPEC.md` |
 |---|---|---|
@@ -29,7 +29,7 @@ The repository uses npm workspaces with one root `package-lock.json`; use `npm c
 2. The API validates the token, reloads the user's current roles, applies route-level authorization, and derives organization scope from the authenticated user.
 3. Database work runs in a transaction that sets `app.org_id` locally. Forced row-level security limits the non-superuser app role to that organization. The migration role is separate from the runtime role.
 4. Redis is currently used only by the readiness probe. No event consumer or notification delivery path is implemented.
-5. The LiveKit server is a separate trust boundary. Join-token generation is server-side, but classroom media and board collaboration are not available until the external URL and client integration are completed.
+5. The LiveKit server is a separate trust boundary. The client now connects using server-derived grants; students are subscribe-only until a teacher grants microphone access. Board drawing never grants media publishing. The WebSocket board operates independently of media availability. A publicly reachable LiveKit URL is still required to verify real media from this preview.
 
 ## Threat model (initial STRIDE pass)
 
@@ -56,3 +56,44 @@ This build is a development vertical slice, not a production release. In particu
 - API smoke checks against local PostgreSQL/Redis, including administrator, teacher, student, and parent access
 
 The separate `snyk test` command was attempted but Snyk is not installed in this environment. No production deployment was performed.
+
+## Live classroom implementation and evidence (2026-10-26)
+
+- Starting a class creates one organization-scoped persistent board, using the teacher default template, then the organization default, then the built-in configuration. Class/section template precedence is not implemented because templates do not yet carry a class/section association.
+- The full-screen classroom bypasses the admin shell. It has media connection/error states, camera/microphone/screen-share controls, audio-only video unsubscription, a shared stroke canvas, teacher configuration, drawing grants, and an attendance panel with manual overrides.
+- Board traffic uses a same-origin WebSocket, never LiveKit data messages. A 30-second one-use ticket authenticates the upgrade; JWTs are not placed in the WebSocket URL. Operations are validated, sequence-numbered in PostgreSQL, deduplicated by UUID, and replayed on reconnect. Frames are capped at 64 KiB and 30 messages/second/socket. Above 5,000 operations, reconnect fails explicitly rather than silently returning incomplete history.
+- LiveKit webhooks retain the exact raw payload and use the SDK's signature/checksum verifier. Event IDs are deduplicated transactionally. Join intervals are merged and clipped to the class duration; ending a class finalizes attendance at a configurable percentage. Automatic recomputation preserves manual status overrides. Board-only activity does not count as media attendance.
+- Parent classroom access requires the session's parent-view flag, an enrolled linked child, and an active live-view consent. Recording is disabled. Organization scope and active roles are rechecked for board actions.
+
+### Derived API surface
+
+All paths have the `/api` prefix. HTTP classroom routes require the identity bearer token, except the independently signed webhook.
+
+| Path | Behavior |
+|---|---|
+| `GET /live/sessions/:id/classroom` | Role-scoped session, board ID, drawing/manage flags and media availability |
+| `POST /live/sessions/:id/token` | Server-scoped LiveKit SDK token; 503 if media is not configured |
+| `PATCH /live/sessions/:id/settings` | Staff-only chat, room lock, parent view and attendance threshold |
+| `GET/POST /live/sessions/:id/attendance` | Scoped report / staff override |
+| `POST /live/sessions/:id/participants/:userId/permissions` | Teacher microphone grant/revoke for an enrolled student |
+| `POST /board/boards/:id/ticket` | Short-lived one-use board ticket |
+| `WS /board/boards/:id/ws?ticket=…` | Hello/replay, stroke, config, draw-grant and closed messages |
+| `POST /live/livekit/webhook` | Verified `application/webhook+json` or JSON payload |
+
+### Verification performed
+
+| Check | Result / kind |
+|---|---|
+| API and web workspace type checks | Passed |
+| API unit suite | 16 passed; includes grant separation and interval merging |
+| Web production build | Passed |
+| `RUN_CLASSROOM_INTEGRATION=1 npm run test:integration:classroom --workspace=@workspace/api-server` | Passed with an explicitly supplied least-privilege development `DATABASE_URL`; real PostgreSQL, HTTP and two WebSocket clients |
+| Integration coverage | Teacher start/end, parent rejection, student override rejection, read-only/revoked drawing rejection, persisted replay/deduplication, forged webhook rejection, verified synthetic event deduplication, finalized attendance and preserved manual override |
+| `npm audit --omit=dev --audit-level=high` | 0 vulnerabilities |
+| Browser screenshot | Login renders without errors; signed-in classroom UI not visually verified |
+
+No real camera/audio/screen-share session was exercised: the existing LiveKit container is loopback-only and `LIVEKIT_PUBLIC_URL` is unset. The signed events in the integration test are synthetic and must not be presented as a real LiveKit call.
+
+### Still open; not production-ready
+
+Tickets and broadcasts are process-local; multi-instance Redis fan-out, reconnect snapshots/compaction, durable moderation auditing, immediate passive-subscriber revocation, per-user connection limits, and complete security/browser journeys remain open. The current canvas supports strokes only, not multi-page boards, undo/redo, shapes, text, export or replay playback. Chat/hand-raise UI, mute/remove controls, the session-settings UI, and generated OpenAPI contracts for the new classroom endpoints remain incomplete. Microphone changes require a running public LiveKit connection and have not been verified against one. CI remains deferred at the user's request. No §17 release gate is claimed closed by this work.

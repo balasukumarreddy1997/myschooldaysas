@@ -9,13 +9,16 @@
     "start": "node --enable-source-maps ./dist/index.mjs",
     "db:migrate": "bash ../../scripts/db/migrate.sh",
     "db:seed": "node --experimental-strip-types src/seed.ts",
-    "test:unit": "DATABASE_URL=postgres://campus_app:campus_app@127.0.0.1:5432/campus NODE_ENV=test node --experimental-strip-types --test src/lib/auth.test.ts src/lib/identity-security.test.ts src/lib/config.test.ts",
+    "test:unit": "DATABASE_URL=postgres://campus_app:campus_app@127.0.0.1:5432/campus NODE_ENV=test node --experimental-strip-types --test src/lib/*.test.ts",
+    "test:integration:classroom": "node --test ../../scripts/tests/classroom.integration.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@fastify/websocket": "^11.3.4",
     "@workspace/api-zod": "*",
     "@workspace/db": "*",
     "fastify": "5.12.7",
+    "livekit-server-sdk": "^2.19.2",
     "pino": "^9.14.0",
     "zod": "^4.6.6"
   },

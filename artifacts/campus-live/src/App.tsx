@@ -21,6 +21,7 @@ import {
 import { ErrorBoundary } from '@/components/error-boundary';
 import NotFound from '@/components/not-found';
 import { setAccessToken } from './auth-token';
+import { ClassroomScreen } from '@/components/classroom/classroom-screen';
 
 const queryClient = new QueryClient();
 const fmtDate = (iso?: string) => iso ? `${iso.slice(0, 10)} · ${iso.slice(11, 16)}` : 'Time not set';
@@ -50,6 +51,7 @@ function ProtectedApp() {
   if (!me.data) return <LoginGate error={me.error} retry={() => me.refetch()} />;
   const user = me.data;
   if (user.mustChangePassword) return <PasswordChangePage email={user.email} />;
+  if (path.startsWith('/classroom/')) return <ErrorBoundary resetKey={path}><ClassroomPage roles={user.roles}/></ErrorBoundary>;
   return <div className="shell grain"><AppShell user={user} path={path} onLogout={() => { setAccessToken(null); queryClient.clear(); setPath('/login'); }}>
     <ErrorBoundary resetKey={path}>
       <Switch>
@@ -360,30 +362,9 @@ function TemplatesPage({ roles }: { roles: string[] }) {
   </>;
 }
 
-function ClassroomPage({ roles }: { roles: string[] }) {
-  const { sessionId } = useParams<{ sessionId: string }>(); const token = useGetSessionToken(); const [join, setJoin] = useState(false);
-  const begin = () => { if (sessionId) token.mutate({ sessionId }, { onSuccess: () => setJoin(true) }); };
-  const isTeacher = roles.includes('teacher') || roles.includes('class_teacher');
-  return <div className="-mx-4 -my-7 min-h-[calc(100dvh-68px)] bg-[hsl(var(--classroom-bg))] p-4 text-[hsl(var(--classroom-text))] md:-mx-9 md:-my-9 md:p-8">
-    <div className="mx-auto max-w-[1240px]">
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-3"><Link href="/live/sessions" className="grid h-9 w-9 place-items-center rounded-lg border border-[hsl(var(--classroom-border))] text-[hsl(var(--classroom-muted))] hover:bg-white/5"><ChevronLeft size={18}/></Link><div><div className="text-[10px] font-bold uppercase tracking-[.17em] text-[hsl(var(--classroom-ready))]">Campus Live classroom</div><h1 className="display mb-0 mt-1 text-xl font-extrabold">Session room</h1></div></div><div className="flex items-center gap-2"><span className="flex items-center gap-2 rounded-full border border-[hsl(var(--classroom-border))] px-3 py-1.5 text-[10px] text-[hsl(var(--classroom-muted))]"><span className={`h-1.5 w-1.5 rounded-full ${join ? 'bg-[hsl(var(--status-good))]' : 'bg-[hsl(var(--classroom-warn))]'}`}/>{join ? 'Token ready' : 'Not connected'}</span></div></div>
-      <div className="grid gap-4 lg:grid-cols-[1fr_270px]">
-        <section className="relative flex min-h-[56vh] flex-col items-center justify-center overflow-hidden rounded-2xl border border-[hsl(var(--classroom-border))] bg-[hsl(var(--classroom-panel))] p-6 text-center md:min-h-[68vh]">
-          <div className="absolute inset-0 opacity-[.13]" style={{ backgroundImage: 'linear-gradient(hsl(var(--classroom-grid) / .23) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--classroom-grid) / .23) 1px, transparent 1px)', backgroundSize: '38px 38px' }}/>
-          <div className="relative z-10 max-w-md"><div className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-2xl border border-[hsl(var(--classroom-ready)/.25)] bg-[hsl(var(--brand-forest))] text-[hsl(var(--classroom-ready))]"><Video size={29}/></div><div className="mb-2 text-[10px] font-bold uppercase tracking-[.2em] text-[hsl(var(--classroom-ready))]">Your learning space</div><h2 className="display text-2xl font-extrabold tracking-tight">Ready when you are.</h2><p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[hsl(var(--classroom-muted))]">{join ? 'The session access token is ready. Realtime classroom service connection is not available in this environment.' : 'Enter the classroom using a secure, server-minted session token.'}</p>
-            {!join && <button disabled={token.isPending || !sessionId} onClick={begin} data-testid="button-enter-classroom" className="btn mt-6 bg-[hsl(var(--classroom-ready))] text-[hsl(var(--brand-ink))]">{token.isPending ? <LoaderCircle className="animate-spin" size={16}/> : <DoorOpen size={16}/>} {token.isPending ? 'Preparing room…' : isTeacher ? 'Enter classroom' : 'Join classroom'}</button>}
-            {token.isError && <div role="alert" data-testid="status-classroom-error" className="mx-auto mt-4 max-w-sm rounded-lg border border-[hsl(var(--destructive)/.3)] bg-[hsl(var(--classroom-danger-bg))] p-3 text-left text-xs text-[hsl(var(--classroom-danger))]"><div className="mb-1 flex items-center gap-2 font-bold"><CircleAlert size={14}/>Classroom unavailable</div>{errorText(token.error)}<button className="ml-2 underline" onClick={begin}>Try again</button></div>}
-          </div>
-          <div className="absolute bottom-4 left-4 text-[10px] text-white/30">Session {sessionId}</div>
-        </section>
-        <aside className="space-y-4">
-          <div className="rounded-2xl border border-[hsl(var(--classroom-border))] bg-[hsl(var(--classroom-panel))] p-5"><div className="mb-3 flex items-center gap-2 text-xs font-bold"><ShieldCheck size={15} className="text-[hsl(var(--classroom-ready))]"/>Connection status</div><div className="flex items-center justify-between border-t border-[hsl(var(--classroom-border))] py-3 text-xs"><span className="text-[hsl(var(--classroom-muted))]">Session access</span><span>{join ? 'Ready' : 'Not started'}</span></div><div className="flex items-center justify-between border-t border-[hsl(var(--classroom-border))] py-3 text-xs"><span className="text-[hsl(var(--classroom-muted))]">Realtime service</span><span className="text-[hsl(var(--classroom-warn))]">Not configured</span></div><p className="mb-0 border-t border-[hsl(var(--classroom-border))] pt-3 text-[11px] leading-5 text-[hsl(var(--classroom-muted))]">A live board will appear here once the classroom connection is available.</p></div>
-          {token.data && <div className="rounded-2xl border border-[hsl(var(--classroom-border))] bg-[hsl(var(--classroom-panel))] p-5"><div className="mb-2 text-xs font-bold">Secure room details</div><div className="space-y-2 text-[11px] text-[hsl(var(--classroom-muted))]"><div>Room <span className="float-right text-[hsl(var(--classroom-text))]">{token.data.roomName}</span></div><div>Service <span className="float-right max-w-[140px] truncate text-[hsl(var(--classroom-text))]">{token.data.url}</span></div></div></div>}
-          <Link href="/live/sessions" className="flex items-center justify-between rounded-xl border border-white/10 px-4 py-3 text-xs text-white/70 hover:bg-white/5">Back to live classes <ArrowRight size={14}/></Link>
-        </aside>
-      </div>
-    </div>
-  </div>;
+function ClassroomPage({ roles: _roles }: { roles: string[] }) {
+  const { sessionId } = useParams<{ sessionId: string }>();
+  return sessionId ? <ClassroomScreen sessionId={sessionId} /> : <NotFound />;
 }
 
 export default App;

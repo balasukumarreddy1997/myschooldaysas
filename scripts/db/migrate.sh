@@ -34,4 +34,6 @@ academic:001|services/academic/migrations/001_academic.sql
 academic:002|services/academic/migrations/002_consents.sql
 live:001|services/live/migrations/001_live.sql
 board:001|services/board/migrations/001_board.sql
+board:002|services/board/migrations/002_realtime.sql
+live:002|services/live/migrations/002_classroom.sql
 MIGRATIONS

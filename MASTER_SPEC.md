@@ -271,6 +271,8 @@ College credit/semester rules · parent live-view default (currently off) · rec
 
 Priority: *P0* wrong behaviour / safety, *P1* spec feature missing, *P2* hygiene. Status words: *DONE* (code + unit tests, passing), *DONE\* (code done but a path is untested — stated), **PARTIAL, **OPEN, **STALE* (the original claim was wrong), *DEFERRED* (decision, with reason).
 
+**Current Replit classroom evidence (2026-10-26): PARTIAL.** The workspace now implements a full-screen classroom, LiveKit client/SDK grants, an independent persistent WebSocket stroke board with teacher draw grants, verified/idempotent LiveKit webhooks, attendance finalization and a scoped report/manual-override UI. API/web type checks, 16 API unit tests, the web production build, and a real PostgreSQL/HTTP/WebSocket integration test passed. The integration uses signed synthetic media events, not real audio/video. Public LiveKit setup and signed-in browser journeys are not verified. Advanced board tools/pages, chat/hand raises, full moderation/audit, multi-instance fan-out, session-settings UI and complete generated classroom contracts remain open. The historic platform audit rows below do not establish that those features exist in this Replit checkout; see `ARCHITECTURE.md` for the workspace-specific evidence and limitations. No G-* item is newly declared fully closed by this classroom slice.
+
 | ID | P | Status | Evidence / what remains |
 |---|---|---|---|
 | G-01 | P0 | DONE\* | canFilterByPerson + user_id on GET /leave, teacher_id on GET /substitutions (school). 2 unit tests. The SQL and the Staff 360 round trip are untested (needs DB + services) |
@@ -326,6 +328,8 @@ Everything above makes the product work. This section is the bar for running it 
 Evidence key: *V* = verified by reading the code directly in this session; *A* = reported by an audit agent, not independently re-read (re-verify before relying on it).
 Priority: *B* = release blocker, *H* = fix before pilot with real users, *M* = fix within the first release cycle.
 Numeric targets marked (proposed) are defaults to confirm with the school, not commitments.
+
+**Workspace release status (2026-10-26): NO-GO, unchanged.** Classroom ticketing and webhook checks are implemented and exercised locally, but this is not closure of PR-S14 or any entire release gate. Real media, authenticated role/browser journeys, passive-client revocation, distributed board transport, durable audit coverage, and the remaining §17 production controls are unverified or incomplete. CI is explicitly deferred; no deployment, cloud changes or release rehearsal were performed.
 
 ### 17.1 Release gates (all must be true to ship)
 
