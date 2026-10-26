@@ -1,14 +1,14 @@
-import { Router, type IRouter } from "express";
+import type { FastifyPluginAsync } from "fastify";
 import { createConnection } from "node:net";
 import { HealthCheckResponse } from "@workspace/api-zod";
 import { pool } from "@workspace/db";
 
-const router: IRouter = Router();
-
-router.get("/healthz", (_req, res) => {
-  const data = HealthCheckResponse.parse({ status: "ok" });
-  res.json(data);
-});
+const healthRoutes: FastifyPluginAsync = async (fastify) => {
+  fastify.get("/healthz", async (_request, reply) => {
+    const data = HealthCheckResponse.parse({ status: "ok" });
+    return reply.send(data);
+  });
+};
 
 function checkRedis(): Promise<void> {
   const rawUrl = process.env.REDIS_URL;
@@ -63,14 +63,21 @@ function checkRedis(): Promise<void> {
   });
 }
 
-router.get("/ready", async (_req, res) => {
+const readinessRoutes: FastifyPluginAsync = async (fastify) => {
+fastify.get("/ready", async (_request, reply) => {
   try {
     await pool.query("SELECT 1");
     await checkRedis();
-    res.json({ status: "ready" });
+    return reply.send({ status: "ready" });
   } catch {
-    res.status(503).json({ status: "not_ready" });
+    return reply.code(503).send({ status: "not_ready" });
   }
 });
+};
 
-export default router;
+const health: FastifyPluginAsync = async (fastify) => {
+  await fastify.register(healthRoutes);
+  await fastify.register(readinessRoutes);
+};
+
+export default health;

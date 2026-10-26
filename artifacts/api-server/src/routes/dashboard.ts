@@ -1,8 +1,10 @@
-import { Router } from "express";
+import type { FastifyPluginAsync } from "fastify";
 import { withOrg } from "@workspace/db";
+import { createRouteRegistrar } from "../lib/fastify-routes";
 import { requireAuth, type CampusRole } from "../lib/auth";
 
-const router = Router();
+const routes: FastifyPluginAsync = async (fastify) => {
+const router = createRouteRegistrar(fastify);
 const adminRoles: CampusRole[] = ["super_admin", "org_admin", "campus_admin"];
 const teacherRoles: CampusRole[] = ["teacher", "class_teacher", "hod"];
 
@@ -143,5 +145,6 @@ router.get("/dashboard/overview", requireAuth, async (req, res, next) => {
     next(error);
   }
 });
+};
 
-export default router;
+export default routes;

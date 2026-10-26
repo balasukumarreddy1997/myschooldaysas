@@ -1,11 +1,13 @@
 import { createHmac } from "node:crypto";
-import { Router } from "express";
+import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import type { PoolClient, QueryResult } from "@workspace/db";
 import { CreateSessionBody } from "@workspace/api-zod";
 import { withOrg } from "@workspace/db";
+import { createRouteRegistrar } from "../lib/fastify-routes";
 import { requireAuth, type CampusRole } from "../lib/auth";
 
-const router = Router();
+const routes: FastifyPluginAsync = async (fastify) => {
+const router = createRouteRegistrar(fastify);
 const adminRoles: CampusRole[] = ["super_admin", "org_admin", "campus_admin"];
 const teacherRoles: CampusRole[] = ["teacher", "class_teacher", "hod"];
 
@@ -13,7 +15,7 @@ function errorBody(code: string, message: string) {
   return { error: { code, message } };
 }
 
-function sessionAccess(user: NonNullable<Express.Request["campusUser"]>) {
+function sessionAccess(user: NonNullable<FastifyRequest["campusUser"]>) {
   return {
     isAdmin: user.roles.some((role) => adminRoles.includes(role)),
     isTeacher: user.roles.some((role) => teacherRoles.includes(role)),
@@ -35,7 +37,7 @@ interface LiveSessionRow extends Record<string, unknown> {
 
 async function listVisibleSessions(
   client: PoolClient,
-  user: NonNullable<Express.Request["campusUser"]>,
+  user: NonNullable<FastifyRequest["campusUser"]>,
   upcomingOnly = false,
 ): Promise<QueryResult<LiveSessionRow>> {
   const flags = sessionAccess(user);
@@ -178,7 +180,7 @@ router.post("/live/sessions", requireAuth, async (req, res, next) => {
 
 async function changeSessionStatus(
   sessionId: string,
-  user: NonNullable<Express.Request["campusUser"]>,
+  user: NonNullable<FastifyRequest["campusUser"]>,
   target: "live" | "ended",
 ) {
   return withOrg(user.orgId, async (client) => {
@@ -373,5 +375,6 @@ router.post("/live/sessions/:sessionId/token", requireAuth, async (req, res, nex
     next(error);
   }
 });
+};
 
-export default router;
+export default routes;

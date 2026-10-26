@@ -1,6 +1,6 @@
 # Identity route slice
 
-This is a convenience summary derived from `MASTER_SPEC.md`; the master spec remains authoritative. These routes currently live in the shared Express API process and are not an independently deployed identity service.
+This is a convenience summary derived from `MASTER_SPEC.md`; the master spec remains authoritative. These routes now register as native Fastify plugins in the shared API process; identity is not yet an independently deployed service.
 
 ## Implemented contract
 

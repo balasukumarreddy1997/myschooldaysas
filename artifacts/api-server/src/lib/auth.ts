@@ -1,7 +1,8 @@
 import { createHmac, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
-import type { Request, RequestHandler } from "express";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import { pool, withOrg } from "@workspace/db";
 import { needsPasswordRehash } from "./identity-security.ts";
+import type {} from "./fastify-routes.ts";
 
 const TOKEN_ISSUER = "campus-live-identity";
 const TOKEN_AUDIENCE = "campus-live-web";
@@ -193,20 +194,12 @@ function deriveScrypt(
   });
 }
 
-declare global {
-  namespace Express {
-    interface Request {
-      campusUser?: AuthUser;
-    }
-  }
-}
-
-export const requireAuth: RequestHandler = async (req: Request, res, next) => {
-  const authorization = req.get("authorization");
+export const requireAuth = async (req: FastifyRequest, reply: FastifyReply): Promise<void> => {
+  const authorization = req.headers.authorization;
   const token = authorization?.startsWith("Bearer ") ? authorization.slice(7) : "";
   const claims = token ? verifyAccessToken(token) : null;
   if (!claims) {
-    res.status(401).json({ error: { code: "UNAUTHENTICATED", message: "Sign in to continue." } });
+    reply.code(401).send({ error: { code: "UNAUTHENTICATED", message: "Sign in to continue." } });
     return;
   }
 
@@ -238,7 +231,7 @@ export const requireAuth: RequestHandler = async (req: Request, res, next) => {
       user.roles.length === 0 ||
       user.must_change_password !== claims.mustChangePassword
     ) {
-      res.status(401).json({ error: { code: "UNAUTHENTICATED", message: "Your session is no longer valid." } });
+      reply.code(401).send({ error: { code: "UNAUTHENTICATED", message: "Your session is no longer valid." } });
       return;
     }
     if (
@@ -246,7 +239,7 @@ export const requireAuth: RequestHandler = async (req: Request, res, next) => {
       (!user.temporary_password_expires_at ||
         user.temporary_password_expires_at.getTime() <= Date.now())
     ) {
-      res.status(403).json({ error: { code: "PASSWORD_EXPIRED", message: "Your temporary password has expired." } });
+      reply.code(403).send({ error: { code: "PASSWORD_EXPIRED", message: "Your temporary password has expired." } });
       return;
     }
     req.campusUser = {
@@ -257,29 +250,27 @@ export const requireAuth: RequestHandler = async (req: Request, res, next) => {
       roles: user.roles,
       mustChangePassword: user.must_change_password,
     };
-    const requestPath = req.originalUrl.split("?")[0].replace(/^\/api(?=\/)/, "");
+    const requestPath = req.url.split("?")[0].replace(/^\/api(?=\/)/, "");
     if (
       user.must_change_password &&
       requestPath !== "/identity/me" &&
       requestPath !== "/identity/auth/change-password"
     ) {
-      res.status(403).json({ error: { code: "PASSWORD_CHANGE_REQUIRED", message: "Change your temporary password to continue." } });
+      reply.code(403).send({ error: { code: "PASSWORD_CHANGE_REQUIRED", message: "Change your temporary password to continue." } });
       return;
     }
-    next();
   } catch (error) {
-    next(error);
+    throw error;
   }
 };
 
-export function requireRoles(...allowed: CampusRole[]): RequestHandler {
-  return (req, res, next) => {
+export function requireRoles(...allowed: CampusRole[]) {
+  return async (req: FastifyRequest, reply: FastifyReply): Promise<void> => {
     const user = req.campusUser;
     if (!user || !user.roles.some((role) => allowed.includes(role))) {
-      res.status(403).json({ error: { code: "FORBIDDEN", message: "You do not have access to this action." } });
+      reply.code(403).send({ error: { code: "FORBIDDEN", message: "You do not have access to this action." } });
       return;
     }
-    next();
   };
 }
 

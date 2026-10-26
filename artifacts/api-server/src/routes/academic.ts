@@ -1,9 +1,11 @@
-import { Router } from "express";
+import type { FastifyPluginAsync } from "fastify";
 import { GetStudentsQueryParams, GrantConsentBody, RevokeConsentParams } from "@workspace/api-zod";
 import { withOrg } from "@workspace/db";
+import { createRouteRegistrar } from "../lib/fastify-routes";
 import { requireAuth, type CampusRole } from "../lib/auth";
 
-const router = Router();
+const routes: FastifyPluginAsync = async (fastify) => {
+const router = createRouteRegistrar(fastify);
 
 const adminRoles: CampusRole[] = ["super_admin", "org_admin", "campus_admin"];
 const teachingRoles: CampusRole[] = ["teacher", "class_teacher", "hod"];
@@ -355,5 +357,6 @@ router.delete("/academic/consents/:studentId/:purpose", requireAuth, async (req,
     next(error);
   }
 });
+};
 
-export default router;
+export default routes;

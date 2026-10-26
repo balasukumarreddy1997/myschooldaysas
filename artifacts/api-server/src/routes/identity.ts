@@ -1,6 +1,7 @@
-import { Router } from "express";
+import type { FastifyPluginAsync } from "fastify";
 import { ChangePasswordBody, LoginBody, ResetPasswordParams } from "@workspace/api-zod";
 import { pool, withOrg } from "@workspace/db";
+import { createRouteRegistrar } from "../lib/fastify-routes";
 import {
   createAccessToken,
   hashPassword,
@@ -15,7 +16,8 @@ import {
   needsPasswordRehash,
 } from "../lib/identity-security";
 
-const router = Router();
+const routes: FastifyPluginAsync = async (fastify) => {
+const router = createRouteRegistrar(fastify);
 
 function invalid(message: string, code = "INVALID_REQUEST") {
   return { error: { code, message } };
@@ -204,7 +206,7 @@ router.post(
   },
 );
 
-router.get("/identity/me", requireAuth, (req, res) => {
+router.get("/identity/me", requireAuth, (req, res, _next) => {
   const user = req.campusUser;
   if (!user) {
     res.status(401).json(invalid("Sign in to continue.", "UNAUTHENTICATED"));
@@ -219,5 +221,6 @@ router.get("/identity/me", requireAuth, (req, res) => {
     mustChangePassword: user.mustChangePassword,
   });
 });
+};
 
-export default router;
+export default routes;

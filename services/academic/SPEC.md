@@ -1,6 +1,6 @@
 # Academic route slice
 
-This is a convenience summary derived from `MASTER_SPEC.md`; the master spec remains authoritative. These routes currently run in the shared Fastify API process through a temporary Express compatibility bridge; academic is not yet an independently deployed service.
+This is a convenience summary derived from `MASTER_SPEC.md`; these routes now register as native Fastify plugins in the shared API process; academic is not yet an independently deployed service.
 
 ## Implemented contract
 
