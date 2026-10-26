@@ -8,7 +8,7 @@ This build covers sign-in, a role-scoped dashboard, class/section directories, a
 
 | Area | Current implementation | Target in `MASTER_SPEC.md` |
 |---|---|---|
-| Web | React 19 + Vite artifact at `/` | Next.js 16 App Router |
+| Web | Next.js 16 App Router + React 19 artifact at `/` | Next.js 16 App Router |
 | API | One Fastify 5 API process at `/api`, with identity, academic, live, board, and dashboard route modules | Fastify 5 gateway plus independently deployed services |
 | Data | PostgreSQL 16; `identity`, `academic`, `live`, and `board` schemas | Those schemas plus notify, school, learning, fees, and registry |
 | Tenant access | `campus_app` is a non-superuser without `BYPASSRLS`; tenant tables use forced RLS and transaction-local `app.org_id` | Same principle, shared helpers and per-service enforcement |
@@ -17,7 +17,11 @@ This build covers sign-in, a role-scoped dashboard, class/section directories, a
 | LiveKit | Local container is present; token minting refuses to proceed without `LIVEKIT_PUBLIC_URL` | LiveKit classroom, webhook processing, attendance, and recording flows |
 | Authentication | Organization-scoped login, scrypt password verification, short-lived signed access token held in browser memory | Refresh rotation, lockout/rate limits, change-password flow, production key management |
 
-The Vite/Express and single-process choices are explicit scaffold compromises, not a claim that the spec's Next.js/Fastify/microservice requirements have been met. No application code in this slice relies on Replit's managed database superuser.
+The web and API use the required Next.js and Fastify frameworks. The single API process remains an explicit scaffold compromise, not a claim that the spec's independent-service architecture has been met. No application code in this slice relies on Replit's managed database superuser.
+
+## Workspace tooling
+
+The repository uses npm workspaces with one root `package-lock.json`; use `npm ci` for a reproducible install. Shared TypeScript libraries are built before the application type checks. The former pnpm catalog versions and security overrides are represented in npm-compatible manifests. The 24-hour release-age safeguard and explicit dependency install-script allowlist are retained.
 
 ## Trust boundaries and data flow
 
@@ -40,7 +44,7 @@ The Vite/Express and single-process choices are explicit scaffold compromises, n
 
 ## Important production gaps
 
-This build is a development vertical slice, not a production release. In particular, it does not satisfy the master spec's Next/Fastify architecture, all §11 acceptance flows, or §17 release gates. Fees/payments, admissions/registry, notification, school operations, learning, consent enforcement, export/erasure, retention, backup/restore drills, CI, production containers, observability, accessibility automation, and release runbooks remain open. The browser preview has been checked at the login screen; authenticated screens were verified through API checks, not through a signed-in browser session.
+This build is a development vertical slice, not a production release. In particular, it does not satisfy the master spec's independent-service architecture, all §11 acceptance flows, or §17 release gates. Fees/payments, admissions/registry, notification, school operations, learning, consent enforcement, export/erasure, retention, backup/restore drills, CI, production containers, observability, accessibility automation, and release runbooks remain open. The browser preview has been checked at the login screen; authenticated screens were verified through API checks, not through a signed-in browser session.
 
 ## Local verification
 

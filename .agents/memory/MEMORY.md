@@ -1,0 +1,1 @@
+- [Clean dependency validation](clean-dependency-validation.md) — npm lockfile-only resolution can inspect pnpm links; validate package-manager changes with a clean install.
