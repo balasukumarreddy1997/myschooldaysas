@@ -7,16 +7,22 @@ import boardRouter from "./board";
 import classroomBoardRouter from "./classroom-board";
 import dashboardRouter from "./dashboard";
 import learningRouter from "./learning";
+import academicSubjectsRouter from "./academic-subjects";
+import schoolRouter from "./school";
+import reportCardsRouter from "./report-cards";
 
 const routes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(healthRouter);
   await fastify.register(identityRouter);
   await fastify.register(academicRouter);
+  await fastify.register(academicSubjectsRouter);
+  await fastify.register(schoolRouter);
   await fastify.register(liveRouter);
   await fastify.register(boardRouter);
   await fastify.register(classroomBoardRouter);
   await fastify.register(dashboardRouter);
   await fastify.register(learningRouter);
+  await fastify.register(reportCardsRouter);
 };
 
 export default routes;

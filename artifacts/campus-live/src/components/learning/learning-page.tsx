@@ -7,17 +7,18 @@ import {
   useGetLearningSubmissions, getGetLearningSubmissionsQueryKey, useSubmitLearningAssignment,
   useGradeLearningSubmission, useUpdateLearningAssignment, useGetLearningExamMarks,
   getGetLearningExamMarksQueryKey, useUpdateLearningExamMarks, usePublishLearningExam,
-  useGetLearningTerms, getGetLearningTermsQueryKey, useGetLearningGradeScale,
-  getGetLearningGradeScaleQueryKey, useUpdateLearningGradeScale, useGetSections,
+  useGetLearningTerms, getGetLearningTermsQueryKey, useGetLearningGradeScale, useGetAcademicSubjects,
+  getGetLearningGradeScaleQueryKey, useUpdateLearningGradeScale, useGetSections, useGetAcademicTeacherAssignments,
 } from '@workspace/api-client-react';
 import type { LearningAssignment, LearningExam, LearningMark, LearningSubmission } from '@workspace/api-client-react';
+import { LearningOperations } from './learning-operations';
 import {
   BookOpenCheck, CalendarDays, Check, ClipboardList, Clock3, FileText,
   GraduationCap, MessageSquareText, Plus, Save, Send, Settings2, UsersRound, X,
 } from 'lucide-react';
 
 type Props = { roles: string[] };
-type Tab = 'assignments' | 'exams' | 'terms';
+type Tab = 'assignments' | 'exams' | 'terms' | 'catalog' | 'reports';
 const canManage = (roles: string[]) => roles.some(role => ['teacher', 'class_teacher', 'hod', 'org_admin', 'campus_admin', 'super_admin'].includes(role));
 const canAdminister = (roles: string[]) => roles.some(role => ['org_admin', 'campus_admin', 'super_admin'].includes(role));
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Please try again.';
@@ -39,7 +40,16 @@ export function LearningPage({ roles }: Props) {
   const [activeAssignment, setActiveAssignment] = useState<LearningAssignment | null>(null);
   const [activeExam, setActiveExam] = useState<LearningExam | null>(null);
   const sections = useGetSections();
-  const resolvedSection = sectionId || sections.data?.items[0]?.id || '';
+  const teacherAssignments = useGetAcademicTeacherAssignments(undefined, { query: { enabled: manager && !administrator } });
+  const availableSections = useMemo(() => {
+    const all = sections.data?.items ?? [];
+    if (administrator) return all;
+    const allowed = new Set((teacherAssignments.data?.items ?? []).map(item => item.sectionId));
+    return all.filter(section => allowed.has(section.id));
+  }, [sections.data, teacherAssignments.data, administrator]);
+  const resolvedSection = availableSections.some(section => section.id === sectionId) ? sectionId : availableSections[0]?.id ?? '';
+  const sectionAssignments = useGetAcademicTeacherAssignments({ sectionId: resolvedSection }, { query: { enabled: manager && !!resolvedSection } });
+  const allowedSubjectIds = useMemo(() => (sectionAssignments.data?.items ?? []).map(item => item.subjectId), [sectionAssignments.data]);
   const params = useMemo(() => manager && resolvedSection ? { sectionId: resolvedSection } : undefined, [manager, resolvedSection]);
   const managedAssignments = useGetLearningAssignments(params, { query: { enabled: manager } });
   const myAssignments = useGetMyLearningAssignments({ query: { enabled: !manager } });
@@ -81,18 +91,18 @@ export function LearningPage({ roles }: Props) {
     </header>
     <div className="surface flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
       <nav aria-label="Learning sections" className="flex gap-1 overflow-x-auto">
-        {(['assignments', 'exams', ...(administrator ? ['terms'] : [])] as Tab[]).map(item => <button key={item} onClick={() => { setTab(item); setActiveAssignment(null); setActiveExam(null); }} aria-pressed={tab === item} className={`rounded-lg px-4 py-2.5 text-xs font-bold capitalize transition ${tab === item ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))]'}`}>{item === 'exams' ? 'Assessments & results' : item}</button>)}
+        {(['assignments', 'exams', ...(administrator ? ['terms', 'catalog'] : []), 'reports'] as Tab[]).map(item => <button key={item} onClick={() => { setTab(item); setActiveAssignment(null); setActiveExam(null); }} aria-pressed={tab === item} className={`rounded-lg px-4 py-2.5 text-xs font-bold capitalize transition ${tab === item ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))]'}`}>{item === 'exams' ? 'Assessments & results' : item === 'catalog' ? 'Subjects & teachers' : item === 'reports' ? 'Report cards' : item}</button>)}
       </nav>
-      {manager && <label className="flex items-center gap-2 px-1 text-[11px] font-semibold text-[hsl(var(--muted-foreground))]"><UsersRound size={15}/><span className="sr-only">Filter by section</span><select className="field min-h-9 w-full py-1.5 text-xs sm:w-auto" value={sectionId} onChange={event => setSectionId(event.target.value)}><option value="">All assigned sections</option>{sections.data?.items.map(section => <option key={section.id} value={section.id}>{section.name}</option>)}</select></label>}
+      {manager && <label className="flex items-center gap-2 px-1 text-[11px] font-semibold text-[hsl(var(--muted-foreground))]"><UsersRound size={15}/><span className="sr-only">Filter by section</span><select className="field min-h-9 w-full py-1.5 text-xs sm:w-auto" value={resolvedSection} onChange={event => setSectionId(event.target.value)}><option value="">All assigned sections</option>{availableSections.map(section => <option key={section.id} value={section.id}>{section.name}</option>)}</select></label>}
     </div>
     {notice && <div role="status" className="rounded-xl border border-[hsl(var(--status-good)/.3)] bg-[hsl(var(--status-good-bg))] px-4 py-3 text-sm text-[hsl(var(--brand-mint-ink))]">{notice}</div>}
     {failure && <div role="alert" className="rounded-xl border border-[hsl(var(--destructive)/.3)] bg-[hsl(var(--destructive)/.08)] px-4 py-3 text-sm text-[hsl(var(--destructive))]">{errorMessage(failure)}</div>}
-    {showAssignmentForm && <AssignmentForm sections={sections.data?.items ?? []} saving={busy} onCancel={() => setShowAssignmentForm(false)} onSave={data => addAssignment.mutate({ data }, { onSuccess: () => { setShowAssignmentForm(false); setNotice('Assignment created.'); } })}/>}
-    {editingAssignment && <AssignmentForm sections={sections.data?.items ?? []} initial={editingAssignment} saving={busy} onCancel={() => setEditingAssignment(null)} onSave={data => {
+    {showAssignmentForm && <AssignmentForm sections={availableSections} saving={busy} onCancel={() => setShowAssignmentForm(false)} onSave={data => addAssignment.mutate({ data }, { onSuccess: () => { setShowAssignmentForm(false); setNotice('Assignment created.'); } })}/>}
+    {editingAssignment && <AssignmentForm sections={availableSections} initial={editingAssignment} saving={busy} onCancel={() => setEditingAssignment(null)} onSave={data => {
       const update = { title: data.title, instructions: data.instructions, dueAt: data.dueAt, maxPoints: data.maxPoints };
       editAssignment.mutate({ assignmentId: editingAssignment.id, data: update }, { onSuccess: () => { setEditingAssignment(null); invalidateAssignments(); setNotice('Assignment updated.'); } });
     }}/>}
-    {showExamForm && <ExamForm sections={sections.data?.items ?? []} saving={busy} onCancel={() => setShowExamForm(false)} onSave={data => addExam.mutate({ data }, { onSuccess: () => { setShowExamForm(false); setNotice('Assessment created.'); } })}/>}
+    {showExamForm && <ExamForm sections={availableSections} subjectIds={allowedSubjectIds} saving={busy} onCancel={() => setShowExamForm(false)} onSave={data => addExam.mutate({ data }, { onSuccess: () => { setShowExamForm(false); setNotice('Assessment created.'); } })}/>}
     {showTermForm && <TermForm saving={busy} onCancel={() => setShowTermForm(false)} onSave={data => addTerm.mutate({ data }, { onSuccess: () => { setShowTermForm(false); setNotice('Academic term created.'); } })}/>}
     {tab === 'assignments' && (activeAssignment
        ? <AssignmentDetail key={activeAssignment.id} assignment={activeAssignment} manager={manager} canSubmit={roles.includes('student')} onBack={() => setActiveAssignment(null)} onRefresh={invalidateAssignments} onNotice={setNotice}/>
@@ -100,7 +110,8 @@ export function LearningPage({ roles }: Props) {
     {tab === 'exams' && (activeExam
       ? <ExamDetail key={activeExam.id} exam={activeExam} manager={manager} onBack={() => setActiveExam(null)} onNotice={setNotice}/>
       : <ExamList exams={exams.data?.items ?? []} loading={exams.isLoading} error={exams.error} retry={() => exams.refetch()} manager={manager} onSelect={setActiveExam}/>)}
-    {tab === 'terms' && administrator && <TermScalePanel terms={terms.data?.items ?? []} termsLoading={terms.isLoading} termsError={terms.error} retryTerms={() => terms.refetch()} bands={scale.data?.bands ?? []} scaleLoading={scale.isLoading} scaleError={scale.error} retryScale={() => scale.refetch()} onAddTerm={() => setShowTermForm(true)} onSaveScale={bands => updateScale.mutate({ data: { bands } }, { onSuccess: () => setNotice('Grade scale saved.') })} saving={updateScale.isPending}/>}
+    {(tab === 'terms' && administrator) && <TermScalePanel terms={terms.data?.items ?? []} termsLoading={terms.isLoading} termsError={terms.error} retryTerms={() => terms.refetch()} bands={scale.data?.bands ?? []} scaleLoading={scale.isLoading} scaleError={scale.error} retryScale={() => scale.refetch()} onAddTerm={() => setShowTermForm(true)} onSaveScale={bands => updateScale.mutate({ data: { bands } }, { onSuccess: () => setNotice('Grade scale saved.') })} saving={updateScale.isPending}/>}
+    {(tab === 'catalog' || tab === 'reports') && <LearningOperations roles={roles}/>}
   </div>;
 }
 
@@ -184,17 +195,19 @@ function ExamList({ exams, loading, error, retry, manager, onSelect }: { exams: 
   return <div className="space-y-3">{exams.map(exam => <article key={exam.id} className="surface flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:p-5"><div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><GraduationCap size={20}/></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="display m-0 text-base font-extrabold">{exam.title}</h2><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold capitalize ${statusStyle(exam.status)}`}>{exam.status}</span></div><p className="mb-0 mt-1.5 text-[11px] text-[hsl(var(--muted-foreground))]">{exam.sectionName} · {exam.termName || 'Assessment'} · {formatDate(exam.examDate)} · {exam.maxPoints} points</p>{!manager && exam.results.length > 0 && <div className="mt-2 text-xs font-semibold text-[hsl(var(--brand-mint-ink))]">{exam.results.length === 1 ? `${exam.results[0].score ?? '—'} / ${exam.maxPoints} · ${exam.results[0].grade ?? 'Result'}` : `${exam.results.length} published results`}</div>}</div><button className="btn btn-muted btn-sm" onClick={() => onSelect(exam)}>{manager ? 'Enter marks' : 'View result'}</button></article>)}</div>;
 }
 
-function ExamForm({ sections, saving, onCancel, onSave }: { sections: { id: string; name: string }[]; saving: boolean; onCancel: () => void; onSave: (data: { sectionId: string; title: string; examDate: string; maxPoints: number; termId: string | null }) => void }) {
+function ExamForm({ sections, subjectIds, saving, onCancel, onSave }: { sections: { id: string; name: string }[]; subjectIds: string[]; saving: boolean; onCancel: () => void; onSave: (data: { sectionId: string; subjectId: string; title: string; examDate: string; maxPoints: number; termId: string | null }) => void }) {
   const terms = useGetLearningTerms();
+  const subjects = useGetAcademicSubjects();
   const [sectionId, setSectionId] = useState(sections[0]?.id ?? '');
+  const [subjectId, setSubjectId] = useState('');
   const [termId, setTermId] = useState('');
   const [title, setTitle] = useState('');
   const [examDate, setExamDate] = useState('');
   const [maxPoints, setMaxPoints] = useState('100');
-  return <form className="surface space-y-4 border-l-4 border-l-[hsl(var(--accent))] p-4 md:p-5" onSubmit={event => { event.preventDefault(); onSave({ sectionId, title: title.trim(), examDate: examDate.slice(0, 10), maxPoints: Number(maxPoints), termId: termId || null }); }}>
+  return <form className="surface space-y-4 border-l-4 border-l-[hsl(var(--accent))] p-4 md:p-5" onSubmit={event => { event.preventDefault(); onSave({ sectionId, subjectId, title: title.trim(), examDate: examDate.slice(0, 10), maxPoints: Number(maxPoints), termId: termId || null }); }}>
     <div className="flex items-center justify-between"><div><h2 className="display m-0 text-lg font-extrabold">Create assessment</h2><p className="mb-0 mt-1 text-xs text-[hsl(var(--muted-foreground))]">Marks become visible according to the exam’s published state.</p></div><button aria-label="Cancel assessment form" type="button" onClick={onCancel} className="btn btn-quiet px-2"><X size={18}/></button></div>
-    <div className="grid gap-3 sm:grid-cols-2"><label className="text-xs font-bold">Section<select className="field mt-1.5" required value={sectionId} onChange={event => setSectionId(event.target.value)}><option value="">Choose section</option>{sections.map(section => <option key={section.id} value={section.id}>{section.name}</option>)}</select></label><label className="text-xs font-bold">Term<select className="field mt-1.5" value={termId} onChange={event => setTermId(event.target.value)}><option value="">No term</option>{terms.data?.items.map(term => <option key={term.id} value={term.id}>{term.name}</option>)}</select></label><label className="text-xs font-bold">Assessment title<input required maxLength={180} className="field mt-1.5" value={title} onChange={event => setTitle(event.target.value)}/></label><label className="text-xs font-bold">Assessment date<input required type="date" className="field mt-1.5" value={examDate} onChange={event => setExamDate(event.target.value)}/></label><label className="text-xs font-bold">Maximum points<input required type="number" min="1" max="100000" className="field mt-1.5" value={maxPoints} onChange={event => setMaxPoints(event.target.value)}/></label></div>
-    <div className="flex justify-end gap-2"><button type="button" className="btn btn-muted" onClick={onCancel}>Cancel</button><button disabled={saving || !sectionId || !examDate} className="btn btn-primary"><Plus size={15}/>{saving ? 'Saving…' : 'Create assessment'}</button></div>
+    <div className="grid gap-3 sm:grid-cols-2"><label className="text-xs font-bold">Section<select className="field mt-1.5" required value={sectionId} onChange={event => { setSectionId(event.target.value); setSubjectId(''); }}><option value="">Choose section</option>{sections.map(section => <option key={section.id} value={section.id}>{section.name}</option>)}</select></label><label className="text-xs font-bold">Subject<select className="field mt-1.5" required value={subjectId} onChange={event => setSubjectId(event.target.value)}><option value="">Choose subject</option>{subjects.data?.items.filter(item => item.isActive && subjectIds.includes(item.id)).map(subject => <option key={subject.id} value={subject.id}>{subject.name}</option>)}</select></label><label className="text-xs font-bold">Term<select className="field mt-1.5" value={termId} onChange={event => setTermId(event.target.value)}><option value="">No term</option>{terms.data?.items.map(term => <option key={term.id} value={term.id}>{term.name}</option>)}</select></label><label className="text-xs font-bold">Assessment title<input required maxLength={180} className="field mt-1.5" value={title} onChange={event => setTitle(event.target.value)}/></label><label className="text-xs font-bold">Assessment date<input required type="date" className="field mt-1.5" value={examDate} onChange={event => setExamDate(event.target.value)}/></label><label className="text-xs font-bold">Maximum points<input required type="number" min="1" max="100000" className="field mt-1.5" value={maxPoints} onChange={event => setMaxPoints(event.target.value)}/></label></div>
+    <div className="flex justify-end gap-2"><button type="button" className="btn btn-muted" onClick={onCancel}>Cancel</button><button disabled={saving || !sectionId || !subjectId || !examDate} className="btn btn-primary"><Plus size={15}/>{saving ? 'Saving…' : 'Create assessment'}</button></div>
   </form>;
 }
 

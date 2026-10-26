@@ -289,8 +289,8 @@ Priority: *P0* wrong behaviour / safety, *P1* spec feature missing, *P2* hygiene
 | G-10 | P1 | DONE\* | Build args in Dockerfile.web + compose; docker compose config renders them. Image not built |
 | G-11 | P2 | PARTIAL | .env.example still lacks LIVEKIT_INTERNAL_URL, RAZORPAY_*, CORS_ORIGINS, ACCESS_TOKEN_TTL, DB_POOL_MAX, UPSTREAM_TIMEOUT_MS and others read in code; service URL defaults exist so local dev works |
 | G-12 | P2 | OPEN | Unused @livekit/components-styles; hex colours in login/apply; toLocale*/new Date() in admin/audit, admin/exits, classroom/Panels |
-| G-13 | P2 | PARTIAL | Added: shared audit, notification preferences, per-service audit tests. The Replit slice now includes assignments, submissions/grading, assessments/marks, terms and grade-scale UI/API; DB migration and HTTP/browser journeys are still unverified. *Open*: gateway WS/rate-limit/health/all, school HR/engage/analytics HTTP, staff-attendance, PTM, learning print/seed, Playwright |
-| G-14 | P2 | OPEN | Existing index coverage still needs review across academic, board, fees, learning, live, notification, registry and school; the new Replit learning indexes lead with org_id |
+| G-13 | P2 | PARTIAL | The Replit slice now includes assignments, assessments, subject catalog/teacher assignments, daily school attendance, and report-card preparation, remarks, publication, family reads, and A4 print HTML. OpenAPI/codegen, type-checks, build, and pure unit tests are verified; migrations, route behavior against PostgreSQL, and signed-in browser journeys remain unverified. *Open*: gateway WS/rate-limit/health/all, school HR/engage/analytics HTTP, staff-attendance, PTM, diary/resources/progress/analytics, Playwright |
+| G-14 | P2 | OPEN | Broad index coverage still needs review across academic, board, fees, learning, live, notification, registry and school. New subject, attendance and report-card indexes lead with org_id; query plans remain unreviewed |
 | G-15 | P2 | OPEN | GET /enrollments default 500 / max 1000 |
 | G-16 | P2 | OPEN | Only 8 roles; accountant/admissions/HR/nurse not separate |
 | G-17 | P2 | OPEN | GET /me omits profile |

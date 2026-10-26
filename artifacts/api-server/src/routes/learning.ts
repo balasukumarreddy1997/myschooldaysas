@@ -56,11 +56,27 @@ const routes: FastifyPluginAsync = async (fastify) => {
       return canManageLearningSection(role, Boolean(found.rowCount));
     }
     const found = await client.query(
-      `SELECT 1 FROM academic.section_teachers
-        WHERE org_id=$1 AND section_id=$2 AND teacher_user_id=$3`,
+      `SELECT 1
+         WHERE EXISTS (
+           SELECT 1 FROM academic.section_teachers
+            WHERE org_id=$1 AND section_id=$2 AND teacher_user_id=$3
+         ) OR EXISTS (
+           SELECT 1 FROM academic.teacher_assignments
+            WHERE org_id=$1 AND section_id=$2 AND teacher_user_id=$3
+         )`,
       [orgId, sectionId, userId],
     );
     return canManageLearningSection(role, Boolean(found.rowCount));
+  };
+  const canTeachSubject = async (client: any, userId: string, orgId: string, sectionId: string, subjectId: string, role: ReturnType<typeof flags>) => {
+    if (role.admin) return canTeachSection(client, userId, orgId, sectionId, role);
+    if (!role.teacher) return false;
+    const found = await client.query(
+      `SELECT 1 FROM academic.teacher_assignments
+        WHERE org_id=$1 AND section_id=$2 AND subject_id=$3 AND teacher_user_id=$4`,
+      [orgId, sectionId, subjectId, userId],
+    );
+    return Boolean(found.rowCount);
   };
   const bandsFor = async (client: any, orgId: string): Promise<{ grade: string; minPercent: number }[]> => {
     const result = await client.query(
@@ -93,6 +109,9 @@ const routes: FastifyPluginAsync = async (fastify) => {
             AND ($3::uuid IS NULL OR EXISTS (
               SELECT 1 FROM academic.section_teachers st
                WHERE st.org_id=a.org_id AND st.section_id=a.section_id AND st.teacher_user_id=$3
+            ) OR EXISTS (
+              SELECT 1 FROM academic.teacher_assignments ta
+               WHERE ta.org_id=a.org_id AND ta.section_id=a.section_id AND ta.teacher_user_id=$3
             ))
           ORDER BY a.due_at DESC, a.created_at DESC LIMIT $4 OFFSET $5`,
         [orgId, studentId, teacherId, limit, offset],
@@ -166,7 +185,9 @@ const routes: FastifyPluginAsync = async (fastify) => {
              JOIN identity.users teacher ON teacher.id=a.teacher_user_id AND teacher.org_id=a.org_id
             WHERE a.org_id=$1
               AND ($2::boolean OR EXISTS (SELECT 1 FROM academic.section_teachers st
-                WHERE st.org_id=a.org_id AND st.section_id=a.section_id AND st.teacher_user_id=$3))
+                WHERE st.org_id=a.org_id AND st.section_id=a.section_id AND st.teacher_user_id=$3)
+                OR EXISTS (SELECT 1 FROM academic.teacher_assignments ta
+                WHERE ta.org_id=a.org_id AND ta.section_id=a.section_id AND ta.teacher_user_id=$3))
               AND ($4::uuid IS NULL OR a.section_id=$4)
               AND ($5::text IS NULL OR a.status=$5)
             ORDER BY a.due_at DESC, a.created_at DESC LIMIT 100`,
@@ -220,9 +241,15 @@ const routes: FastifyPluginAsync = async (fastify) => {
         }
         if (role.teacher && !role.admin) {
           const assigned = await client.query(
-            `SELECT 1 FROM academic.enrollments e JOIN academic.section_teachers st
-              ON st.org_id=e.org_id AND st.section_id=e.section_id
-             WHERE e.org_id=$1 AND e.student_user_id=$2 AND e.status='active' AND st.teacher_user_id=$3`,
+            `SELECT 1 FROM academic.enrollments e
+              WHERE e.org_id=$1 AND e.student_user_id=$2 AND e.status='active'
+                AND (EXISTS (
+                  SELECT 1 FROM academic.section_teachers st
+                   WHERE st.org_id=e.org_id AND st.section_id=e.section_id AND st.teacher_user_id=$3
+                ) OR EXISTS (
+                  SELECT 1 FROM academic.teacher_assignments ta
+                   WHERE ta.org_id=e.org_id AND ta.section_id=e.section_id AND ta.teacher_user_id=$3
+                ))`,
             [user.orgId, studentId, user.id],
           );
           teachesSection = Boolean(assigned.rowCount);
@@ -451,12 +478,14 @@ const routes: FastifyPluginAsync = async (fastify) => {
       const page = await withOrg(user.orgId, async (client) => {
         const [result, bands] = await Promise.all([
           client.query(
-            `SELECT ex.id, ex.section_id, s.name AS section_name, ex.term_id, term.name AS term_name,
+            `SELECT ex.id, ex.section_id, s.name AS section_name, ex.subject_id, subject.name AS subject_name,
+                    ex.term_id, term.name AS term_name,
                     ex.title, ex.exam_date, ex.max_points, ex.status,
                     COALESCE(results.items, '[]'::jsonb) AS results,
                     count(*) OVER()::int AS total
                FROM learning.exams ex
                JOIN academic.sections s ON s.id=ex.section_id AND s.org_id=ex.org_id
+               LEFT JOIN academic.subjects subject ON subject.org_id=ex.org_id AND subject.id=ex.subject_id
                LEFT JOIN learning.exam_terms term ON term.id=ex.term_id AND term.org_id=ex.org_id
                LEFT JOIN LATERAL (
                  SELECT jsonb_agg(jsonb_build_object(
@@ -475,8 +504,11 @@ const routes: FastifyPluginAsync = async (fastify) => {
                ) results ON true
               WHERE ex.org_id=$1 AND ($2::uuid IS NULL OR ex.section_id=$2)
                 AND ($3::boolean OR ($7::boolean AND EXISTS (
-                  SELECT 1 FROM academic.section_teachers st WHERE st.org_id=ex.org_id
+                 SELECT 1 FROM academic.section_teachers st WHERE st.org_id=ex.org_id
                     AND st.section_id=ex.section_id AND st.teacher_user_id=$4
+                 UNION ALL
+                 SELECT 1 FROM academic.teacher_assignments ta WHERE ta.org_id=ex.org_id
+                    AND ta.section_id=ex.section_id AND ta.teacher_user_id=$4
                 )) OR (ex.status='published' AND EXISTS (
                   SELECT 1 FROM academic.enrollments e
                   WHERE e.org_id=ex.org_id AND e.section_id=ex.section_id AND e.status='active'
@@ -493,6 +525,7 @@ const routes: FastifyPluginAsync = async (fastify) => {
         return {
           items: result.rows.map((row: any) => ({
             id: row.id, sectionId: row.section_id, sectionName: row.section_name,
+            subjectId: row.subject_id, subjectName: row.subject_name,
             termId: row.term_id, termName: row.term_name, title: row.title,
             examDate: dateOnly(row.exam_date),
             maxPoints: Number(row.max_points), status: row.status,
@@ -519,28 +552,34 @@ const routes: FastifyPluginAsync = async (fastify) => {
     if (!role.admin && !role.teacher) return void res.status(403).json(errorBody("FORBIDDEN", "Only teaching staff can create assessments."));
     try {
       const exam = await withOrg(user.orgId, async (client) => {
-        if (!(await canTeachSection(client, user.id, user.orgId, parsed.data.sectionId, role))) return null;
+        const subject = await client.query(
+          "SELECT id FROM academic.subjects WHERE org_id=$1 AND id=$2 AND is_active=true",
+          [user.orgId, parsed.data.subjectId],
+        );
+        if (!subject.rowCount || !(await canTeachSubject(client, user.id, user.orgId, parsed.data.sectionId, parsed.data.subjectId, role))) return null;
         const created = await client.query(
-          `INSERT INTO learning.exams (org_id, section_id, teacher_user_id, term_id, title, exam_date, max_points)
-           VALUES ($1,$2,$3,$4,$5,$6,$7)
-           RETURNING id, section_id, term_id, title, exam_date, max_points, status`,
-          [user.orgId, parsed.data.sectionId, user.id, parsed.data.termId ?? null,
+          `INSERT INTO learning.exams (org_id, section_id, subject_id, teacher_user_id, term_id, title, exam_date, max_points)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+           RETURNING id, section_id, subject_id, term_id, title, exam_date, max_points, status`,
+          [user.orgId, parsed.data.sectionId, parsed.data.subjectId, user.id, parsed.data.termId ?? null,
             parsed.data.title.trim(), parsed.data.examDate, parsed.data.maxPoints],
         );
         const row = created.rows[0];
         const detail = await client.query(
-          `SELECT s.name AS section_name, term.name AS term_name
+          `SELECT s.name AS section_name, subject.name AS subject_name, term.name AS term_name
              FROM academic.sections s
+             JOIN academic.subjects subject ON subject.org_id=s.org_id AND subject.id=$4
              LEFT JOIN learning.exam_terms term ON term.org_id=s.org_id AND term.id=$3
             WHERE s.org_id=$1 AND s.id=$2`,
-          [user.orgId, parsed.data.sectionId, parsed.data.termId ?? null],
+          [user.orgId, parsed.data.sectionId, parsed.data.termId ?? null, parsed.data.subjectId],
         );
         await audit(client, user.orgId, user.id, "exam.created", "exam", row.id);
         return { ...row, ...detail.rows[0] };
       });
       if (!exam) return void res.status(403).json(errorBody("FORBIDDEN", "You are not assigned to this section."));
       res.status(201).json({
-        id: exam.id, sectionId: exam.section_id, sectionName: exam.section_name, termId: exam.term_id, termName: exam.term_name,
+        id: exam.id, sectionId: exam.section_id, sectionName: exam.section_name,
+        subjectId: exam.subject_id, subjectName: exam.subject_name, termId: exam.term_id, termName: exam.term_name,
         title: exam.title, examDate: dateOnly(exam.exam_date), maxPoints: Number(exam.max_points),
         status: exam.status, results: [],
       });
@@ -551,13 +590,15 @@ const routes: FastifyPluginAsync = async (fastify) => {
     const role = flags(roles);
     return withOrg(orgId, async (client) => {
       const examResult = await client.query(
-        "SELECT section_id, max_points, status FROM learning.exams WHERE org_id=$1 AND id=$2",
+        "SELECT section_id, subject_id, max_points, status FROM learning.exams WHERE org_id=$1 AND id=$2",
         [orgId, examId],
       );
       const exam = examResult.rows[0];
       if (!exam) return { missing: true as const };
       if (!role.admin && !role.teacher && !role.student && !role.parent) return { denied: true as const };
-      const staff = role.admin || (role.teacher && await canTeachSection(client, userId, orgId, exam.section_id, role));
+      const staff = role.admin || (role.teacher && (exam.subject_id
+        ? await canTeachSubject(client, userId, orgId, exam.section_id, exam.subject_id, role)
+        : await canTeachSection(client, userId, orgId, exam.section_id, role)));
       if (!staff && exam.status !== "published") return { denied: true as const };
       const [result, bands] = await Promise.all([
         client.query(
@@ -612,9 +653,11 @@ const routes: FastifyPluginAsync = async (fastify) => {
     if (!role.admin && !role.teacher) return void res.status(403).json(errorBody("FORBIDDEN", "Only teaching staff can update marks."));
     try {
       const result = await withOrg(user.orgId, async (client) => {
-        const examResult = await client.query("SELECT section_id, max_points, status FROM learning.exams WHERE org_id=$1 AND id=$2", [user.orgId, examId]);
+        const examResult = await client.query("SELECT section_id, subject_id, max_points, status FROM learning.exams WHERE org_id=$1 AND id=$2", [user.orgId, examId]);
         const exam = examResult.rows[0];
-        if (!exam || !(await canTeachSection(client, user.id, user.orgId, exam.section_id, role))) return { denied: true as const };
+        if (!exam || !(exam.subject_id
+          ? await canTeachSubject(client, user.id, user.orgId, exam.section_id, exam.subject_id, role)
+          : await canTeachSection(client, user.id, user.orgId, exam.section_id, role))) return { denied: true as const };
         if (exam.status !== "draft") return { locked: true as const };
         const uniqueIds = new Set(parsed.data.marks.map((mark) => mark.studentId));
         if (uniqueIds.size !== parsed.data.marks.length) return { invalid: true as const };
@@ -662,9 +705,11 @@ const routes: FastifyPluginAsync = async (fastify) => {
     if (!role.admin && !role.teacher) return void res.status(403).json(errorBody("FORBIDDEN", "Only teaching staff can publish results."));
     try {
       const updated = await withOrg(user.orgId, async (client) => {
-        const result = await client.query("SELECT section_id, status FROM learning.exams WHERE org_id=$1 AND id=$2", [user.orgId, examId]);
+        const result = await client.query("SELECT section_id, subject_id, status FROM learning.exams WHERE org_id=$1 AND id=$2", [user.orgId, examId]);
         const exam = result.rows[0];
-        if (!exam || !(await canTeachSection(client, user.id, user.orgId, exam.section_id, role))) return { denied: true as const };
+        if (!exam || !(exam.subject_id
+          ? await canTeachSubject(client, user.id, user.orgId, exam.section_id, exam.subject_id, role)
+          : await canTeachSection(client, user.id, user.orgId, exam.section_id, role))) return { denied: true as const };
         if (parsed.data.published) {
           const counts = await client.query(
             `SELECT count(*)::int AS enrolled,

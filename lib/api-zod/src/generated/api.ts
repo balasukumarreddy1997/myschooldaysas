@@ -9,6 +9,205 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary List the organization's subjects
+ */
+export const GetAcademicSubjectsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "code": zod.string().nullable(),
+  "name": zod.string(),
+  "isActive": zod.boolean()
+})),
+  "total": zod.int()
+})
+
+
+/**
+ * @summary Create a subject
+ */
+export const createAcademicSubjectBodyNameMax = 100;
+
+export const createAcademicSubjectBodyCodeMax = 24;
+
+
+
+export const CreateAcademicSubjectBody = zod.object({
+  "name": zod.string().min(1).max(createAcademicSubjectBodyNameMax),
+  "code": zod.string().max(createAcademicSubjectBodyCodeMax).nullable()
+})
+
+export const CreateAcademicSubjectResponse = zod.object({
+  "id": zod.uuid(),
+  "code": zod.string().nullable(),
+  "name": zod.string(),
+  "isActive": zod.boolean()
+})
+
+
+/**
+ * @summary Update or deactivate a subject
+ */
+export const UpdateAcademicSubjectParams = zod.object({
+  "subjectId": zod.uuid()
+})
+
+export const updateAcademicSubjectBodyNameMax = 100;
+
+export const updateAcademicSubjectBodyCodeMax = 24;
+
+
+
+export const UpdateAcademicSubjectBody = zod.object({
+  "name": zod.string().min(1).max(updateAcademicSubjectBodyNameMax).optional(),
+  "code": zod.string().max(updateAcademicSubjectBodyCodeMax).nullish(),
+  "isActive": zod.boolean().optional()
+})
+
+export const UpdateAcademicSubjectResponse = zod.object({
+  "id": zod.uuid(),
+  "code": zod.string().nullable(),
+  "name": zod.string(),
+  "isActive": zod.boolean()
+})
+
+
+/**
+ * @summary Delete an unused subject
+ */
+export const DeleteAcademicSubjectParams = zod.object({
+  "subjectId": zod.uuid()
+})
+
+export const DeleteAcademicSubjectResponse = zod.void()
+
+
+/**
+ * @summary List teaching staff for assignment
+ */
+export const GetAcademicTeachersResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "name": zod.string(),
+  "email": zod.email()
+})),
+  "total": zod.int()
+})
+
+
+/**
+ * @summary List section and subject teaching assignments
+ */
+export const GetAcademicTeacherAssignmentsQueryParams = zod.object({
+  "sectionId": zod.uuid().optional()
+})
+
+export const GetAcademicTeacherAssignmentsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "sectionId": zod.uuid(),
+  "sectionName": zod.string(),
+  "subjectId": zod.uuid(),
+  "subjectName": zod.string(),
+  "teacherId": zod.uuid(),
+  "teacherName": zod.string(),
+  "isClassTeacher": zod.boolean()
+})),
+  "total": zod.int()
+})
+
+
+/**
+ * @summary Assign a teacher to a section subject
+ */
+export const createAcademicTeacherAssignmentBodyIsClassTeacherDefault = false;
+
+export const CreateAcademicTeacherAssignmentBody = zod.object({
+  "sectionId": zod.uuid(),
+  "subjectId": zod.uuid(),
+  "teacherId": zod.uuid(),
+  "isClassTeacher": zod.boolean().default(createAcademicTeacherAssignmentBodyIsClassTeacherDefault)
+})
+
+export const CreateAcademicTeacherAssignmentResponse = zod.object({
+  "id": zod.uuid(),
+  "sectionId": zod.uuid(),
+  "sectionName": zod.string(),
+  "subjectId": zod.uuid(),
+  "subjectName": zod.string(),
+  "teacherId": zod.uuid(),
+  "teacherName": zod.string(),
+  "isClassTeacher": zod.boolean()
+})
+
+
+/**
+ * @summary Remove a teaching assignment
+ */
+export const DeleteAcademicTeacherAssignmentParams = zod.object({
+  "assignmentId": zod.uuid()
+})
+
+export const DeleteAcademicTeacherAssignmentResponse = zod.void()
+
+
+/**
+ * @summary Get a section's daily attendance roster
+ */
+export const GetSchoolAttendanceQueryParams = zod.object({
+  "sectionId": zod.uuid(),
+  "date": zod.string()
+})
+
+export const GetSchoolAttendanceResponse = zod.object({
+  "sectionId": zod.uuid(),
+  "sectionName": zod.string(),
+  "date": zod.coerce.date(),
+  "items": zod.array(zod.object({
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "status": zod.union([zod.enum(['present', 'absent', 'late', 'leave']),zod.null()]),
+  "remark": zod.string()
+})),
+  "total": zod.int()
+})
+
+
+/**
+ * @summary Save daily attendance for active students
+ */
+export const markSchoolAttendanceBodyMarksItemRemarkMax = 500;
+
+export const markSchoolAttendanceBodyMarksMax = 500;
+
+
+
+export const MarkSchoolAttendanceBody = zod.object({
+  "sectionId": zod.uuid(),
+  "date": zod.coerce.date(),
+  "marks": zod.array(zod.object({
+  "studentId": zod.uuid(),
+  "status": zod.enum(['present', 'absent', 'late', 'leave']),
+  "remark": zod.string().max(markSchoolAttendanceBodyMarksItemRemarkMax)
+})).min(1).max(markSchoolAttendanceBodyMarksMax)
+})
+
+export const MarkSchoolAttendanceResponse = zod.object({
+  "sectionId": zod.uuid(),
+  "sectionName": zod.string(),
+  "date": zod.coerce.date(),
+  "items": zod.array(zod.object({
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "status": zod.union([zod.enum(['present', 'absent', 'late', 'leave']),zod.null()]),
+  "remark": zod.string()
+})),
+  "total": zod.int()
+})
+
+
+/**
  * Returns server health status
  * @summary Health check
  */
@@ -977,6 +1176,8 @@ export const GetLearningExamsResponse = zod.object({
   "id": zod.uuid(),
   "sectionId": zod.uuid(),
   "sectionName": zod.string(),
+  "subjectId": zod.uuid().nullable(),
+  "subjectName": zod.string().nullable(),
   "termId": zod.uuid().nullable(),
   "termName": zod.string().nullable(),
   "title": zod.string(),
@@ -1009,6 +1210,7 @@ export const createLearningExamBodyMaxPointsMax = 100000;
 
 export const CreateLearningExamBody = zod.object({
   "sectionId": zod.uuid(),
+  "subjectId": zod.uuid(),
   "termId": zod.uuid().nullish(),
   "title": zod.string().min(1).max(createLearningExamBodyTitleMax),
   "examDate": zod.coerce.date(),
@@ -1019,6 +1221,8 @@ export const CreateLearningExamResponse = zod.object({
   "id": zod.uuid(),
   "sectionId": zod.uuid(),
   "sectionName": zod.string(),
+  "subjectId": zod.uuid().nullable(),
+  "subjectName": zod.string().nullable(),
   "termId": zod.uuid().nullable(),
   "termName": zod.string().nullable(),
   "title": zod.string(),
@@ -1104,6 +1308,8 @@ export const PublishLearningExamResponse = zod.object({
   "id": zod.uuid(),
   "sectionId": zod.uuid(),
   "sectionName": zod.string(),
+  "subjectId": zod.uuid().nullable(),
+  "subjectName": zod.string().nullable(),
   "termId": zod.uuid().nullable(),
   "termName": zod.string().nullable(),
   "title": zod.string(),
@@ -1209,5 +1415,227 @@ export const UpdateLearningGradeScaleResponse = zod.object({
   "minPercent": zod.number().min(updateLearningGradeScaleResponseBandsItemMinPercentMin).max(updateLearningGradeScaleResponseBandsItemMinPercentMax)
 }))
 })
+
+
+/**
+ * @summary List reports for a section or linked family
+ */
+export const GetLearningReportCardsQueryParams = zod.object({
+  "sectionId": zod.uuid().optional(),
+  "termId": zod.uuid().optional()
+})
+
+export const GetLearningReportCardsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "sectionId": zod.uuid(),
+  "sectionName": zod.string(),
+  "termId": zod.uuid(),
+  "termName": zod.string(),
+  "published": zod.boolean(),
+  "publishedAt": zod.coerce.date().nullable(),
+  "overallPercent": zod.number().nullable(),
+  "overallGrade": zod.string().nullable(),
+  "rank": zod.int().nullable(),
+  "totalStudents": zod.int(),
+  "attendancePercent": zod.number().nullable(),
+  "attendedDays": zod.int(),
+  "countedDays": zod.int(),
+  "generalRemark": zod.string().nullable(),
+  "subjects": zod.array(zod.object({
+  "subjectId": zod.uuid(),
+  "subjectName": zod.string(),
+  "score": zod.number(),
+  "maxPoints": zod.number(),
+  "percent": zod.number(),
+  "grade": zod.string(),
+  "remark": zod.string().nullable()
+}))
+})),
+  "total": zod.int()
+})
+
+
+/**
+ * @summary Prepare draft report cards for a section and term
+ */
+export const PrepareLearningReportCardsBody = zod.object({
+  "sectionId": zod.uuid(),
+  "termId": zod.uuid()
+})
+
+export const PrepareLearningReportCardsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "sectionId": zod.uuid(),
+  "sectionName": zod.string(),
+  "termId": zod.uuid(),
+  "termName": zod.string(),
+  "published": zod.boolean(),
+  "publishedAt": zod.coerce.date().nullable(),
+  "overallPercent": zod.number().nullable(),
+  "overallGrade": zod.string().nullable(),
+  "rank": zod.int().nullable(),
+  "totalStudents": zod.int(),
+  "attendancePercent": zod.number().nullable(),
+  "attendedDays": zod.int(),
+  "countedDays": zod.int(),
+  "generalRemark": zod.string().nullable(),
+  "subjects": zod.array(zod.object({
+  "subjectId": zod.uuid(),
+  "subjectName": zod.string(),
+  "score": zod.number(),
+  "maxPoints": zod.number(),
+  "percent": zod.number(),
+  "grade": zod.string(),
+  "remark": zod.string().nullable()
+}))
+})),
+  "total": zod.int()
+})
+
+
+/**
+ * @summary Publish or withdraw report cards for a section and term
+ */
+export const PublishLearningReportCardsBody = zod.object({
+  "sectionId": zod.uuid(),
+  "termId": zod.uuid(),
+  "published": zod.boolean()
+})
+
+export const PublishLearningReportCardsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "sectionId": zod.uuid(),
+  "sectionName": zod.string(),
+  "termId": zod.uuid(),
+  "termName": zod.string(),
+  "published": zod.boolean(),
+  "publishedAt": zod.coerce.date().nullable(),
+  "overallPercent": zod.number().nullable(),
+  "overallGrade": zod.string().nullable(),
+  "rank": zod.int().nullable(),
+  "totalStudents": zod.int(),
+  "attendancePercent": zod.number().nullable(),
+  "attendedDays": zod.int(),
+  "countedDays": zod.int(),
+  "generalRemark": zod.string().nullable(),
+  "subjects": zod.array(zod.object({
+  "subjectId": zod.uuid(),
+  "subjectName": zod.string(),
+  "score": zod.number(),
+  "maxPoints": zod.number(),
+  "percent": zod.number(),
+  "grade": zod.string(),
+  "remark": zod.string().nullable()
+}))
+})),
+  "total": zod.int()
+})
+
+
+/**
+ * @summary Get a report card for an authorized student
+ */
+export const GetLearningReportCardParams = zod.object({
+  "reportCardId": zod.uuid()
+})
+
+export const GetLearningReportCardResponse = zod.object({
+  "id": zod.uuid(),
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "sectionId": zod.uuid(),
+  "sectionName": zod.string(),
+  "termId": zod.uuid(),
+  "termName": zod.string(),
+  "published": zod.boolean(),
+  "publishedAt": zod.coerce.date().nullable(),
+  "overallPercent": zod.number().nullable(),
+  "overallGrade": zod.string().nullable(),
+  "rank": zod.int().nullable(),
+  "totalStudents": zod.int(),
+  "attendancePercent": zod.number().nullable(),
+  "attendedDays": zod.int(),
+  "countedDays": zod.int(),
+  "generalRemark": zod.string().nullable(),
+  "subjects": zod.array(zod.object({
+  "subjectId": zod.uuid(),
+  "subjectName": zod.string(),
+  "score": zod.number(),
+  "maxPoints": zod.number(),
+  "percent": zod.number(),
+  "grade": zod.string(),
+  "remark": zod.string().nullable()
+}))
+})
+
+
+/**
+ * @summary Add or update a draft report card remark
+ */
+export const AddLearningReportCardRemarkParams = zod.object({
+  "reportCardId": zod.uuid()
+})
+
+export const addLearningReportCardRemarkBodyRemarkMax = 2000;
+
+
+
+export const AddLearningReportCardRemarkBody = zod.object({
+  "subjectId": zod.uuid().nullish(),
+  "remark": zod.string().min(1).max(addLearningReportCardRemarkBodyRemarkMax)
+})
+
+export const AddLearningReportCardRemarkResponse = zod.object({
+  "id": zod.uuid(),
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "sectionId": zod.uuid(),
+  "sectionName": zod.string(),
+  "termId": zod.uuid(),
+  "termName": zod.string(),
+  "published": zod.boolean(),
+  "publishedAt": zod.coerce.date().nullable(),
+  "overallPercent": zod.number().nullable(),
+  "overallGrade": zod.string().nullable(),
+  "rank": zod.int().nullable(),
+  "totalStudents": zod.int(),
+  "attendancePercent": zod.number().nullable(),
+  "attendedDays": zod.int(),
+  "countedDays": zod.int(),
+  "generalRemark": zod.string().nullable(),
+  "subjects": zod.array(zod.object({
+  "subjectId": zod.uuid(),
+  "subjectName": zod.string(),
+  "score": zod.number(),
+  "maxPoints": zod.number(),
+  "percent": zod.number(),
+  "grade": zod.string(),
+  "remark": zod.string().nullable()
+}))
+})
+
+
+/**
+ * @summary Render a safe printable A4 report card
+ */
+export const PrintLearningReportCardParams = zod.object({
+  "reportCardId": zod.uuid()
+})
+
+export const PrintLearningReportCardResponse = zod.unknown()
 
 

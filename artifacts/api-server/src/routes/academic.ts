@@ -48,6 +48,11 @@ router.get("/academic/classes", requireAuth, async (req, res, next) => {
                  WHERE st.org_id = c.org_id AND st.section_id = s.id
                    AND st.teacher_user_id = $4
               ))
+              OR ($3::boolean AND EXISTS (
+                SELECT 1 FROM academic.teacher_assignments ta
+                 WHERE ta.org_id = c.org_id AND ta.section_id = s.id
+                   AND ta.teacher_user_id = $4
+              ))
               OR ($5::boolean AND EXISTS (
                 SELECT 1 FROM academic.enrollments mine
                  WHERE mine.org_id = c.org_id AND mine.section_id = s.id
@@ -110,6 +115,11 @@ router.get("/academic/sections", requireAuth, async (req, res, next) => {
                 SELECT 1 FROM academic.section_teachers st
                  WHERE st.org_id = s.org_id AND st.section_id = s.id
                    AND st.teacher_user_id = $5
+              ))
+              OR ($4::boolean AND EXISTS (
+                SELECT 1 FROM academic.teacher_assignments ta
+                 WHERE ta.org_id = s.org_id AND ta.section_id = s.id
+                   AND ta.teacher_user_id = $5
               ))
               OR ($6::boolean AND EXISTS (
                 SELECT 1 FROM academic.enrollments mine

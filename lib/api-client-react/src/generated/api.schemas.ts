@@ -551,6 +551,10 @@ export interface LearningExam {
   sectionId: string;
   sectionName: string;
   /** @nullable */
+  subjectId: string | null;
+  /** @nullable */
+  subjectName: string | null;
+  /** @nullable */
   termId: string | null;
   /** @nullable */
   termName: string | null;
@@ -570,6 +574,7 @@ export interface LearningExamPage {
 
 export interface LearningExamInput {
   sectionId: string;
+  subjectId: string;
   /** @nullable */
   termId?: string | null;
   /**
@@ -669,6 +674,197 @@ export interface LearningGradeScaleInput {
   bands: LearningGradeBand[];
 }
 
+export interface AcademicSubject {
+  id: string;
+  /** @nullable */
+  code: string | null;
+  name: string;
+  isActive: boolean;
+}
+
+export interface AcademicSubjectPage {
+  items: AcademicSubject[];
+  total: number;
+}
+
+export interface AcademicSubjectInput {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name: string;
+  /**
+     * @maxLength 24
+     * @nullable
+     */
+  code: string | null;
+}
+
+export interface AcademicSubjectUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name?: string;
+  /**
+     * @maxLength 24
+     * @nullable
+     */
+  code?: string | null;
+  isActive?: boolean;
+}
+
+export interface AcademicTeacher {
+  id: string;
+  name: string;
+  email: string;
+}
+
+export interface AcademicTeacherPage {
+  items: AcademicTeacher[];
+  total: number;
+}
+
+export interface AcademicTeacherAssignment {
+  id: string;
+  sectionId: string;
+  sectionName: string;
+  subjectId: string;
+  subjectName: string;
+  teacherId: string;
+  teacherName: string;
+  isClassTeacher: boolean;
+}
+
+export interface AcademicTeacherAssignmentPage {
+  items: AcademicTeacherAssignment[];
+  total: number;
+}
+
+export interface AcademicTeacherAssignmentInput {
+  sectionId: string;
+  subjectId: string;
+  teacherId: string;
+  isClassTeacher: boolean;
+}
+
+export type SchoolAttendanceStatus = typeof SchoolAttendanceStatus[keyof typeof SchoolAttendanceStatus];
+
+
+export const SchoolAttendanceStatus = {
+  present: 'present',
+  absent: 'absent',
+  late: 'late',
+  leave: 'leave',
+} as const;
+
+export interface SchoolAttendanceStudent {
+  studentId: string;
+  studentName: string;
+  admissionNo: string;
+  status: SchoolAttendanceStatus | null;
+  remark: string;
+}
+
+export interface SchoolAttendancePage {
+  sectionId: string;
+  sectionName: string;
+  date: string;
+  items: SchoolAttendanceStudent[];
+  total: number;
+}
+
+export type SchoolAttendanceInputMarksItem = {
+  studentId: string;
+  status: SchoolAttendanceStatus;
+  /** @maxLength 500 */
+  remark: string;
+};
+
+export interface SchoolAttendanceInput {
+  sectionId: string;
+  date: string;
+  /**
+     * @minItems 1
+     * @maxItems 500
+     */
+  marks: SchoolAttendanceInputMarksItem[];
+}
+
+export interface LearningReportCardSubject {
+  subjectId: string;
+  subjectName: string;
+  score: number;
+  maxPoints: number;
+  percent: number;
+  grade: string;
+  /** @nullable */
+  remark: string | null;
+}
+
+export interface LearningReportCard {
+  id: string;
+  studentId: string;
+  studentName: string;
+  admissionNo: string;
+  sectionId: string;
+  sectionName: string;
+  termId: string;
+  termName: string;
+  published: boolean;
+  /** @nullable */
+  publishedAt: string | null;
+  /** @nullable */
+  overallPercent: number | null;
+  /** @nullable */
+  overallGrade: string | null;
+  /** @nullable */
+  rank: number | null;
+  totalStudents: number;
+  /** @nullable */
+  attendancePercent: number | null;
+  attendedDays: number;
+  countedDays: number;
+  /** @nullable */
+  generalRemark: string | null;
+  subjects: LearningReportCardSubject[];
+}
+
+export interface LearningReportCardPage {
+  items: LearningReportCard[];
+  total: number;
+}
+
+export interface LearningReportCardPrepareInput {
+  sectionId: string;
+  termId: string;
+}
+
+export interface LearningReportCardPublishInput {
+  sectionId: string;
+  termId: string;
+  published: boolean;
+}
+
+export interface LearningReportCardRemarkInput {
+  /** @nullable */
+  subjectId?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  remark: string;
+}
+
+export type GetAcademicTeacherAssignmentsParams = {
+sectionId?: string;
+};
+
+export type GetSchoolAttendanceParams = {
+sectionId: string;
+date: string;
+};
+
 export type GetClasses200 = {
   items: ClassSummary[];
   total: number;
@@ -735,5 +931,10 @@ export const GetLearningAssignmentsStatus = {
 
 export type GetLearningExamsParams = {
 sectionId?: string;
+};
+
+export type GetLearningReportCardsParams = {
+sectionId?: string;
+termId?: string;
 };
 

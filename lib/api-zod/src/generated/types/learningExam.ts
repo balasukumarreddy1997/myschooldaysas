@@ -13,6 +13,10 @@ export interface LearningExam {
   sectionId: string;
   sectionName: string;
   /** @nullable */
+  subjectId: string | null;
+  /** @nullable */
+  subjectName: string | null;
+  /** @nullable */
   termId: string | null;
   /** @nullable */
   termName: string | null;

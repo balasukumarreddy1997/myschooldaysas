@@ -140,6 +140,25 @@ try {
       }
     }
 
+    const demoSubjects = [
+      { code: "ENG", name: "English" },
+      { code: "MATH", name: "Mathematics" },
+      { code: "SCI", name: "Science" },
+      { code: "SOC", name: "Social Studies" },
+    ];
+    const subjectIds: string[] = [];
+    for (const subject of demoSubjects) {
+      const result = await client.query<{ id: string }>(
+        `INSERT INTO academic.subjects (org_id, code, name)
+         VALUES ($1,$2,$3)
+         ON CONFLICT (org_id, name) DO UPDATE SET code=EXCLUDED.code, is_active=true, updated_at=now()
+         RETURNING id`,
+        [orgId, subject.code, subject.name],
+      );
+      if (!result.rows[0]?.id) throw new Error(`Could not seed ${subject.name}.`);
+      subjectIds.push(result.rows[0].id);
+    }
+
     const studentUsers = users.filter((user) => user.kind === "student");
     const teacherUsers = users.filter((user) => user.kind === "teacher");
     const parentUsers = users.filter((user) => user.kind === "parent");
@@ -169,6 +188,15 @@ try {
            SET is_class_teacher = EXCLUDED.is_class_teacher`,
         [orgId, assignedSection, teacherId, teacher.role === "class_teacher"],
       );
+      for (const subjectId of subjectIds) {
+        await client.query(
+          `INSERT INTO academic.teacher_assignments (org_id, section_id, subject_id, teacher_user_id, is_class_teacher)
+           VALUES ($1,$2,$3,$4,$5)
+           ON CONFLICT (org_id, section_id, subject_id, teacher_user_id)
+           DO UPDATE SET is_class_teacher=EXCLUDED.is_class_teacher`,
+          [orgId, assignedSection, subjectId, teacherId, teacher.role === "class_teacher"],
+        );
+      }
     }
     const hodId = userIds.get("hod@demo.edu");
     if (hodId) {
@@ -179,6 +207,14 @@ try {
            ON CONFLICT (org_id, section_id, teacher_user_id) DO NOTHING`,
           [orgId, sectionId, hodId],
         );
+        for (const subjectId of subjectIds) {
+          await client.query(
+            `INSERT INTO academic.teacher_assignments (org_id, section_id, subject_id, teacher_user_id, is_class_teacher)
+             VALUES ($1,$2,$3,$4,false)
+             ON CONFLICT (org_id, section_id, subject_id, teacher_user_id) DO NOTHING`,
+            [orgId, sectionId, subjectId, hodId],
+          );
+        }
       }
     }
 

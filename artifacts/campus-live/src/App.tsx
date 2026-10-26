@@ -16,13 +16,14 @@ import {
   Activity, ArrowDown, ArrowRight, ArrowUpRight, BookOpen, Check, ChevronDown,
   ChevronLeft, ChevronRight, CircleAlert, Clock3, DoorOpen, GraduationCap, LayoutDashboard,
   Library, LoaderCircle, LogOut, Menu, Moon, Plus, Radio, Search, Settings2, ShieldCheck,
-  Sun, Users, Video, X,
+  Sun, Users, Video, X, CalendarCheck,
 } from 'lucide-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import NotFound from '@/components/not-found';
 import { setAccessToken } from './auth-token';
 import { ClassroomScreen } from '@/components/classroom/classroom-screen';
 import { LearningPage } from '@/components/learning/learning-page';
+import { AttendancePage } from '@/components/attendance/attendance-page';
 
 const queryClient = new QueryClient();
 const fmtDate = (iso?: string) => iso ? `${iso.slice(0, 10)} · ${iso.slice(11, 16)}` : 'Time not set';
@@ -64,6 +65,7 @@ function ProtectedApp() {
         <Route path="/live/sessions" component={() => <SessionsPage userRoles={user.roles} />} />
         <Route path="/boards/templates" component={() => <TemplatesPage roles={user.roles} />} />
         <Route path="/learning" component={() => <LearningPage roles={user.roles} />} />
+        <Route path="/attendance" component={() => <AttendancePage roles={user.roles} />} />
         <Route path="/family/consents" component={() => user.roles.includes('parent') ? <ConsentsPage/> : <NotFound/>} />
         <Route path="/classroom/:sessionId" component={() => <ClassroomPage roles={user.roles} />} />
         <Route component={NotFound} />
@@ -83,6 +85,7 @@ function AppShell({ user, path, onLogout, children }: { user: { name: string; em
     { label: 'Live classes', href: '/live/sessions', icon: Video },
     { label: 'Smartboards', href: '/boards/templates', icon: Library },
     { label: 'Learning', href: '/learning', icon: GraduationCap },
+    { label: 'Attendance', href: '/attendance', icon: CalendarCheck },
   ];
   if (user.roles.includes('parent')) nav.push({ label: 'Privacy & consent', href: '/family/consents', icon: ShieldCheck });
   return <div className="min-h-[100dvh] md:flex">

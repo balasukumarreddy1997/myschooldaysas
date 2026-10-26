@@ -8,6 +8,7 @@
 
 export interface LearningExamInput {
   sectionId: string;
+  subjectId: string;
   /** @nullable */
   termId?: string | null;
   /**

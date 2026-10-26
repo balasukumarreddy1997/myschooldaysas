@@ -32,9 +32,12 @@ identity:001|services/identity/migrations/001_identity.sql
 identity:002|services/identity/migrations/002_identity_org_fk.sql
 academic:001|services/academic/migrations/001_academic.sql
 academic:002|services/academic/migrations/002_consents.sql
+academic:003|services/academic/migrations/003_subjects.sql
+school:001|services/school/migrations/001_attendance.sql
 live:001|services/live/migrations/001_live.sql
 board:001|services/board/migrations/001_board.sql
 board:002|services/board/migrations/002_realtime.sql
 live:002|services/live/migrations/002_classroom.sql
 learning:001|services/learning/migrations/001_learning.sql
+learning:002|services/learning/migrations/002_report_cards.sql
 MIGRATIONS
