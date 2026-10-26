@@ -368,7 +368,7 @@ const routes: FastifyPluginAsync = async (fastify) => {
         await client.query(
           `UPDATE learning.report_card_publications
               SET published=$4,
-                  published_by=CASE WHEN $4 THEN $5 ELSE NULL END,
+                   published_by=CASE WHEN $4 THEN $5::uuid ELSE NULL::uuid END,
                   published_at=CASE WHEN $4 THEN COALESCE(published_at,now()) ELSE NULL END,
                   updated_at=now()
             WHERE org_id=$1 AND section_id=$2 AND term_id=$3`,
