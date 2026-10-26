@@ -37,6 +37,7 @@ test("rejects expired tokens", () => {
 
 test("hashes passwords and rejects a different password", async () => {
   const encoded = await hashPassword("Passw0rd!");
+  assert.match(encoded, /^\$scrypt\$131072\$/);
   assert.equal(await verifyPassword("Passw0rd!", encoded), true);
   assert.equal(await verifyPassword("not-the-password", encoded), false);
 });

@@ -29,6 +29,7 @@ export interface User {
   name: string;
   email: string;
   roles: Role[];
+  mustChangePassword: boolean;
 }
 
 export interface LoginInput {
@@ -48,6 +49,25 @@ export interface LoginInput {
 export interface AuthSession {
   accessToken: string;
   user: User;
+}
+
+export interface ChangePasswordInput {
+  /**
+     * @minLength 1
+     * @maxLength 256
+     */
+  currentPassword: string;
+  /**
+     * @minLength 12
+     * @maxLength 256
+     */
+  newPassword: string;
+}
+
+export interface TemporaryPasswordResult {
+  /** @minLength 12 */
+  temporaryPassword: string;
+  expiresAt: string;
 }
 
 export type DashboardMetricTone = typeof DashboardMetricTone[keyof typeof DashboardMetricTone];
@@ -148,6 +168,32 @@ export interface StudentPage {
   total: number;
   limit: number;
   offset: number;
+}
+
+export type ConsentPurpose = typeof ConsentPurpose[keyof typeof ConsentPurpose];
+
+
+export const ConsentPurpose = {
+  live_view: 'live_view',
+  recording: 'recording',
+  photo: 'photo',
+  data_processing: 'data_processing',
+} as const;
+
+export interface ConsentGrantInput {
+  studentId: string;
+  purpose: ConsentPurpose;
+}
+
+export interface ConsentRecord {
+  studentId: string;
+  studentName: string;
+  purpose: ConsentPurpose;
+  granted: boolean;
+  /** @nullable */
+  grantedAt: string | null;
+  /** @nullable */
+  revokedAt: string | null;
 }
 
 export type LiveSessionInputMode = typeof LiveSessionInputMode[keyof typeof LiveSessionInputMode];
@@ -408,6 +454,15 @@ limit?: number;
  * @minimum 0
  */
 offset?: number;
+};
+
+export type GetConsents200 = {
+  items: ConsentRecord[];
+  total: number;
+};
+
+export type RevokeConsent200 = {
+  revoked: boolean;
 };
 
 export type GetSessions200 = {

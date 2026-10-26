@@ -15,7 +15,7 @@ The `academic` schema stores classes, sections, enrollments, and teacher assignm
 
 ## Not implemented
 
-The full spec's CRUD, subjects, timetable, teacher workloads, guardians management, attendance, consent routes/enforcement, transfers, promotion, and analytics are not part of this slice.
+The full spec's CRUD, subjects, timetable, teacher workloads, guardians management, attendance, transfers, promotion, and analytics are not part of this slice. Guardian consent list/grant/revoke routes are implemented for linked students; live viewing requires an active `live_view` grant. Recording/photo/marketing enforcement and a first-login consent flow remain open.
 
 ## Acceptance checks
 

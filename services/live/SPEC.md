@@ -16,7 +16,7 @@ The `live` schema stores sessions, section assignments, and attendance-related r
 
 ## Not implemented
 
-The LiveKit classroom client, participant controls, board/WebSocket collaboration, LiveKit webhook verification, attendance finalization, recording lifecycle, and parent consent enforcement are not implemented. Token requests fail closed with HTTP 503 until a public LiveKit URL is configured.
+The LiveKit classroom client, participant controls, board/WebSocket collaboration, LiveKit webhook verification, attendance finalization, and recording lifecycle are not implemented. Parent token issuance requires a linked guardian, session parent-view permission, and active `live_view` consent. Token requests fail closed with HTTP 503 until a public LiveKit URL is configured.
 
 ## Acceptance checks
 

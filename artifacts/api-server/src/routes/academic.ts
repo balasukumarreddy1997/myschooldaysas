@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { GetStudentsQueryParams } from "@workspace/api-zod";
+import { GetStudentsQueryParams, GrantConsentBody, RevokeConsentParams } from "@workspace/api-zod";
 import { withOrg } from "@workspace/db";
 import { requireAuth, type CampusRole } from "../lib/auth";
 
@@ -7,6 +7,7 @@ const router = Router();
 
 const adminRoles: CampusRole[] = ["super_admin", "org_admin", "campus_admin"];
 const teachingRoles: CampusRole[] = ["teacher", "class_teacher", "hod"];
+type ConsentPurpose = "live_view" | "recording" | "photo" | "data_processing";
 
 function errorBody(code: string, message: string) {
   return { error: { code, message } };
@@ -204,6 +205,152 @@ router.get("/academic/students", requireAuth, async (req, res, next) => {
       limit,
       offset,
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/academic/consents", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!user.roles.includes("parent")) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only a linked guardian can view consent choices."));
+  }
+
+  try {
+    const result = await withOrg(user.orgId, (client) =>
+      client.query<{
+        student_id: string;
+        student_name: string;
+        purpose: ConsentPurpose;
+        granted: boolean;
+        granted_at: Date | null;
+        revoked_at: Date | null;
+      }>(
+        `SELECT gl.student_user_id AS student_id, student.name AS student_name,
+                purposes.purpose,
+                (latest.id IS NOT NULL AND latest.revoked_at IS NULL) AS granted,
+                latest.granted_at, latest.revoked_at
+           FROM identity.guardian_links gl
+           JOIN identity.users student
+             ON student.id = gl.student_user_id AND student.org_id = gl.org_id
+           CROSS JOIN (VALUES
+             ('live_view'::text), ('recording'::text), ('photo'::text), ('data_processing'::text)
+           ) AS purposes(purpose)
+           LEFT JOIN LATERAL (
+             SELECT c.id, c.granted_at, c.revoked_at
+               FROM academic.consents c
+              WHERE c.org_id = gl.org_id AND c.parent_id = gl.guardian_user_id
+                AND c.student_id = gl.student_user_id AND c.purpose = purposes.purpose
+              ORDER BY c.granted_at DESC
+              LIMIT 1
+           ) latest ON true
+          WHERE gl.org_id = $1 AND gl.guardian_user_id = $2
+          ORDER BY student.name, purposes.purpose`,
+        [user.orgId, user.id],
+      ),
+    );
+    res.json({
+      items: result.rows.map((row) => ({
+        studentId: row.student_id,
+        studentName: row.student_name,
+        purpose: row.purpose,
+        granted: row.granted,
+        grantedAt: row.granted_at?.toISOString() ?? null,
+        revokedAt: row.revoked_at?.toISOString() ?? null,
+      })),
+      total: result.rowCount ?? result.rows.length,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/academic/consents", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!user.roles.includes("parent")) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only a linked guardian can grant consent."));
+  }
+  const parsed = GrantConsentBody.safeParse(req.body);
+  if (!parsed.success) return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a valid student and consent purpose."));
+
+  try {
+    const record = await withOrg(user.orgId, async (client) => {
+      const link = await client.query(
+        `SELECT 1 FROM identity.guardian_links
+          WHERE org_id = $1 AND guardian_user_id = $2 AND student_user_id = $3`,
+        [user.orgId, user.id, parsed.data.studentId],
+      );
+      if (!link.rowCount) return null;
+
+      let consent = await client.query<{ granted_at: Date; revoked_at: Date | null }>(
+        `INSERT INTO academic.consents (org_id, parent_id, student_id, purpose, granted_by)
+         VALUES ($1, $2, $3, $4, $2)
+         ON CONFLICT (org_id, parent_id, student_id, purpose) WHERE revoked_at IS NULL
+         DO NOTHING
+         RETURNING granted_at, revoked_at`,
+        [user.orgId, user.id, parsed.data.studentId, parsed.data.purpose],
+      );
+      if (!consent.rowCount) {
+        consent = await client.query<{ granted_at: Date; revoked_at: Date | null }>(
+          `SELECT granted_at, revoked_at FROM academic.consents
+            WHERE org_id = $1 AND parent_id = $2 AND student_id = $3
+              AND purpose = $4 AND revoked_at IS NULL
+            ORDER BY granted_at DESC LIMIT 1`,
+          [user.orgId, user.id, parsed.data.studentId, parsed.data.purpose],
+        );
+      }
+      const student = await client.query<{ name: string }>(
+        "SELECT name FROM identity.users WHERE org_id = $1 AND id = $2",
+        [user.orgId, parsed.data.studentId],
+      );
+      const row = consent.rows[0];
+      if (!row || !student.rows[0]) return null;
+      return {
+        studentId: parsed.data.studentId,
+        studentName: student.rows[0].name,
+        purpose: parsed.data.purpose,
+        granted: row.revoked_at === null,
+        grantedAt: row.granted_at.toISOString(),
+        revokedAt: row.revoked_at?.toISOString() ?? null,
+      };
+    });
+    if (!record) return void res.status(403).json(errorBody("FORBIDDEN", "This student is not linked to your guardian account."));
+    res.status(201).json(record);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/academic/consents/:studentId/:purpose", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!user.roles.includes("parent")) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only a linked guardian can revoke consent."));
+  }
+  const params = RevokeConsentParams.safeParse(req.params);
+  if (!params.success) return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a valid student and consent purpose."));
+
+  try {
+    const result = await withOrg(user.orgId, async (client) => {
+      const link = await client.query(
+        `SELECT 1 FROM identity.guardian_links
+          WHERE org_id = $1 AND guardian_user_id = $2 AND student_user_id = $3`,
+        [user.orgId, user.id, params.data.studentId],
+      );
+      if (!link.rowCount) return null;
+      const revoked = await client.query(
+        `UPDATE academic.consents SET revoked_at = now()
+          WHERE org_id = $1 AND parent_id = $2 AND student_id = $3
+            AND purpose = $4 AND revoked_at IS NULL
+          RETURNING id`,
+        [user.orgId, user.id, params.data.studentId, params.data.purpose],
+      );
+      return Boolean(revoked.rowCount);
+    });
+    if (result === null) return void res.status(403).json(errorBody("FORBIDDEN", "This student is not linked to your guardian account."));
+    res.json({ revoked: result });
   } catch (error) {
     next(error);
   }

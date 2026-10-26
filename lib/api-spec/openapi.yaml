@@ -48,6 +48,55 @@ paths:
                 $ref: "#/components/schemas/AuthSession"
         "401":
           description: Invalid credentials
+  /identity/auth/change-password:
+    post:
+      operationId: changePassword
+      tags: [identity]
+      summary: Change a password, including a forced first-login change
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordInput"
+      responses:
+        "200":
+          description: Password changed; returns a refreshed access token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "400":
+          description: Password does not meet policy
+        "401":
+          description: Current password is incorrect
+        "403":
+          description: Temporary password has expired
+  /identity/users/{userId}/reset-password:
+    post:
+      operationId: resetPassword
+      tags: [identity]
+      summary: Issue a one-time temporary password for a user
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Temporary password returned once
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TemporaryPasswordResult"
+        "403":
+          description: Caller cannot manage the target user's role
   /identity/me:
     get:
       operationId: getMe
@@ -167,6 +216,81 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/StudentPage"
+  /academic/consents:
+    get:
+      operationId: getConsents
+      tags: [academic]
+      summary: List consent choices for the current guardian's linked students
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Guardian consent status
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ConsentRecord"
+                  total:
+                    type: integer
+    post:
+      operationId: grantConsent
+      tags: [academic]
+      summary: Grant consent for a linked student
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConsentGrantInput"
+      responses:
+        "201":
+          description: Consent recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentRecord"
+        "403":
+          description: Caller is not a linked guardian
+  /academic/consents/{studentId}/{purpose}:
+    delete:
+      operationId: revokeConsent
+      tags: [academic]
+      summary: Revoke consent previously granted by the current guardian
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: studentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: purpose
+          required: true
+          schema:
+            $ref: "#/components/schemas/ConsentPurpose"
+      responses:
+        "200":
+          description: Revocation status
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [revoked]
+                properties:
+                  revoked:
+                    type: boolean
+        "403":
+          description: Caller is not the guardian who granted the consent
   /live/sessions:
     get:
       operationId: getSessions
@@ -358,7 +482,7 @@ components:
       enum: [super_admin, org_admin, campus_admin, hod, teacher, class_teacher, student, parent]
     User:
       type: object
-      required: [id, orgId, name, email, roles]
+      required: [id, orgId, name, email, roles, mustChangePassword]
       properties:
         id: { type: string, format: uuid }
         orgId: { type: string, format: uuid }
@@ -367,6 +491,7 @@ components:
         roles:
           type: array
           items: { $ref: "#/components/schemas/Role" }
+        mustChangePassword: { type: boolean }
     LoginInput:
       type: object
       required: [orgSlug, email, password]
@@ -380,6 +505,18 @@ components:
       properties:
         accessToken: { type: string }
         user: { $ref: "#/components/schemas/User" }
+    ChangePasswordInput:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword: { type: string, minLength: 1, maxLength: 256 }
+        newPassword: { type: string, minLength: 12, maxLength: 256 }
+    TemporaryPasswordResult:
+      type: object
+      required: [temporaryPassword, expiresAt]
+      properties:
+        temporaryPassword: { type: string, minLength: 12 }
+        expiresAt: { type: string, format: date-time }
     DashboardOverview:
       type: object
       required: [userName, role, metrics, upcomingSessions, recentActivity]
@@ -449,6 +586,25 @@ components:
         total: { type: integer }
         limit: { type: integer }
         offset: { type: integer }
+    ConsentPurpose:
+      type: string
+      enum: [live_view, recording, photo, data_processing]
+    ConsentGrantInput:
+      type: object
+      required: [studentId, purpose]
+      properties:
+        studentId: { type: string, format: uuid }
+        purpose: { $ref: "#/components/schemas/ConsentPurpose" }
+    ConsentRecord:
+      type: object
+      required: [studentId, studentName, purpose, granted, grantedAt, revokedAt]
+      properties:
+        studentId: { type: string, format: uuid }
+        studentName: { type: string }
+        purpose: { $ref: "#/components/schemas/ConsentPurpose" }
+        granted: { type: boolean }
+        grantedAt: { type: ["string", "null"], format: date-time }
+        revokedAt: { type: ["string", "null"], format: date-time }
     LiveSession:
       type: object
       required: [id, title, teacherName, mode, status, startAt, parentView, sections]

@@ -29,9 +29,14 @@ import type {
   BoardTemplate,
   BoardTemplateInput,
   BoardTemplateUpdate,
+  ChangePasswordInput,
+  ConsentGrantInput,
+  ConsentPurpose,
+  ConsentRecord,
   DashboardOverview,
   GetBoardTemplates200,
   GetClasses200,
+  GetConsents200,
   GetSections200,
   GetSectionsParams,
   GetSessions200,
@@ -41,7 +46,9 @@ import type {
   LiveSession,
   LiveSessionInput,
   LoginInput,
+  RevokeConsent200,
   StudentPage,
+  TemporaryPasswordResult,
   User
 } from './api.schemas';
 
@@ -260,6 +267,168 @@ export const useLogin = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getLoginMutationOptions(options), queryClient);
+    }
+
+export const getChangePasswordUrl = () => {
+
+
+
+
+  return `/api/identity/auth/change-password`
+}
+
+/**
+ * @summary Change a password, including a forced first-login change
+ */
+export const changePassword = async (changePasswordInput: ChangePasswordInput, options?: Parameters<typeof customFetch>[1]): Promise<AuthSession> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AuthSession>(getChangePasswordUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(changePasswordInput)
+  }
+);}
+
+
+
+
+
+export const getChangePasswordMutationKey = () => ['changePassword'] as const;
+
+export const getChangePasswordMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof changePassword>>, TError,ChangePasswordMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof changePassword>>, TError,ChangePasswordMutationVariables, TContext> => {
+
+const mutationKey = getChangePasswordMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof changePassword>>, ChangePasswordMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  changePassword(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ChangePasswordMutationResult = NonNullable<Awaited<ReturnType<typeof changePassword>>>
+    export type ChangePasswordMutationBody = BodyType<ChangePasswordInput>
+    export type ChangePasswordMutationError = ErrorType<void>
+    export type ChangePasswordMutationVariables = {data: BodyType<ChangePasswordInput>}
+
+    /**
+ * @summary Change a password, including a forced first-login change
+ */
+export const useChangePassword = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof changePassword>>, TError,ChangePasswordMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof changePassword>>,
+        TError,
+        ChangePasswordMutationVariables,
+        TContext
+      > => {
+      return useMutation(getChangePasswordMutationOptions(options), queryClient);
+    }
+
+export const getResetPasswordUrl = (userId: string,) => {
+
+
+
+
+  return `/api/identity/users/${userId}/reset-password`
+}
+
+/**
+ * @summary Issue a one-time temporary password for a user
+ */
+export const resetPassword = async (userId: string, options?: Parameters<typeof customFetch>[1]): Promise<TemporaryPasswordResult> => {
+
+  return customFetch<TemporaryPasswordResult>(getResetPasswordUrl(userId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getResetPasswordMutationKey = () => ['resetPassword'] as const;
+
+export const getResetPasswordMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetPassword>>, TError,ResetPasswordMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resetPassword>>, TError,ResetPasswordMutationVariables, TContext> => {
+
+const mutationKey = getResetPasswordMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resetPassword>>, ResetPasswordMutationVariables> = (props) => {
+          const {userId} = props ?? {};
+
+          return  resetPassword(userId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResetPasswordMutationResult = NonNullable<Awaited<ReturnType<typeof resetPassword>>>
+
+    export type ResetPasswordMutationError = ErrorType<void>
+    export type ResetPasswordMutationVariables = {userId: string}
+
+    /**
+ * @summary Issue a one-time temporary password for a user
+ */
+export const useResetPassword = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetPassword>>, TError,ResetPasswordMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof resetPassword>>,
+        TError,
+        ResetPasswordMutationVariables,
+        TContext
+      > => {
+      return useMutation(getResetPasswordMutationOptions(options), queryClient);
     }
 
 export const getGetMeUrl = () => {
@@ -780,6 +949,271 @@ export function useGetStudents<TData = Awaited<ReturnType<typeof getStudents>>, 
 
 
 
+
+export const getGetConsentsUrl = () => {
+
+
+
+
+  return `/api/academic/consents`
+}
+
+/**
+ * @summary List consent choices for the current guardian's linked students
+ */
+export const getConsents = async ( options?: Parameters<typeof customFetch>[1]): Promise<GetConsents200> => {
+
+  return customFetch<GetConsents200>(getGetConsentsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetConsentsQueryKey = () => {
+    return [
+    `/api/academic/consents`
+    ] as const;
+    }
+
+
+export const getGetConsentsQueryOptions = <TData = Awaited<ReturnType<typeof getConsents>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getConsents>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetConsentsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getConsents>>> = ({ signal }) => getConsents({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getConsents>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetConsentsQueryResult = NonNullable<Awaited<ReturnType<typeof getConsents>>>
+export type GetConsentsQueryError = ErrorType<unknown>
+
+
+export function useGetConsents<TData = Awaited<ReturnType<typeof getConsents>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getConsents>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getConsents>>,
+          TError,
+          Awaited<ReturnType<typeof getConsents>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetConsents<TData = Awaited<ReturnType<typeof getConsents>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getConsents>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getConsents>>,
+          TError,
+          Awaited<ReturnType<typeof getConsents>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetConsents<TData = Awaited<ReturnType<typeof getConsents>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getConsents>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List consent choices for the current guardian's linked students
+ */
+
+export function useGetConsents<TData = Awaited<ReturnType<typeof getConsents>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getConsents>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetConsentsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGrantConsentUrl = () => {
+
+
+
+
+  return `/api/academic/consents`
+}
+
+/**
+ * @summary Grant consent for a linked student
+ */
+export const grantConsent = async (consentGrantInput: ConsentGrantInput, options?: Parameters<typeof customFetch>[1]): Promise<ConsentRecord> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ConsentRecord>(getGrantConsentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(consentGrantInput)
+  }
+);}
+
+
+
+
+
+export const getGrantConsentMutationKey = () => ['grantConsent'] as const;
+
+export const getGrantConsentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof grantConsent>>, TError,GrantConsentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof grantConsent>>, TError,GrantConsentMutationVariables, TContext> => {
+
+const mutationKey = getGrantConsentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof grantConsent>>, GrantConsentMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  grantConsent(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GrantConsentMutationResult = NonNullable<Awaited<ReturnType<typeof grantConsent>>>
+    export type GrantConsentMutationBody = BodyType<ConsentGrantInput>
+    export type GrantConsentMutationError = ErrorType<void>
+    export type GrantConsentMutationVariables = {data: BodyType<ConsentGrantInput>}
+
+    /**
+ * @summary Grant consent for a linked student
+ */
+export const useGrantConsent = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof grantConsent>>, TError,GrantConsentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof grantConsent>>,
+        TError,
+        GrantConsentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getGrantConsentMutationOptions(options), queryClient);
+    }
+
+export const getRevokeConsentUrl = (studentId: string,
+    purpose: ConsentPurpose,) => {
+
+
+
+
+  return `/api/academic/consents/${studentId}/${purpose}`
+}
+
+/**
+ * @summary Revoke consent previously granted by the current guardian
+ */
+export const revokeConsent = async (studentId: string,
+    purpose: ConsentPurpose, options?: Parameters<typeof customFetch>[1]): Promise<RevokeConsent200> => {
+
+  return customFetch<RevokeConsent200>(getRevokeConsentUrl(studentId,purpose),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRevokeConsentMutationKey = () => ['revokeConsent'] as const;
+
+export const getRevokeConsentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeConsent>>, TError,RevokeConsentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof revokeConsent>>, TError,RevokeConsentMutationVariables, TContext> => {
+
+const mutationKey = getRevokeConsentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof revokeConsent>>, RevokeConsentMutationVariables> = (props) => {
+          const {studentId,purpose} = props ?? {};
+
+          return  revokeConsent(studentId,purpose,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RevokeConsentMutationResult = NonNullable<Awaited<ReturnType<typeof revokeConsent>>>
+
+    export type RevokeConsentMutationError = ErrorType<void>
+    export type RevokeConsentMutationVariables = {studentId: string;purpose: ConsentPurpose}
+
+    /**
+ * @summary Revoke consent previously granted by the current guardian
+ */
+export const useRevokeConsent = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeConsent>>, TError,RevokeConsentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof revokeConsent>>,
+        TError,
+        RevokeConsentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRevokeConsentMutationOptions(options), queryClient);
+    }
 
 export const getGetSessionsUrl = () => {
 

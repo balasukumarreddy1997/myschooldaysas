@@ -29,7 +29,9 @@ while IFS='|' read -r version migration; do
   echo "Applied: $version"
 done <<'MIGRATIONS'
 identity:001|services/identity/migrations/001_identity.sql
+identity:002|services/identity/migrations/002_identity_org_fk.sql
 academic:001|services/academic/migrations/001_academic.sql
+academic:002|services/academic/migrations/002_consents.sql
 live:001|services/live/migrations/001_live.sql
 board:001|services/board/migrations/001_board.sql
 MIGRATIONS

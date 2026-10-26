@@ -7,6 +7,7 @@ import {
   useGetStudents, getGetStudentsQueryKey, useGetSessions, getGetSessionsQueryKey,
   useCreateSession, useStartSession, useEndSession, useGetSessionToken,
   useGetBoardTemplates, getGetBoardTemplatesQueryKey, useCreateBoardTemplate, useUpdateBoardTemplate,
+  useChangePassword, useGetConsents, getGetConsentsQueryKey, useGrantConsent, useRevokeConsent,
 } from '@workspace/api-client-react';
 import type { BoardConfig, BoardTemplate, BoardTemplateInput, LiveSession, LiveSessionInput, SectionSummary } from '@workspace/api-client-react';
 import {
@@ -43,10 +44,11 @@ function App() {
 
 function ProtectedApp() {
   const [path, setPath] = useLocation();
-  const me = useGetMe();
+  const me = useGetMe({ query: { retry: false } });
   if (me.isLoading) return <LoadingScreen />;
   if (!me.data) return <LoginGate error={me.error} retry={() => me.refetch()} />;
   const user = me.data;
+  if (user.mustChangePassword) return <PasswordChangePage email={user.email} />;
   return <div className="shell grain"><AppShell user={user} path={path} onLogout={() => { setAccessToken(null); queryClient.clear(); setPath('/login'); }}>
     <ErrorBoundary resetKey={path}>
       <Switch>
@@ -56,6 +58,7 @@ function ProtectedApp() {
         <Route path="/admin/students" component={() => <StudentsPage />} />
         <Route path="/live/sessions" component={() => <SessionsPage userRoles={user.roles} />} />
         <Route path="/boards/templates" component={() => <TemplatesPage roles={user.roles} />} />
+        <Route path="/family/consents" component={() => user.roles.includes('parent') ? <ConsentsPage/> : <NotFound/>} />
         <Route path="/classroom/:sessionId" component={() => <ClassroomPage roles={user.roles} />} />
         <Route component={NotFound} />
       </Switch>
@@ -74,6 +77,7 @@ function AppShell({ user, path, onLogout, children }: { user: { name: string; em
     { label: 'Live classes', href: '/live/sessions', icon: Video },
     { label: 'Smartboards', href: '/boards/templates', icon: Library },
   ];
+  if (user.roles.includes('parent')) nav.push({ label: 'Privacy & consent', href: '/family/consents', icon: ShieldCheck });
   return <div className="min-h-[100dvh] md:flex">
     <aside className={`fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col bg-[hsl(var(--sidebar))] px-4 py-5 text-[hsl(var(--sidebar-foreground))] transition-transform md:translate-x-0 ${mobileNav ? 'translate-x-0' : '-translate-x-full'}`}>
       <div className="mb-9 flex items-center gap-3 px-2">
@@ -150,6 +154,74 @@ function LoginPage() {
         <div className="mt-7 flex items-center gap-2 border-t border-[hsl(var(--border))] pt-5 text-[11px] text-[hsl(var(--muted-foreground))]"><ShieldCheck size={15} className="text-[hsl(var(--primary))]"/>Your school credentials stay protected.</div>
       </div>
     </section>
+  </div>;
+}
+
+function PasswordChangePage({ email }: { email: string }) {
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [, setLocation] = useLocation();
+  const change = useChangePassword({ mutation: { onSuccess: result => {
+    setAccessToken(result.accessToken);
+    queryClient.setQueryData(getGetMeQueryKey(), result.user);
+    setLocation('/dashboard');
+  } } });
+  const confirmError = confirmPassword && newPassword !== confirmPassword ? 'Passwords do not match.' : null;
+
+  return <div className="grid min-h-[100dvh] place-items-center p-5">
+    <section className="surface w-full max-w-md p-7 sm:p-9">
+      <div className="mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><ShieldCheck size={24}/></div>
+      <span className="tag">Account security</span>
+      <h1 className="display mb-2 mt-3 text-2xl font-extrabold">Change your temporary password</h1>
+      <p className="mb-6 text-sm text-[hsl(var(--muted-foreground))]">Choose a new password before continuing. Signed in as {email}.</p>
+      <form className="space-y-4" onSubmit={event => {
+        event.preventDefault();
+        if (!confirmError) change.mutate({ data: { currentPassword, newPassword } });
+      }}>
+        <label className="block text-xs font-bold">Current password<div className="mt-1.5"><input required type="password" autoComplete="current-password" className="field" value={currentPassword} onChange={event => setCurrentPassword(event.target.value)}/></div></label>
+        <label className="block text-xs font-bold">New password<div className="mt-1.5"><input required minLength={12} maxLength={256} type="password" autoComplete="new-password" className="field" value={newPassword} onChange={event => setNewPassword(event.target.value)}/></div><span className="mt-1 block text-[11px] font-normal text-[hsl(var(--muted-foreground))]">Use at least 12 characters.</span></label>
+        <label className="block text-xs font-bold">Confirm new password<div className="mt-1.5"><input required minLength={12} maxLength={256} type="password" autoComplete="new-password" className="field" value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)}/></div></label>
+        {(confirmError || change.isError) && <p role="alert" className="text-xs text-[hsl(var(--destructive))]">{confirmError ?? errorText(change.error)}</p>}
+        <button disabled={change.isPending || !!confirmError} className="btn btn-primary w-full">{change.isPending ? 'Updating…' : 'Set new password'}<ArrowRight size={15}/></button>
+      </form>
+    </section>
+  </div>;
+}
+
+function ConsentsPage() {
+  const consents = useGetConsents();
+  const queryClient = useQueryClient();
+  const grant = useGrantConsent({ mutation: { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetConsentsQueryKey() }) } });
+  const revoke = useRevokeConsent({ mutation: { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetConsentsQueryKey() }) } });
+  const items = consents.data?.items ?? [];
+
+  return <div>
+    <PageHeading eyebrow="Family privacy" title="Privacy & consent" description="Review and change consent for each linked student."/>
+    <div className="surface mb-5 border-l-4 border-l-[hsl(var(--accent))] p-4 text-xs leading-5 text-[hsl(var(--muted-foreground))]">
+      Live viewing is checked against the live_view choice. Recording and photo features are not enabled in this build.
+    </div>
+    <QueryState loading={consents.isLoading} error={consents.error} empty={!items.length} retry={() => consents.refetch()}>
+      <div className="surface overflow-hidden">
+        <div className="divide-y divide-[hsl(var(--border))]">
+          {items.map(item => {
+            const busy = grant.isPending || revoke.isPending;
+            const label = item.purpose.replaceAll('_', ' ');
+            return <div key={`${item.studentId}:${item.purpose}`} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+              <div className="min-w-0 flex-1">
+                <div className="font-semibold">{item.studentName}</div>
+                <div className="mt-1 text-xs capitalize text-[hsl(var(--muted-foreground))]">{label}</div>
+              </div>
+              <span className={`text-xs font-semibold ${item.granted ? 'text-[hsl(var(--status-good))]' : 'text-[hsl(var(--muted-foreground))]'}`}>{item.granted ? 'Granted' : 'Not granted'}</span>
+              {item.granted
+                ? <button disabled={busy} className="btn btn-muted btn-sm" onClick={() => revoke.mutate({ studentId: item.studentId, purpose: item.purpose })}>Revoke</button>
+                : <button disabled={busy} className="btn btn-primary btn-sm" onClick={() => grant.mutate({ data: { studentId: item.studentId, purpose: item.purpose } })}>Grant</button>}
+            </div>;
+          })}
+        </div>
+      </div>
+    </QueryState>
+    {(grant.isError || revoke.isError) && <p role="alert" className="mt-3 text-xs text-[hsl(var(--destructive))]">{errorText(grant.error || revoke.error)}</p>}
   </div>;
 }
 

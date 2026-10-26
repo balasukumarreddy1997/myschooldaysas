@@ -28,19 +28,65 @@ export const loginBodyPasswordMax = 256;
 
 export const LoginBody = zod.object({
   "orgSlug": zod.string().min(1).max(loginBodyOrgSlugMax),
-  "email": zod.string().email(),
+  "email": zod.email(),
   "password": zod.string().min(1).max(loginBodyPasswordMax)
 })
 
 export const LoginResponse = zod.object({
   "accessToken": zod.string(),
   "user": zod.object({
-  "id": zod.string().uuid(),
-  "orgId": zod.string().uuid(),
+  "id": zod.uuid(),
+  "orgId": zod.uuid(),
   "name": zod.string(),
-  "email": zod.string().email(),
-  "roles": zod.array(zod.enum(['super_admin', 'org_admin', 'campus_admin', 'hod', 'teacher', 'class_teacher', 'student', 'parent']))
+  "email": zod.email(),
+  "roles": zod.array(zod.enum(['super_admin', 'org_admin', 'campus_admin', 'hod', 'teacher', 'class_teacher', 'student', 'parent'])),
+  "mustChangePassword": zod.boolean()
 })
+})
+
+
+/**
+ * @summary Change a password, including a forced first-login change
+ */
+export const changePasswordBodyCurrentPasswordMax = 256;
+
+export const changePasswordBodyNewPasswordMin = 12;
+export const changePasswordBodyNewPasswordMax = 256;
+
+
+
+export const ChangePasswordBody = zod.object({
+  "currentPassword": zod.string().min(1).max(changePasswordBodyCurrentPasswordMax),
+  "newPassword": zod.string().min(changePasswordBodyNewPasswordMin).max(changePasswordBodyNewPasswordMax)
+})
+
+export const ChangePasswordResponse = zod.object({
+  "accessToken": zod.string(),
+  "user": zod.object({
+  "id": zod.uuid(),
+  "orgId": zod.uuid(),
+  "name": zod.string(),
+  "email": zod.email(),
+  "roles": zod.array(zod.enum(['super_admin', 'org_admin', 'campus_admin', 'hod', 'teacher', 'class_teacher', 'student', 'parent'])),
+  "mustChangePassword": zod.boolean()
+})
+})
+
+
+/**
+ * @summary Issue a one-time temporary password for a user
+ */
+export const ResetPasswordParams = zod.object({
+  "userId": zod.uuid()
+})
+
+export const resetPasswordResponseTemporaryPasswordMin = 12;
+
+
+
+export const ResetPasswordResponse = zod.object({
+  "temporaryPassword": zod.string().min(resetPasswordResponseTemporaryPasswordMin),
+  "expiresAt": zod.coerce.date()
 })
 
 
@@ -48,11 +94,12 @@ export const LoginResponse = zod.object({
  * @summary Get the current signed-in user
  */
 export const GetMeResponse = zod.object({
-  "id": zod.string().uuid(),
-  "orgId": zod.string().uuid(),
+  "id": zod.uuid(),
+  "orgId": zod.uuid(),
   "name": zod.string(),
-  "email": zod.string().email(),
-  "roles": zod.array(zod.enum(['super_admin', 'org_admin', 'campus_admin', 'hod', 'teacher', 'class_teacher', 'student', 'parent']))
+  "email": zod.email(),
+  "roles": zod.array(zod.enum(['super_admin', 'org_admin', 'campus_admin', 'hod', 'teacher', 'class_teacher', 'student', 'parent'])),
+  "mustChangePassword": zod.boolean()
 })
 
 
@@ -69,7 +116,7 @@ export const GetDashboardOverviewResponse = zod.object({
   "tone": zod.enum(['positive', 'neutral', 'warning'])
 })),
   "upcomingSessions": zod.array(zod.object({
-  "id": zod.string().uuid(),
+  "id": zod.uuid(),
   "title": zod.string(),
   "teacherName": zod.string(),
   "mode": zod.enum(['section', 'class']),
@@ -92,13 +139,13 @@ export const GetDashboardOverviewResponse = zod.object({
  */
 export const GetClassesResponse = zod.object({
   "items": zod.array(zod.object({
-  "id": zod.string().uuid(),
+  "id": zod.uuid(),
   "name": zod.string(),
-  "gradeLevel": zod.number().int(),
-  "sectionCount": zod.number().int(),
-  "studentCount": zod.number().int()
+  "gradeLevel": zod.int(),
+  "sectionCount": zod.int(),
+  "studentCount": zod.int()
 })),
-  "total": zod.number().int()
+  "total": zod.int()
 })
 
 
@@ -106,18 +153,18 @@ export const GetClassesResponse = zod.object({
  * @summary List sections
  */
 export const GetSectionsQueryParams = zod.object({
-  "classId": zod.coerce.string().uuid().optional()
+  "classId": zod.uuid().optional()
 })
 
 export const GetSectionsResponse = zod.object({
   "items": zod.array(zod.object({
-  "id": zod.string().uuid(),
-  "classId": zod.string().uuid(),
+  "id": zod.uuid(),
+  "classId": zod.uuid(),
   "className": zod.string(),
   "name": zod.string(),
-  "studentCount": zod.number().int()
+  "studentCount": zod.int()
 })),
-  "total": zod.number().int()
+  "total": zod.int()
 })
 
 
@@ -135,24 +182,71 @@ export const getStudentsQueryOffsetMin = 0;
 
 
 export const GetStudentsQueryParams = zod.object({
-  "sectionId": zod.coerce.string().uuid(),
-  "q": zod.coerce.string().max(getStudentsQueryQMax).optional(),
+  "sectionId": zod.uuid(),
+  "q": zod.string().max(getStudentsQueryQMax).optional(),
   "limit": zod.coerce.number().int().min(1).max(getStudentsQueryLimitMax).default(getStudentsQueryLimitDefault),
   "offset": zod.coerce.number().int().min(getStudentsQueryOffsetMin).default(getStudentsQueryOffsetDefault)
 })
 
 export const GetStudentsResponse = zod.object({
   "items": zod.array(zod.object({
-  "id": zod.string().uuid(),
+  "id": zod.uuid(),
   "name": zod.string(),
   "admissionNo": zod.string(),
-  "sectionId": zod.string().uuid(),
+  "sectionId": zod.uuid(),
   "sectionName": zod.string(),
   "status": zod.enum(['active', 'disabled'])
 })),
-  "total": zod.number().int(),
-  "limit": zod.number().int(),
-  "offset": zod.number().int()
+  "total": zod.int(),
+  "limit": zod.int(),
+  "offset": zod.int()
+})
+
+
+/**
+ * @summary List consent choices for the current guardian's linked students
+ */
+export const GetConsentsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "purpose": zod.enum(['live_view', 'recording', 'photo', 'data_processing']),
+  "granted": zod.boolean(),
+  "grantedAt": zod.coerce.date().nullable(),
+  "revokedAt": zod.coerce.date().nullable()
+})),
+  "total": zod.int()
+})
+
+
+/**
+ * @summary Grant consent for a linked student
+ */
+export const GrantConsentBody = zod.object({
+  "studentId": zod.uuid(),
+  "purpose": zod.enum(['live_view', 'recording', 'photo', 'data_processing'])
+})
+
+export const GrantConsentResponse = zod.object({
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "purpose": zod.enum(['live_view', 'recording', 'photo', 'data_processing']),
+  "granted": zod.boolean(),
+  "grantedAt": zod.coerce.date().nullable(),
+  "revokedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Revoke consent previously granted by the current guardian
+ */
+export const RevokeConsentParams = zod.object({
+  "studentId": zod.uuid(),
+  "purpose": zod.enum(['live_view', 'recording', 'photo', 'data_processing'])
+})
+
+export const RevokeConsentResponse = zod.object({
+  "revoked": zod.boolean()
 })
 
 
@@ -161,7 +255,7 @@ export const GetStudentsResponse = zod.object({
  */
 export const GetSessionsResponse = zod.object({
   "items": zod.array(zod.object({
-  "id": zod.string().uuid(),
+  "id": zod.uuid(),
   "title": zod.string(),
   "teacherName": zod.string(),
   "mode": zod.enum(['section', 'class']),
@@ -170,7 +264,7 @@ export const GetSessionsResponse = zod.object({
   "parentView": zod.boolean(),
   "sections": zod.array(zod.string())
 })),
-  "total": zod.number().int()
+  "total": zod.int()
 })
 
 
@@ -186,13 +280,13 @@ export const CreateSessionBody = zod.object({
   "title": zod.string().min(1).max(createSessionBodyTitleMax),
   "mode": zod.enum(['section', 'class']),
   "startAt": zod.coerce.date(),
-  "classId": zod.string().uuid().nullish(),
-  "sectionIds": zod.array(zod.string().uuid()).min(1),
+  "classId": zod.uuid().nullish(),
+  "sectionIds": zod.array(zod.uuid()).min(1),
   "parentView": zod.boolean().default(createSessionBodyParentViewDefault)
 })
 
 export const CreateSessionResponse = zod.object({
-  "id": zod.string().uuid(),
+  "id": zod.uuid(),
   "title": zod.string(),
   "teacherName": zod.string(),
   "mode": zod.enum(['section', 'class']),
@@ -207,11 +301,11 @@ export const CreateSessionResponse = zod.object({
  * @summary Start a scheduled live class
  */
 export const StartSessionParams = zod.object({
-  "sessionId": zod.coerce.string().uuid()
+  "sessionId": zod.uuid()
 })
 
 export const StartSessionResponse = zod.object({
-  "id": zod.string().uuid(),
+  "id": zod.uuid(),
   "title": zod.string(),
   "teacherName": zod.string(),
   "mode": zod.enum(['section', 'class']),
@@ -226,11 +320,11 @@ export const StartSessionResponse = zod.object({
  * @summary End a live class and finalize attendance
  */
 export const EndSessionParams = zod.object({
-  "sessionId": zod.coerce.string().uuid()
+  "sessionId": zod.uuid()
 })
 
 export const EndSessionResponse = zod.object({
-  "id": zod.string().uuid(),
+  "id": zod.uuid(),
   "title": zod.string(),
   "teacherName": zod.string(),
   "mode": zod.enum(['section', 'class']),
@@ -245,11 +339,11 @@ export const EndSessionResponse = zod.object({
  * @summary Get a server-minted LiveKit token with role-scoped grants
  */
 export const GetSessionTokenParams = zod.object({
-  "sessionId": zod.coerce.string().uuid()
+  "sessionId": zod.uuid()
 })
 
 export const GetSessionTokenResponse = zod.object({
-  "url": zod.string().url(),
+  "url": zod.url(),
   "token": zod.string(),
   "roomName": zod.string()
 })
@@ -278,7 +372,7 @@ export const getBoardTemplatesResponseItemsItemConfigFeaturesSnapshotIntervalSec
 
 export const GetBoardTemplatesResponse = zod.object({
   "items": zod.array(zod.object({
-  "id": zod.string().uuid(),
+  "id": zod.uuid(),
   "name": zod.string(),
   "scope": zod.enum(['system', 'org', 'class', 'section', 'teacher']),
   "config": zod.object({
@@ -291,7 +385,7 @@ export const GetBoardTemplatesResponse = zod.object({
   "canvas": zod.object({
   "mode": zod.enum(['infinite', 'fixed']),
   "aspect": zod.enum(['16:9', '4:3', 'A4', 'free']),
-  "maxPages": zod.number().int().min(1).max(getBoardTemplatesResponseItemsItemConfigCanvasMaxPagesMax)
+  "maxPages": zod.int().min(1).max(getBoardTemplatesResponseItemsItemConfigCanvasMaxPagesMax)
 }),
   "tools": zod.array(zod.enum(['select', 'pen', 'highlighter', 'eraser', 'laser', 'line', 'arrow', 'rect', 'ellipse', 'triangle', 'text', 'sticky', 'image', 'ruler', 'protractor', 'compass', 'graph', 'latex', 'pan'])),
   "defaultTool": zod.string(),
@@ -314,13 +408,13 @@ export const GetBoardTemplatesResponse = zod.object({
   "palmRejection": zod.boolean(),
   "shapeRecognition": zod.boolean(),
   "undoRedo": zod.boolean(),
-  "snapshotIntervalSec": zod.number().int().min(getBoardTemplatesResponseItemsItemConfigFeaturesSnapshotIntervalSecMin).max(getBoardTemplatesResponseItemsItemConfigFeaturesSnapshotIntervalSecMax),
+  "snapshotIntervalSec": zod.int().min(getBoardTemplatesResponseItemsItemConfigFeaturesSnapshotIntervalSecMin).max(getBoardTemplatesResponseItemsItemConfigFeaturesSnapshotIntervalSecMax),
   "exportFormats": zod.array(zod.enum(['png', 'pdf', 'json']))
 })
 }),
   "isDefault": zod.boolean()
 })),
-  "total": zod.number().int()
+  "total": zod.int()
 })
 
 
@@ -360,7 +454,7 @@ export const CreateBoardTemplateBody = zod.object({
   "canvas": zod.object({
   "mode": zod.enum(['infinite', 'fixed']),
   "aspect": zod.enum(['16:9', '4:3', 'A4', 'free']),
-  "maxPages": zod.number().int().min(1).max(createBoardTemplateBodyConfigCanvasMaxPagesMax)
+  "maxPages": zod.int().min(1).max(createBoardTemplateBodyConfigCanvasMaxPagesMax)
 }),
   "tools": zod.array(zod.enum(['select', 'pen', 'highlighter', 'eraser', 'laser', 'line', 'arrow', 'rect', 'ellipse', 'triangle', 'text', 'sticky', 'image', 'ruler', 'protractor', 'compass', 'graph', 'latex', 'pan'])),
   "defaultTool": zod.string(),
@@ -383,7 +477,7 @@ export const CreateBoardTemplateBody = zod.object({
   "palmRejection": zod.boolean(),
   "shapeRecognition": zod.boolean(),
   "undoRedo": zod.boolean(),
-  "snapshotIntervalSec": zod.number().int().min(createBoardTemplateBodyConfigFeaturesSnapshotIntervalSecMin).max(createBoardTemplateBodyConfigFeaturesSnapshotIntervalSecMax),
+  "snapshotIntervalSec": zod.int().min(createBoardTemplateBodyConfigFeaturesSnapshotIntervalSecMin).max(createBoardTemplateBodyConfigFeaturesSnapshotIntervalSecMax),
   "exportFormats": zod.array(zod.enum(['png', 'pdf', 'json']))
 })
 })
@@ -408,7 +502,7 @@ export const createBoardTemplateResponseConfigFeaturesSnapshotIntervalSecMax = 6
 
 
 export const CreateBoardTemplateResponse = zod.object({
-  "id": zod.string().uuid(),
+  "id": zod.uuid(),
   "name": zod.string(),
   "scope": zod.enum(['system', 'org', 'class', 'section', 'teacher']),
   "config": zod.object({
@@ -421,7 +515,7 @@ export const CreateBoardTemplateResponse = zod.object({
   "canvas": zod.object({
   "mode": zod.enum(['infinite', 'fixed']),
   "aspect": zod.enum(['16:9', '4:3', 'A4', 'free']),
-  "maxPages": zod.number().int().min(1).max(createBoardTemplateResponseConfigCanvasMaxPagesMax)
+  "maxPages": zod.int().min(1).max(createBoardTemplateResponseConfigCanvasMaxPagesMax)
 }),
   "tools": zod.array(zod.enum(['select', 'pen', 'highlighter', 'eraser', 'laser', 'line', 'arrow', 'rect', 'ellipse', 'triangle', 'text', 'sticky', 'image', 'ruler', 'protractor', 'compass', 'graph', 'latex', 'pan'])),
   "defaultTool": zod.string(),
@@ -444,7 +538,7 @@ export const CreateBoardTemplateResponse = zod.object({
   "palmRejection": zod.boolean(),
   "shapeRecognition": zod.boolean(),
   "undoRedo": zod.boolean(),
-  "snapshotIntervalSec": zod.number().int().min(createBoardTemplateResponseConfigFeaturesSnapshotIntervalSecMin).max(createBoardTemplateResponseConfigFeaturesSnapshotIntervalSecMax),
+  "snapshotIntervalSec": zod.int().min(createBoardTemplateResponseConfigFeaturesSnapshotIntervalSecMin).max(createBoardTemplateResponseConfigFeaturesSnapshotIntervalSecMax),
   "exportFormats": zod.array(zod.enum(['png', 'pdf', 'json']))
 })
 }),
@@ -456,7 +550,7 @@ export const CreateBoardTemplateResponse = zod.object({
  * @summary Update a smartboard template
  */
 export const UpdateBoardTemplateParams = zod.object({
-  "templateId": zod.coerce.string().uuid()
+  "templateId": zod.uuid()
 })
 
 export const updateBoardTemplateBodyNameMax = 100;
@@ -491,7 +585,7 @@ export const UpdateBoardTemplateBody = zod.object({
   "canvas": zod.object({
   "mode": zod.enum(['infinite', 'fixed']),
   "aspect": zod.enum(['16:9', '4:3', 'A4', 'free']),
-  "maxPages": zod.number().int().min(1).max(updateBoardTemplateBodyConfigCanvasMaxPagesMax)
+  "maxPages": zod.int().min(1).max(updateBoardTemplateBodyConfigCanvasMaxPagesMax)
 }),
   "tools": zod.array(zod.enum(['select', 'pen', 'highlighter', 'eraser', 'laser', 'line', 'arrow', 'rect', 'ellipse', 'triangle', 'text', 'sticky', 'image', 'ruler', 'protractor', 'compass', 'graph', 'latex', 'pan'])),
   "defaultTool": zod.string(),
@@ -514,7 +608,7 @@ export const UpdateBoardTemplateBody = zod.object({
   "palmRejection": zod.boolean(),
   "shapeRecognition": zod.boolean(),
   "undoRedo": zod.boolean(),
-  "snapshotIntervalSec": zod.number().int().min(updateBoardTemplateBodyConfigFeaturesSnapshotIntervalSecMin).max(updateBoardTemplateBodyConfigFeaturesSnapshotIntervalSecMax),
+  "snapshotIntervalSec": zod.int().min(updateBoardTemplateBodyConfigFeaturesSnapshotIntervalSecMin).max(updateBoardTemplateBodyConfigFeaturesSnapshotIntervalSecMax),
   "exportFormats": zod.array(zod.enum(['png', 'pdf', 'json']))
 })
 }).optional(),
@@ -540,7 +634,7 @@ export const updateBoardTemplateResponseConfigFeaturesSnapshotIntervalSecMax = 6
 
 
 export const UpdateBoardTemplateResponse = zod.object({
-  "id": zod.string().uuid(),
+  "id": zod.uuid(),
   "name": zod.string(),
   "scope": zod.enum(['system', 'org', 'class', 'section', 'teacher']),
   "config": zod.object({
@@ -553,7 +647,7 @@ export const UpdateBoardTemplateResponse = zod.object({
   "canvas": zod.object({
   "mode": zod.enum(['infinite', 'fixed']),
   "aspect": zod.enum(['16:9', '4:3', 'A4', 'free']),
-  "maxPages": zod.number().int().min(1).max(updateBoardTemplateResponseConfigCanvasMaxPagesMax)
+  "maxPages": zod.int().min(1).max(updateBoardTemplateResponseConfigCanvasMaxPagesMax)
 }),
   "tools": zod.array(zod.enum(['select', 'pen', 'highlighter', 'eraser', 'laser', 'line', 'arrow', 'rect', 'ellipse', 'triangle', 'text', 'sticky', 'image', 'ruler', 'protractor', 'compass', 'graph', 'latex', 'pan'])),
   "defaultTool": zod.string(),
@@ -576,7 +670,7 @@ export const UpdateBoardTemplateResponse = zod.object({
   "palmRejection": zod.boolean(),
   "shapeRecognition": zod.boolean(),
   "undoRedo": zod.boolean(),
-  "snapshotIntervalSec": zod.number().int().min(updateBoardTemplateResponseConfigFeaturesSnapshotIntervalSecMin).max(updateBoardTemplateResponseConfigFeaturesSnapshotIntervalSecMax),
+  "snapshotIntervalSec": zod.int().min(updateBoardTemplateResponseConfigFeaturesSnapshotIntervalSecMin).max(updateBoardTemplateResponseConfigFeaturesSnapshotIntervalSecMax),
   "exportFormats": zod.array(zod.enum(['png', 'pdf', 'json']))
 })
 }),

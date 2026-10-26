@@ -1,6 +1,7 @@
 import { createHmac, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import type { Request, RequestHandler } from "express";
 import { pool, withOrg } from "@workspace/db";
+import { needsPasswordRehash } from "./identity-security.ts";
 
 const TOKEN_ISSUER = "campus-live-identity";
 const TOKEN_AUDIENCE = "campus-live-web";
@@ -132,13 +133,13 @@ export function verifyAccessToken(token: string, nowSeconds = Math.floor(Date.no
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16);
   const derived = await deriveScrypt(password, salt, 64, {
-    N: 16384,
+    N: 131072,
     r: 8,
     p: 1,
-    maxmem: 128 * 1024 * 1024,
+    maxmem: 256 * 1024 * 1024,
   });
 
-  return `$scrypt$16384$8$1$${salt.toString("base64url")}$${derived.toString("base64url")}`;
+  return `$scrypt$131072$8$1$${salt.toString("base64url")}$${derived.toString("base64url")}`;
 }
 
 export async function verifyPassword(password: string, encoded: string): Promise<boolean> {
@@ -217,9 +218,11 @@ export const requireAuth: RequestHandler = async (req: Request, res, next) => {
         name: string;
         email: string;
         must_change_password: boolean;
+         temporary_password_expires_at: Date | null;
         roles: CampusRole[];
       }>(
         `SELECT u.id, u.org_id, u.name, u.email, u.must_change_password,
+                u.temporary_password_expires_at,
                 COALESCE(array_agg(ur.role) FILTER (WHERE ur.role IS NOT NULL), '{}') AS roles
            FROM identity.users AS u
            LEFT JOIN identity.user_roles AS ur
@@ -230,8 +233,20 @@ export const requireAuth: RequestHandler = async (req: Request, res, next) => {
       ),
     );
     const user = result.rows[0];
-    if (!user || user.must_change_password !== claims.mustChangePassword) {
+    if (
+      !user ||
+      user.roles.length === 0 ||
+      user.must_change_password !== claims.mustChangePassword
+    ) {
       res.status(401).json({ error: { code: "UNAUTHENTICATED", message: "Your session is no longer valid." } });
+      return;
+    }
+    if (
+      user.must_change_password &&
+      (!user.temporary_password_expires_at ||
+        user.temporary_password_expires_at.getTime() <= Date.now())
+    ) {
+      res.status(403).json({ error: { code: "PASSWORD_EXPIRED", message: "Your temporary password has expired." } });
       return;
     }
     req.campusUser = {
@@ -242,6 +257,15 @@ export const requireAuth: RequestHandler = async (req: Request, res, next) => {
       roles: user.roles,
       mustChangePassword: user.must_change_password,
     };
+    const requestPath = req.originalUrl.split("?")[0].replace(/^\/api(?=\/)/, "");
+    if (
+      user.must_change_password &&
+      requestPath !== "/identity/me" &&
+      requestPath !== "/identity/auth/change-password"
+    ) {
+      res.status(403).json({ error: { code: "PASSWORD_CHANGE_REQUIRED", message: "Change your temporary password to continue." } });
+      return;
+    }
     next();
   } catch (error) {
     next(error);

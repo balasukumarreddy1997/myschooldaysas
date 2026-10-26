@@ -252,9 +252,6 @@ router.post("/live/sessions/:sessionId/token", requireAuth, async (req, res, nex
   const publicUrl = process.env.LIVEKIT_PUBLIC_URL;
   const apiKey = process.env.LIVEKIT_API_KEY;
   const apiSecret = process.env.LIVEKIT_API_SECRET;
-  if (!publicUrl || !apiKey || !apiSecret) {
-    return void res.status(503).json(errorBody("REALTIME_UNAVAILABLE", "The classroom service is not configured."));
-  }
 
   try {
     const grant = await withOrg(user.orgId, async (client) => {
@@ -266,6 +263,7 @@ router.post("/live/sessions/:sessionId/token", requireAuth, async (req, res, nex
         assigned_teacher: boolean;
         enrolled_student: boolean;
         linked_parent: boolean;
+        live_view_consented: boolean;
         students_can_draw: boolean;
       }>(
         `SELECT s.id, s.status, s.teacher_user_id, s.parent_view,
@@ -292,6 +290,19 @@ router.post("/live/sessions/:sessionId/token", requireAuth, async (req, res, nex
                   WHERE ss.org_id = s.org_id AND ss.session_id = s.id
                     AND gl.guardian_user_id = $3 AND e.status = 'active'
                 ) AS linked_parent,
+                EXISTS (
+                  SELECT 1 FROM live.session_sections ss
+                  JOIN academic.enrollments e
+                    ON e.section_id = ss.section_id AND e.org_id = ss.org_id
+                  JOIN identity.guardian_links gl
+                    ON gl.student_user_id = e.student_user_id AND gl.org_id = e.org_id
+                  JOIN academic.consents consent
+                    ON consent.org_id = e.org_id AND consent.parent_id = gl.guardian_user_id
+                   AND consent.student_id = e.student_user_id
+                   AND consent.purpose = 'live_view' AND consent.revoked_at IS NULL
+                  WHERE ss.org_id = s.org_id AND ss.session_id = s.id
+                    AND gl.guardian_user_id = $3 AND e.status = 'active'
+                ) AS live_view_consented,
                 COALESCE((
                   SELECT (bt.config->'participants'->>'studentsCanDraw')::boolean
                     FROM board.templates bt
@@ -313,7 +324,7 @@ router.post("/live/sessions/:sessionId/token", requireAuth, async (req, res, nex
         isOwner ||
         (flags.isTeacher && session.assigned_teacher) ||
         (flags.isStudent && session.enrolled_student) ||
-        (flags.isParent && session.parent_view && session.linked_parent);
+        (flags.isParent && session.parent_view && session.linked_parent && session.live_view_consented);
       if (!authorized) throw Object.assign(new Error("You are not a participant in this live class."), { status: 403, code: "FORBIDDEN" });
       if (session.status === "ended" || session.status === "cancelled") {
         throw Object.assign(new Error("This live class has ended."), { status: 409, code: "SESSION_ENDED" });
@@ -330,6 +341,9 @@ router.post("/live/sessions/:sessionId/token", requireAuth, async (req, res, nex
         canPublish,
       };
     });
+    if (!publicUrl || !apiKey || !apiSecret) {
+      return void res.status(503).json(errorBody("REALTIME_UNAVAILABLE", "The classroom service is not configured."));
+    }
 
     const now = Math.floor(Date.now() / 1000);
     const roomName = grant.roomName;

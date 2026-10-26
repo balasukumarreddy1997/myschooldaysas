@@ -1,48 +1,15 @@
-import app from "./app";
-import { logger } from "./lib/logger";
-import { assertLeastPrivilegeDatabaseRole, pool } from "@workspace/db";
+import { loadRuntimeConfig } from "./lib/config";
 
-const rawPort = process.env["PORT"];
-
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
-
-const port = Number(rawPort);
-
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
-
-function assertProdConfig(): void {
-  if (process.env.NODE_ENV !== "production") return;
-  const required = [
-    "DATABASE_URL",
-    "JWT_SECRET",
-    "INTERNAL_API_KEY",
-    "REDIS_URL",
-    "LIVEKIT_PUBLIC_URL",
-    "LIVEKIT_API_KEY",
-    "LIVEKIT_API_SECRET",
-    "RAZORPAY_KEY_ID",
-    "RAZORPAY_KEY_SECRET",
-    "RAZORPAY_WEBHOOK_SECRET",
-  ];
-  const missing = required.filter((key) => !process.env[key]);
-  if (missing.length) {
-    throw new Error(`Production configuration is incomplete: ${missing.join(", ")}`);
-  }
-  for (const key of ["JWT_SECRET", "INTERNAL_API_KEY"]) {
-    const value = process.env[key] ?? "";
-    if (value.length < 32 || /development|change.?me|example/i.test(value)) {
-      throw new Error(`${key} must be a real value of at least 32 characters in production.`);
-    }
-  }
-}
-
-assertProdConfig();
+const config = loadRuntimeConfig();
+const [appModule, loggerModule, dbModule] = await Promise.all([
+  import("./app"),
+  import("./lib/logger"),
+  import("@workspace/db"),
+]);
+const app = appModule.default;
+const { logger } = loggerModule;
+const { assertLeastPrivilegeDatabaseRole, pool } = dbModule;
+const port = config.PORT;
 
 const server = app.listen(port, async (err) => {
   if (err) {
