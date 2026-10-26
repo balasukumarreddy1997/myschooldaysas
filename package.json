@@ -12,7 +12,8 @@
   "scripts": {
     "build": "npm run typecheck && npm run build --workspaces --if-present",
     "typecheck:libs": "tsc --build",
-    "typecheck": "npm run typecheck:libs && npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck:libs && npm run typecheck --workspaces --if-present",
+    "rls:check": "test -f .env || { echo 'Missing root .env; copy .env.example for local development.' >&2; exit 2; }; set -a; . ./.env; set +a; node scripts/db/rls-check.mjs"
   },
   "allowScripts": {
     "@swc/core": true,
