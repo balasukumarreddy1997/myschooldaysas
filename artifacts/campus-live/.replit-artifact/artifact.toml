@@ -12,15 +12,15 @@ paths = [ "/" ]
 localPort = 19557
 
 [services.development]
-run = "pnpm --filter @workspace/campus-live run dev"
+run = "npm run dev --workspace=@workspace/campus-live"
 
 [services.production]
 
 [services.production.build]
-args = [ "pnpm", "--filter", "@workspace/campus-live", "run", "build" ]
+args = [ "npm", "run", "build", "--workspace=@workspace/campus-live" ]
 
 [services.production.run]
-args = [ "pnpm", "--filter", "@workspace/campus-live", "run", "start" ]
+args = [ "npm", "run", "start", "--workspace=@workspace/campus-live" ]
 
 [services.env]
 PORT = "19557"

@@ -9,7 +9,7 @@ This build covers sign-in, a role-scoped dashboard, class/section directories, a
 | Area | Current implementation | Target in `MASTER_SPEC.md` |
 |---|---|---|
 | Web | React 19 + Vite artifact at `/` | Next.js 16 App Router |
-| API | One Express API process at `/api`, with identity, academic, live, board, and dashboard route modules | Fastify 5 gateway plus independently deployed services |
+| API | One Fastify 5 API process at `/api`, with identity, academic, live, board, and dashboard route modules | Fastify 5 gateway plus independently deployed services |
 | Data | PostgreSQL 16; `identity`, `academic`, `live`, and `board` schemas | Those schemas plus notify, school, learning, fees, and registry |
 | Tenant access | `campus_app` is a non-superuser without `BYPASSRLS`; tenant tables use forced RLS and transaction-local `app.org_id` | Same principle, shared helpers and per-service enforcement |
 | Migrations | A separate local `campus_migrator` role applies numbered migrations before the API starts | Release migration job, checksums, lock/statement limits |
@@ -44,11 +44,11 @@ This build is a development vertical slice, not a production release. In particu
 
 ## Local verification
 
-- `pnpm -w run typecheck:libs`
-- `pnpm --filter @workspace/api-server run typecheck`
-- `pnpm --filter @workspace/api-server run test:unit`
-- `pnpm --filter @workspace/campus-live run typecheck`
-- `pnpm --filter @workspace/campus-live run build`
+- `npm run typecheck:libs`
+- `npm run typecheck --workspace=@workspace/api-server`
+- `npm run test:unit --workspace=@workspace/api-server`
+- `npm run typecheck --workspace=@workspace/campus-live`
+- `npm run build --workspace=@workspace/campus-live`
 - API smoke checks against local PostgreSQL/Redis, including administrator, teacher, student, and parent access
 
 The separate `snyk test` command was attempted but Snyk is not installed in this environment. No production deployment was performed.

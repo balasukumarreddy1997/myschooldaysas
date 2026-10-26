@@ -2,13 +2,34 @@
   "name": "workspace",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {
-    "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
-    "build": "pnpm run typecheck && pnpm -r --if-present run build",
-    "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
-  },
   "private": true,
+  "packageManager": "npm@11.19.1",
+  "workspaces": [
+    "artifacts/*",
+    "lib/*",
+    "scripts"
+  ],
+  "scripts": {
+    "build": "npm run typecheck && npm run build --workspaces --if-present",
+    "typecheck:libs": "tsc --build",
+    "typecheck": "npm run typecheck:libs && npm run typecheck --workspaces --if-present"
+  },
+  "allowScripts": {
+    "@swc/core": true,
+    "esbuild": true,
+    "msw": true,
+    "unrs-resolver": true
+  },
+  "overrides": {
+    "@esbuild-kit/esm-loader": "npm:tsx@^4.21.0",
+    "body-parser": "^2.4.0",
+    "brace-expansion": "^5.0.12",
+    "esbuild": "0.28.2",
+    "fast-uri": "^3.1.9",
+    "js-yaml": "4.3.2",
+    "proxy-addr": "^2.0.8",
+    "source-map-js": "^1.2.2"
+  },
   "dependencies": {
     "@replit/connectors-sdk": "^0.4.3"
   },

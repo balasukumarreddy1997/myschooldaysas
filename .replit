@@ -1,18 +1,14 @@
-modules = ["nodejs-24", "postgresql-16"]
+modules = ["nodejs-24", "postgresql-16", "python-base-3.13"]
 
 [deployment]
 router = "application"
 deploymentTarget = "autoscale"
 
-[deployment.postBuild]
-args = ["pnpm", "store", "prune"]
-env = { "CI" = "true" }
-
 [workflows]
 runButton = "Project"
 
 [agent]
-stack = "PNPM_WORKSPACE"
+stack = "NPM_WORKSPACE"
 expertMode = true
 
 [postMerge]
