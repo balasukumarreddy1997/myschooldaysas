@@ -181,6 +181,34 @@ export interface StudentPage {
   offset: number;
 }
 
+export interface AvailableStudentSummary {
+  id: string;
+  name: string;
+  email: string;
+}
+
+export interface AvailableStudentPage {
+  items: AvailableStudentSummary[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface CreateEnrollmentInput {
+  studentId: string;
+  sectionId: string;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  admissionNo: string;
+  /**
+     * @minLength 4
+     * @maxLength 24
+     */
+  academicYear: string;
+}
+
 export interface SectionCapacityUpdateInput {
   /**
      * @minimum 1
@@ -975,6 +1003,27 @@ classId?: string;
 export type GetSections200 = {
   items: SectionSummary[];
   total: number;
+};
+
+export type GetAvailableStudentsParams = {
+/**
+ * @minLength 4
+ * @maxLength 24
+ */
+academicYear: string;
+/**
+ * @maxLength 100
+ */
+q?: string;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
 };
 
 export type GetStudentsParams = {

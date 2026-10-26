@@ -28,3 +28,7 @@ export function canParentViewLiveClassroom(
 ): boolean {
   return isParent && parentViewEnabled && hasLinkedStudent && guardianPolicyAndConsentEnabled;
 }
+
+export function sectionHasCapacity(capacity: number | null, activeEnrollmentCount: number): boolean {
+  return capacity === null || activeEnrollmentCount < capacity;
+}

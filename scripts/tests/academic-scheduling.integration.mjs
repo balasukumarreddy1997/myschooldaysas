@@ -53,6 +53,8 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
   let restoreEnrollment;
   let restoreConsentReview;
   let restoreGuardianFlags;
+  let cleanupOrgId;
+  const createdEnrollmentIds = [];
 
   try {
     const identity = (await pool.query(`
@@ -69,6 +71,7 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
       "SELECT id FROM identity.organizations ORDER BY created_at LIMIT 1",
     )).rows[0]?.id;
     assert.ok(orgId, "Development seed must exist.");
+    cleanupOrgId = orgId;
 
     const client = await pool.connect();
     let people;
@@ -209,6 +212,49 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
     assert.equal(capacityUpdate.status, 200, JSON.stringify(capacityUpdate.body));
     assert.equal(capacityUpdate.body.capacity, temporaryCapacity);
 
+    const admissionsYear = `2098-${randomUUID().slice(0, 8)}`;
+    const availableStudents = await api(
+      `/academic/students/available?academicYear=${encodeURIComponent(admissionsYear)}&limit=2&offset=0`,
+      admin,
+    );
+    assert.equal(availableStudents.status, 200, JSON.stringify(availableStudents.body));
+    assert.equal(availableStudents.body.items.length, 2, "Two seeded students should be available for a new test year.");
+    const deniedAvailableStudents = await api(
+      `/academic/students/available?academicYear=${encodeURIComponent(admissionsYear)}&limit=2&offset=0`,
+      teacher,
+    );
+    assert.equal(deniedAvailableStudents.status, 403);
+
+    const admissionCapacity = section.studentCount + 1;
+    const admissionCapacityUpdate = await api(
+      `/academic/sections/${section.id}`,
+      admin,
+      "PATCH",
+      { capacity: admissionCapacity },
+    );
+    assert.equal(admissionCapacityUpdate.status, 200, JSON.stringify(admissionCapacityUpdate.body));
+    const concurrentAdmissions = await Promise.all(availableStudents.body.items.map((availableStudent, index) =>
+      api("/academic/enrollments", admin, "POST", {
+        studentId: availableStudent.id,
+        sectionId: section.id,
+        admissionNo: `INT-${randomUUID().replaceAll("-", "").slice(0, 16)}-${index}`,
+        academicYear: admissionsYear,
+      }),
+    ));
+    for (const response of concurrentAdmissions) {
+      if (response.status === 201 && response.body.enrollmentId) {
+        createdEnrollmentIds.push(response.body.enrollmentId);
+      }
+    }
+    assert.deepEqual(concurrentAdmissions.map((response) => response.status).sort(), [201, 409]);
+    const deniedEnrollment = await api("/academic/enrollments", teacher, "POST", {
+      studentId: availableStudents.body.items[0].id,
+      sectionId: section.id,
+      admissionNo: `INT-DENIED-${randomUUID().slice(0, 8)}`,
+      academicYear: admissionsYear,
+    });
+    assert.equal(deniedEnrollment.status, 403);
+
     const newAcademicYear = `2099-${randomUUID().slice(0, 8)}`;
     const yearUpdate = await api(
       `/academic/enrollments/${enrollment.enrollmentId}`,
@@ -280,7 +326,7 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
     assert.equal(deleted.status, 204);
     createdSlotId = undefined;
 
-    console.log("Verified consent review, disabled recording consent, guardian flags, capacity/year updates, and timetable room/role/conflict behavior.");
+    console.log("Verified consent review, guardian flags, atomic enrollment capacity enforcement, academic-year updates, and timetable room/role/conflict behavior.");
   } finally {
     if (createdSlotId) await api(`/academic/timetable/${createdSlotId}`, restoreCapacity?.user, "DELETE").catch(() => {});
     if (restoreEnrollment) {
@@ -303,6 +349,24 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
           canPayFees: restoreGuardianFlags.canPayFees,
         },
       ).catch(() => {});
+    }
+    if (cleanupOrgId && createdEnrollmentIds.length) {
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+        await client.query("SELECT set_config('app.org_id', $1, true)", [cleanupOrgId]);
+        await client.query(
+          `DELETE FROM academic.enrollments
+            WHERE org_id = $1 AND id = ANY($2::uuid[])`,
+          [cleanupOrgId, createdEnrollmentIds],
+        );
+        await client.query("COMMIT");
+      } catch (error) {
+        await client.query("ROLLBACK").catch(() => {});
+        throw error;
+      } finally {
+        client.release();
+      }
     }
     if (restoreConsentReview) {
       const client = await pool.connect();

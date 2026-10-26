@@ -399,6 +399,41 @@ export const UpdateSectionResponse = zod.object({
 
 
 /**
+ * @summary List active students who can be enrolled for an academic year
+ */
+export const getAvailableStudentsQueryAcademicYearMin = 4;
+export const getAvailableStudentsQueryAcademicYearMax = 24;
+
+export const getAvailableStudentsQueryQMax = 100;
+
+export const getAvailableStudentsQueryLimitDefault = 50;
+export const getAvailableStudentsQueryLimitMax = 100;
+
+export const getAvailableStudentsQueryOffsetDefault = 0;
+export const getAvailableStudentsQueryOffsetMin = 0;
+
+
+
+export const GetAvailableStudentsQueryParams = zod.object({
+  "academicYear": zod.string().min(getAvailableStudentsQueryAcademicYearMin).max(getAvailableStudentsQueryAcademicYearMax),
+  "q": zod.string().max(getAvailableStudentsQueryQMax).optional(),
+  "limit": zod.coerce.number().int().min(1).max(getAvailableStudentsQueryLimitMax).default(getAvailableStudentsQueryLimitDefault),
+  "offset": zod.coerce.number().int().min(getAvailableStudentsQueryOffsetMin).default(getAvailableStudentsQueryOffsetDefault)
+})
+
+export const GetAvailableStudentsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "name": zod.string(),
+  "email": zod.email()
+})),
+  "total": zod.int(),
+  "limit": zod.int(),
+  "offset": zod.int()
+})
+
+
+/**
  * @summary List students in an authorized section
  */
 export const getStudentsQueryQMax = 100;
@@ -437,6 +472,40 @@ export const GetStudentsResponse = zod.object({
   "total": zod.int(),
   "limit": zod.int(),
   "offset": zod.int()
+})
+
+
+/**
+ * @summary Enroll an active student into a section if capacity permits
+ */
+export const createEnrollmentBodyAdmissionNoMax = 40;
+
+export const createEnrollmentBodyAcademicYearMin = 4;
+export const createEnrollmentBodyAcademicYearMax = 24;
+
+
+
+export const CreateEnrollmentBody = zod.object({
+  "studentId": zod.uuid(),
+  "sectionId": zod.uuid(),
+  "admissionNo": zod.string().min(1).max(createEnrollmentBodyAdmissionNoMax),
+  "academicYear": zod.string().min(createEnrollmentBodyAcademicYearMin).max(createEnrollmentBodyAcademicYearMax)
+})
+
+export const createEnrollmentResponseAcademicYearMin = 4;
+export const createEnrollmentResponseAcademicYearMax = 24;
+
+
+
+export const CreateEnrollmentResponse = zod.object({
+  "id": zod.uuid(),
+  "enrollmentId": zod.uuid(),
+  "name": zod.string(),
+  "admissionNo": zod.string(),
+  "sectionId": zod.uuid(),
+  "sectionName": zod.string(),
+  "status": zod.enum(['active', 'disabled']),
+  "academicYear": zod.string().min(createEnrollmentResponseAcademicYearMin).max(createEnrollmentResponseAcademicYearMax)
 })
 
 

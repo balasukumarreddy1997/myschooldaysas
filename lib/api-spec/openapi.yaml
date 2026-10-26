@@ -353,6 +353,35 @@ paths:
         "400": { description: Invalid request }
         "403": { description: Administrator role required }
         "404": { description: Section not found }
+  /academic/students/available:
+    get:
+      operationId: getAvailableStudents
+      tags: [academic]
+      summary: List active students who can be enrolled for an academic year
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: academicYear
+          required: true
+          schema: { type: string, minLength: 4, maxLength: 24 }
+        - in: query
+          name: q
+          schema: { type: string, maxLength: 100 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - in: query
+          name: offset
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        "200":
+          description: Paginated students without an enrollment in the requested year
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AvailableStudentPage" }
+        "400": { description: Invalid request }
+        "403": { description: Administrator role required }
   /academic/students:
     get:
       operationId: getStudents
@@ -392,6 +421,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/StudentPage"
+  /academic/enrollments:
+    post:
+      operationId: createEnrollment
+      tags: [academic]
+      summary: Enroll an active student into a section if capacity permits
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateEnrollmentInput" }
+      responses:
+        "201":
+          description: Created enrollment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentSummary" }
+        "400": { description: Invalid request }
+        "403": { description: Administrator role required }
+        "404": { description: Student or section not found }
+        "409": { description: Section is full or an enrollment already exists }
   /academic/enrollments/{enrollmentId}:
     patch:
       operationId: updateEnrollmentYear
@@ -1339,6 +1390,31 @@ components:
         total: { type: integer }
         limit: { type: integer }
         offset: { type: integer }
+    AvailableStudentSummary:
+      type: object
+      required: [id, name, email]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+    AvailableStudentPage:
+      type: object
+      required: [items, total, limit, offset]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AvailableStudentSummary" }
+        total: { type: integer }
+        limit: { type: integer }
+        offset: { type: integer }
+    CreateEnrollmentInput:
+      type: object
+      required: [studentId, sectionId, admissionNo, academicYear]
+      properties:
+        studentId: { type: string, format: uuid }
+        sectionId: { type: string, format: uuid }
+        admissionNo: { type: string, minLength: 1, maxLength: 40 }
+        academicYear: { type: string, minLength: 4, maxLength: 24 }
     SectionCapacityUpdateInput:
       type: object
       required: [capacity]

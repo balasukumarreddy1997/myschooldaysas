@@ -1,5 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import {
+  CreateEnrollmentBody,
+  GetAvailableStudentsQueryParams,
   GetGuardianLinksQueryParams,
   GetStudentsQueryParams,
   GrantConsentBody,
@@ -14,7 +16,7 @@ import {
 import { withOrg } from "@workspace/db";
 import { createRouteRegistrar } from "../lib/fastify-routes";
 import { requireAuth, type CampusRole } from "../lib/auth";
-import { canManageAcademicSetup } from "../lib/academic-scheduling-policy";
+import { canManageAcademicSetup, sectionHasCapacity } from "../lib/academic-scheduling-policy";
 
 const routes: FastifyPluginAsync = async (fastify) => {
 const router = createRouteRegistrar(fastify);
@@ -347,6 +349,166 @@ router.patch("/academic/sections/:sectionId", requireAuth, async (req, res, next
     if (!section) return void res.status(404).json(errorBody("NOT_FOUND", "Section not found."));
     res.json(section);
   } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/academic/students/available", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!canManageAcademicSetup(user.roles)) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only administrators can enroll students."));
+  }
+  const parsed = GetAvailableStudentsQueryParams.safeParse(req.query);
+  if (!parsed.success || parsed.data.academicYear.trim().length < 4) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a valid academic year and pagination."));
+  }
+  const { academicYear, q, limit = 50, offset = 0 } = parsed.data;
+  const search = q?.trim() || null;
+
+  try {
+    const result = await withOrg(user.orgId, async (client) => {
+      const count = await client.query<{ total: string }>(
+        `SELECT COUNT(*)::text AS total
+           FROM identity.users u
+           JOIN identity.user_roles ur
+             ON ur.org_id = u.org_id AND ur.user_id = u.id AND ur.role = 'student'
+          WHERE u.org_id = $1 AND u.status = 'active'
+            AND NOT EXISTS (
+              SELECT 1 FROM academic.enrollments e
+               WHERE e.org_id = u.org_id AND e.student_user_id = u.id AND e.academic_year = $2
+            )
+            AND ($3::text IS NULL OR u.name ILIKE '%' || $3 || '%' OR u.email ILIKE '%' || $3 || '%')`,
+        [user.orgId, academicYear.trim(), search],
+      );
+      const rows = await client.query<{ id: string; name: string; email: string }>(
+        `SELECT u.id, u.name, u.email
+           FROM identity.users u
+           JOIN identity.user_roles ur
+             ON ur.org_id = u.org_id AND ur.user_id = u.id AND ur.role = 'student'
+          WHERE u.org_id = $1 AND u.status = 'active'
+            AND NOT EXISTS (
+              SELECT 1 FROM academic.enrollments e
+               WHERE e.org_id = u.org_id AND e.student_user_id = u.id AND e.academic_year = $2
+            )
+            AND ($3::text IS NULL OR u.name ILIKE '%' || $3 || '%' OR u.email ILIKE '%' || $3 || '%')
+          ORDER BY u.name, u.email
+          LIMIT $4 OFFSET $5`,
+        [user.orgId, academicYear.trim(), search, limit, offset],
+      );
+      return {
+        items: rows.rows,
+        total: Number(count.rows[0]?.total ?? 0),
+        limit,
+        offset,
+      };
+    });
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/academic/enrollments", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!canManageAcademicSetup(user.roles)) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only administrators can enroll students."));
+  }
+  const parsed = CreateEnrollmentBody.safeParse(req.body);
+  const admissionNo = parsed.success ? parsed.data.admissionNo.trim() : "";
+  const academicYear = parsed.success ? parsed.data.academicYear.trim() : "";
+  if (!parsed.success || !admissionNo || admissionNo.length > 40 || academicYear.length < 4 || academicYear.length > 24) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a student, section, admission number, and valid academic year."));
+  }
+
+  try {
+    const result = await withOrg(user.orgId, async (client) => {
+      const sectionResult = await client.query<{ id: string; name: string; capacity: number | null }>(
+        `SELECT id, name, capacity
+           FROM academic.sections
+          WHERE org_id = $1 AND id = $2
+          FOR UPDATE`,
+        [user.orgId, parsed.data.sectionId],
+      );
+      const section = sectionResult.rows[0];
+      if (!section) return { kind: "section_not_found" as const };
+
+      const studentResult = await client.query<{ id: string; name: string }>(
+        `SELECT u.id, u.name
+           FROM identity.users u
+           JOIN identity.user_roles ur
+             ON ur.org_id = u.org_id AND ur.user_id = u.id AND ur.role = 'student'
+          WHERE u.org_id = $1 AND u.id = $2 AND u.status = 'active'`,
+        [user.orgId, parsed.data.studentId],
+      );
+      const student = studentResult.rows[0];
+      if (!student) return { kind: "student_not_found" as const };
+
+      const existing = await client.query(
+        `SELECT 1 FROM academic.enrollments
+          WHERE org_id = $1 AND student_user_id = $2 AND academic_year = $3
+          LIMIT 1`,
+        [user.orgId, student.id, academicYear],
+      );
+      if (existing.rowCount) return { kind: "already_enrolled" as const };
+
+      const occupancy = await client.query<{ count: number }>(
+        `SELECT COUNT(*)::int AS count
+           FROM academic.enrollments
+          WHERE org_id = $1 AND section_id = $2 AND status = 'active'`,
+        [user.orgId, section.id],
+      );
+      const activeEnrollmentCount = occupancy.rows[0]?.count ?? 0;
+      if (!sectionHasCapacity(section.capacity, activeEnrollmentCount)) {
+        return { kind: "section_full" as const, capacity: section.capacity };
+      }
+
+      const created = await client.query<{ id: string; status: string; academic_year: string }>(
+        `INSERT INTO academic.enrollments
+           (org_id, student_user_id, section_id, admission_no, academic_year)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, status, academic_year`,
+        [user.orgId, student.id, section.id, admissionNo, academicYear],
+      );
+      return {
+        kind: "created" as const,
+        enrollmentId: created.rows[0]!.id,
+        status: created.rows[0]!.status,
+        academicYear: created.rows[0]!.academic_year,
+        sectionId: section.id,
+        sectionName: section.name,
+        studentId: student.id,
+        studentName: student.name,
+      };
+    });
+
+    if (result.kind === "section_not_found") {
+      return void res.status(404).json(errorBody("NOT_FOUND", "Section not found."));
+    }
+    if (result.kind === "student_not_found") {
+      return void res.status(404).json(errorBody("NOT_FOUND", "Active student account not found."));
+    }
+    if (result.kind === "already_enrolled") {
+      return void res.status(409).json(errorBody("CONFLICT", "The student already has an enrollment for this academic year."));
+    }
+    if (result.kind === "section_full") {
+      return void res.status(409).json(errorBody("CONFLICT", `This section has reached its capacity of ${result.capacity}.`));
+    }
+    res.status(201).json({
+      id: result.studentId,
+      enrollmentId: result.enrollmentId,
+      name: result.studentName,
+      admissionNo,
+      sectionId: result.sectionId,
+      sectionName: result.sectionName,
+      status: result.status,
+      academicYear: result.academicYear,
+    });
+  } catch (error: any) {
+    if (error?.code === "23505") {
+      return void res.status(409).json(errorBody("CONFLICT", "Admission number or student enrollment already exists for this academic year."));
+    }
     next(error);
   }
 });

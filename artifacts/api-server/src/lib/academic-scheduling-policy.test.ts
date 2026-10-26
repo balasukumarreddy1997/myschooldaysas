@@ -4,6 +4,7 @@ import {
   academicTimeRangesOverlap,
   canParentViewLiveClassroom,
   canManageAcademicSetup,
+  sectionHasCapacity,
   isValidAcademicTimeRange,
 } from "./academic-scheduling-policy.ts";
 
@@ -35,4 +36,11 @@ test("parent classroom viewing requires role, session setting, linked student, f
   assert.equal(canParentViewLiveClassroom(true, false, true, true), false);
   assert.equal(canParentViewLiveClassroom(true, true, false, true), false);
   assert.equal(canParentViewLiveClassroom(true, true, true, false), false);
+});
+
+test("section capacity allows unlimited sections and rejects a full or overfull section", () => {
+  assert.equal(sectionHasCapacity(null, 10_000), true);
+  assert.equal(sectionHasCapacity(3, 2), true);
+  assert.equal(sectionHasCapacity(3, 3), false);
+  assert.equal(sectionHasCapacity(3, 4), false);
 });
