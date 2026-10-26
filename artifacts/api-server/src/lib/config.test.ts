@@ -7,6 +7,15 @@ test("development config requires a valid port but allows unconfigured integrati
   assert.equal(config.PORT, 8080);
 });
 
+test("development config treats blank optional LiveKit URLs as unconfigured", () => {
+  const config = loadRuntimeConfig({
+    NODE_ENV: "development",
+    PORT: "8080",
+    LIVEKIT_PUBLIC_URL: "",
+  });
+  assert.equal(config.LIVEKIT_PUBLIC_URL, undefined);
+});
+
 test("production config rejects missing required values", () => {
   assert.throws(
     () => loadRuntimeConfig({ NODE_ENV: "production", PORT: "8080" }),
