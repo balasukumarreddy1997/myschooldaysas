@@ -24,7 +24,7 @@ type RouteHandler = (
 ) => void | Promise<void>;
 type PreHandler = (request: ApiRequest, reply: FastifyReply) => void | Promise<unknown>;
 type RoutePart = RouteHandler | PreHandler;
-type Method = "GET" | "POST" | "PATCH" | "DELETE";
+type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 export function createRouteRegistrar(fastify: FastifyInstance) {
   const register = (method: Method, url: string, ...parts: RoutePart[]) => {
@@ -47,6 +47,7 @@ export function createRouteRegistrar(fastify: FastifyInstance) {
   return {
     get: (url: string, ...parts: RoutePart[]) => register("GET", url, ...parts),
     post: (url: string, ...parts: RoutePart[]) => register("POST", url, ...parts),
+    put: (url: string, ...parts: RoutePart[]) => register("PUT", url, ...parts),
     patch: (url: string, ...parts: RoutePart[]) => register("PATCH", url, ...parts),
     delete: (url: string, ...parts: RoutePart[]) => register("DELETE", url, ...parts),
   };

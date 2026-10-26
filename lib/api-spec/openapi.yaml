@@ -14,6 +14,7 @@ tags:
   - name: academic
   - name: live
   - name: board
+  - name: learning
 paths:
   /healthz:
     get:
@@ -463,6 +464,304 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BoardTemplate"
+  /learning/assignments:
+    get:
+      operationId: getLearningAssignments
+      tags: [learning]
+      summary: List assignments available to the caller
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: query, name: sectionId, schema: { type: string, format: uuid } }
+        - { in: query, name: status, schema: { type: string, enum: [draft, published, closed] } }
+      responses:
+        "200":
+          description: Scoped assignments
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LearningAssignmentPage" }
+    post:
+      operationId: createLearningAssignment
+      tags: [learning]
+      summary: Create a draft assignment for an assigned section
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LearningAssignmentInput" }
+      responses:
+        "201":
+          description: Created assignment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LearningAssignment" }
+  /learning/assignments/{assignmentId}:
+    put:
+      operationId: updateLearningAssignment
+      tags: [learning]
+      summary: Edit a draft or change assignment publication status
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: assignmentId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LearningAssignmentUpdate" }
+      responses:
+        "200":
+          description: Updated assignment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LearningAssignment" }
+        "409": { description: Assignment transition is not allowed }
+  /learning/assignments/{assignmentId}/submissions:
+    get:
+      operationId: getLearningSubmissions
+      tags: [learning]
+      summary: Get submissions or own work
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: assignmentId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Submissions visible to the caller
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LearningSubmissionPage" }
+    post:
+      operationId: submitLearningAssignment
+      tags: [learning]
+      summary: Submit the current student's work
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: assignmentId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LearningSubmissionInput" }
+      responses:
+        "201":
+          description: Submission received
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LearningSubmission" }
+        "409": { description: Assignment is closed or work is already graded }
+  /learning/assignments/{assignmentId}/submissions/{studentId}/grade:
+    put:
+      operationId: gradeLearningSubmission
+      tags: [learning]
+      summary: Grade a student submission
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: assignmentId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: studentId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LearningGradeInput" }
+      responses:
+        "200":
+          description: Graded submission
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LearningSubmission" }
+        "403": { description: Caller cannot grade this student }
+  /learning/my/assignments:
+    get:
+      operationId: getMyLearningAssignments
+      tags: [learning]
+      summary: List assignments for the current student or linked children
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Student or guardian assignments
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LearningAssignmentPage" }
+  /learning/students/{studentId}/assignments:
+    get:
+      operationId: getStudentLearningAssignments
+      tags: [learning]
+      summary: List one student's assignments
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: studentId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Student assignment history
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LearningAssignmentPage" }
+        "403": { description: Caller cannot view this student }
+  /learning/exams:
+    get:
+      operationId: getLearningExams
+      tags: [learning]
+      summary: List assessments and published results
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: query, name: sectionId, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Assessments scoped to current role
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LearningExamPage" }
+    post:
+      operationId: createLearningExam
+      tags: [learning]
+      summary: Create a draft assessment
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LearningExamInput" }
+      responses:
+        "201":
+          description: Assessment created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LearningExam" }
+  /learning/exams/{examId}/marks:
+    get:
+      operationId: getLearningExamMarks
+      tags: [learning]
+      summary: Get the marks grid
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: examId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Scoped marks grid
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LearningMarkPage" }
+    put:
+      operationId: updateLearningExamMarks
+      tags: [learning]
+      summary: Save marks for an unpublished assessment
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: examId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LearningMarksInput" }
+      responses:
+        "200":
+          description: Updated marks grid
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LearningMarkPage" }
+        "409": { description: Published marks are locked }
+  /learning/exams/{examId}/publish:
+    post:
+      operationId: publishLearningExam
+      tags: [learning]
+      summary: Publish or unpublish exam results
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: examId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LearningExamPublishInput" }
+      responses:
+        "200":
+          description: Updated assessment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LearningExam" }
+        "409": { description: Every active student must have a score before publishing }
+  /learning/terms:
+    get:
+      operationId: getLearningTerms
+      tags: [learning]
+      summary: List assessment terms
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Terms for the organization
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LearningTermPage" }
+    post:
+      operationId: createLearningTerm
+      tags: [learning]
+      summary: Create an assessment term
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LearningTermInput" }
+      responses:
+        "201":
+          description: Created term
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LearningTerm" }
+  /learning/grade-scale:
+    get:
+      operationId: getLearningGradeScale
+      tags: [learning]
+      summary: Get the organization grade scale
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Grade scale
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LearningGradeScale" }
+    put:
+      operationId: updateLearningGradeScale
+      tags: [learning]
+      summary: Update the organization grade scale
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LearningGradeScaleInput" }
+      responses:
+        "200":
+          description: Updated grade scale
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LearningGradeScale" }
 components:
   securitySchemes:
     bearerAuth:
@@ -722,4 +1021,216 @@ components:
             exportFormats:
               type: array
               items: { type: string, enum: [png, pdf, json] }
+
+    LearningAssignmentStatus:
+      type: string
+      enum: [draft, published, closed]
+    LearningAssignment:
+      type: object
+      required: [id, sectionId, sectionName, title, instructions, dueAt, maxPoints, status, teacherName, submissionCount, studentId, studentName, mySubmission]
+      properties:
+        id: { type: string, format: uuid }
+        sectionId: { type: string, format: uuid }
+        sectionName: { type: string }
+        title: { type: string }
+        instructions: { type: string }
+        dueAt: { type: string, format: date-time }
+        maxPoints: { type: number }
+        status: { $ref: "#/components/schemas/LearningAssignmentStatus" }
+        teacherName: { type: string }
+        submissionCount: { type: integer }
+        studentId: { type: string, format: uuid, nullable: true }
+        studentName: { type: string, nullable: true }
+        mySubmission:
+          oneOf:
+            - { $ref: "#/components/schemas/LearningSubmission" }
+            - { type: "null" }
+    LearningAssignmentPage:
+      type: object
+      required: [items, total, limit, offset]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/LearningAssignment" }
+        total: { type: integer }
+        limit: { type: integer }
+        offset: { type: integer }
+    LearningAssignmentInput:
+      type: object
+      required: [sectionId, title, instructions, dueAt, maxPoints]
+      properties:
+        sectionId: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 180 }
+        instructions: { type: string, maxLength: 12000 }
+        dueAt: { type: string, format: date-time }
+        maxPoints: { type: number, exclusiveMinimum: 0, maximum: 100000 }
+    LearningAssignmentUpdate:
+      type: object
+      properties:
+        title: { type: string, minLength: 1, maxLength: 180 }
+        instructions: { type: string, maxLength: 12000 }
+        dueAt: { type: string, format: date-time }
+        maxPoints: { type: number, exclusiveMinimum: 0, maximum: 100000 }
+        status: { $ref: "#/components/schemas/LearningAssignmentStatus" }
+    LearningSubmission:
+      type: object
+      required: [studentId, studentName, content, submittedAt, isLate, gradePoints, feedback, gradedAt]
+      properties:
+        studentId: { type: string, format: uuid }
+        studentName: { type: string }
+        content: { type: string }
+        submittedAt: { type: string, format: date-time }
+        isLate: { type: boolean }
+        gradePoints: { type: number, nullable: true }
+        feedback: { type: string, nullable: true }
+        gradedAt: { type: string, format: date-time, nullable: true }
+    LearningSubmissionPage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/LearningSubmission" }
+        total: { type: integer }
+    LearningSubmissionInput:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string, minLength: 1, maxLength: 12000 }
+    LearningGradeInput:
+      type: object
+      required: [gradePoints, feedback]
+      properties:
+        gradePoints: { type: number, minimum: 0 }
+        feedback: { type: string, maxLength: 4000 }
+    LearningExamStatus:
+      type: string
+      enum: [draft, published]
+    LearningExam:
+      type: object
+      required: [id, sectionId, sectionName, termId, termName, title, examDate, maxPoints, status, results]
+      properties:
+        id: { type: string, format: uuid }
+        sectionId: { type: string, format: uuid }
+        sectionName: { type: string }
+        termId: { type: string, format: uuid, nullable: true }
+        termName: { type: string, nullable: true }
+        title: { type: string }
+        examDate: { type: string, format: date }
+        maxPoints: { type: number }
+        status: { $ref: "#/components/schemas/LearningExamStatus" }
+        results:
+          type: array
+          items: { $ref: "#/components/schemas/LearningStudentResult" }
+    LearningStudentResult:
+      type: object
+      required: [studentId, studentName, score, grade, feedback]
+      properties:
+        studentId: { type: string, format: uuid }
+        studentName: { type: string }
+        score: { type: number, nullable: true }
+        grade: { type: string, nullable: true }
+        feedback: { type: string, nullable: true }
+    LearningExamPage:
+      type: object
+      required: [items, total, limit, offset]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/LearningExam" }
+        total: { type: integer }
+        limit: { type: integer }
+        offset: { type: integer }
+    LearningExamInput:
+      type: object
+      required: [sectionId, title, examDate, maxPoints]
+      properties:
+        sectionId: { type: string, format: uuid }
+        termId: { type: string, format: uuid, nullable: true }
+        title: { type: string, minLength: 1, maxLength: 180 }
+        examDate: { type: string, format: date }
+        maxPoints: { type: number, exclusiveMinimum: 0, maximum: 100000 }
+    LearningExamPublishInput:
+      type: object
+      required: [published]
+      properties:
+        published: { type: boolean }
+    LearningMark:
+      type: object
+      required: [studentId, studentName, score, feedback, grade]
+      properties:
+        studentId: { type: string, format: uuid }
+        studentName: { type: string }
+        score: { type: number, nullable: true }
+        feedback: { type: string }
+        grade: { type: string, nullable: true }
+    LearningMarkPage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/LearningMark" }
+        total: { type: integer }
+    LearningMarksInput:
+      type: object
+      required: [marks]
+      properties:
+        marks:
+          type: array
+          maxItems: 500
+          items:
+            type: object
+            required: [studentId, score, feedback]
+            properties:
+              studentId: { type: string, format: uuid }
+              score: { type: number, minimum: 0, nullable: true }
+              feedback: { type: string, maxLength: 4000 }
+    LearningTerm:
+      type: object
+      required: [id, name, startsOn, endsOn, isCurrent]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        startsOn: { type: string, format: date }
+        endsOn: { type: string, format: date }
+        isCurrent: { type: boolean }
+    LearningTermPage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/LearningTerm" }
+        total: { type: integer }
+    LearningTermInput:
+      type: object
+      required: [name, startsOn, endsOn, isCurrent]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        startsOn: { type: string, format: date }
+        endsOn: { type: string, format: date }
+        isCurrent: { type: boolean }
+    LearningGradeBand:
+      type: object
+      required: [grade, minPercent]
+      properties:
+        grade: { type: string, minLength: 1, maxLength: 8 }
+        minPercent: { type: number, minimum: 0, maximum: 100 }
+    LearningGradeScale:
+      type: object
+      required: [bands]
+      properties:
+        bands:
+          type: array
+          items: { $ref: "#/components/schemas/LearningGradeBand" }
+    LearningGradeScaleInput:
+      type: object
+      required: [bands]
+      properties:
+        bands:
+          type: array
+          minItems: 2
+          maxItems: 12
+          items: { $ref: "#/components/schemas/LearningGradeBand" }
 

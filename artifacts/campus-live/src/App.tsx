@@ -22,6 +22,7 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import NotFound from '@/components/not-found';
 import { setAccessToken } from './auth-token';
 import { ClassroomScreen } from '@/components/classroom/classroom-screen';
+import { LearningPage } from '@/components/learning/learning-page';
 
 const queryClient = new QueryClient();
 const fmtDate = (iso?: string) => iso ? `${iso.slice(0, 10)} · ${iso.slice(11, 16)}` : 'Time not set';
@@ -50,6 +51,7 @@ function ProtectedApp() {
   if (me.isLoading) return <LoadingScreen />;
   if (!me.data) return <LoginGate error={me.error} retry={() => me.refetch()} />;
   const user = me.data;
+  if (!Array.isArray(user.roles)) return <LoginGate error={new Error('Your sign-in details are incomplete. Please sign in again.')} retry={() => me.refetch()} />;
   if (user.mustChangePassword) return <PasswordChangePage email={user.email} />;
   if (path.startsWith('/classroom/')) return <ErrorBoundary resetKey={path}><ClassroomPage roles={user.roles}/></ErrorBoundary>;
   return <div className="shell grain"><AppShell user={user} path={path} onLogout={() => { setAccessToken(null); queryClient.clear(); setPath('/login'); }}>
@@ -61,6 +63,7 @@ function ProtectedApp() {
         <Route path="/admin/students" component={() => <StudentsPage />} />
         <Route path="/live/sessions" component={() => <SessionsPage userRoles={user.roles} />} />
         <Route path="/boards/templates" component={() => <TemplatesPage roles={user.roles} />} />
+        <Route path="/learning" component={() => <LearningPage roles={user.roles} />} />
         <Route path="/family/consents" component={() => user.roles.includes('parent') ? <ConsentsPage/> : <NotFound/>} />
         <Route path="/classroom/:sessionId" component={() => <ClassroomPage roles={user.roles} />} />
         <Route component={NotFound} />
@@ -79,6 +82,7 @@ function AppShell({ user, path, onLogout, children }: { user: { name: string; em
     { label: 'Students', href: '/admin/students', icon: Users },
     { label: 'Live classes', href: '/live/sessions', icon: Video },
     { label: 'Smartboards', href: '/boards/templates', icon: Library },
+    { label: 'Learning', href: '/learning', icon: GraduationCap },
   ];
   if (user.roles.includes('parent')) nav.push({ label: 'Privacy & consent', href: '/family/consents', icon: ShieldCheck });
   return <div className="min-h-[100dvh] md:flex">

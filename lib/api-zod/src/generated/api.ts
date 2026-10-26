@@ -678,3 +678,536 @@ export const UpdateBoardTemplateResponse = zod.object({
 })
 
 
+/**
+ * @summary List assignments available to the caller
+ */
+export const GetLearningAssignmentsQueryParams = zod.object({
+  "sectionId": zod.uuid().optional(),
+  "status": zod.enum(['draft', 'published', 'closed']).optional()
+})
+
+export const GetLearningAssignmentsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "sectionId": zod.uuid(),
+  "sectionName": zod.string(),
+  "title": zod.string(),
+  "instructions": zod.string(),
+  "dueAt": zod.coerce.date(),
+  "maxPoints": zod.number(),
+  "status": zod.enum(['draft', 'published', 'closed']),
+  "teacherName": zod.string(),
+  "submissionCount": zod.int(),
+  "studentId": zod.uuid().nullable(),
+  "studentName": zod.string().nullable(),
+  "mySubmission": zod.union([zod.object({
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "content": zod.string(),
+  "submittedAt": zod.coerce.date(),
+  "isLate": zod.boolean(),
+  "gradePoints": zod.number().nullable(),
+  "feedback": zod.string().nullable(),
+  "gradedAt": zod.coerce.date().nullable()
+}),zod.null()])
+})),
+  "total": zod.int(),
+  "limit": zod.int(),
+  "offset": zod.int()
+})
+
+
+/**
+ * @summary Create a draft assignment for an assigned section
+ */
+export const createLearningAssignmentBodyTitleMax = 180;
+
+export const createLearningAssignmentBodyInstructionsMax = 12000;
+
+export const createLearningAssignmentBodyMaxPointsExclusiveMin = 0;
+export const createLearningAssignmentBodyMaxPointsMax = 100000;
+
+
+
+export const CreateLearningAssignmentBody = zod.object({
+  "sectionId": zod.uuid(),
+  "title": zod.string().min(1).max(createLearningAssignmentBodyTitleMax),
+  "instructions": zod.string().max(createLearningAssignmentBodyInstructionsMax),
+  "dueAt": zod.coerce.date(),
+  "maxPoints": zod.number().gt(createLearningAssignmentBodyMaxPointsExclusiveMin).max(createLearningAssignmentBodyMaxPointsMax)
+})
+
+export const CreateLearningAssignmentResponse = zod.object({
+  "id": zod.uuid(),
+  "sectionId": zod.uuid(),
+  "sectionName": zod.string(),
+  "title": zod.string(),
+  "instructions": zod.string(),
+  "dueAt": zod.coerce.date(),
+  "maxPoints": zod.number(),
+  "status": zod.enum(['draft', 'published', 'closed']),
+  "teacherName": zod.string(),
+  "submissionCount": zod.int(),
+  "studentId": zod.uuid().nullable(),
+  "studentName": zod.string().nullable(),
+  "mySubmission": zod.union([zod.object({
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "content": zod.string(),
+  "submittedAt": zod.coerce.date(),
+  "isLate": zod.boolean(),
+  "gradePoints": zod.number().nullable(),
+  "feedback": zod.string().nullable(),
+  "gradedAt": zod.coerce.date().nullable()
+}),zod.null()])
+})
+
+
+/**
+ * @summary Edit a draft or change assignment publication status
+ */
+export const UpdateLearningAssignmentParams = zod.object({
+  "assignmentId": zod.uuid()
+})
+
+export const updateLearningAssignmentBodyTitleMax = 180;
+
+export const updateLearningAssignmentBodyInstructionsMax = 12000;
+
+export const updateLearningAssignmentBodyMaxPointsExclusiveMin = 0;
+export const updateLearningAssignmentBodyMaxPointsMax = 100000;
+
+
+
+export const UpdateLearningAssignmentBody = zod.object({
+  "title": zod.string().min(1).max(updateLearningAssignmentBodyTitleMax).optional(),
+  "instructions": zod.string().max(updateLearningAssignmentBodyInstructionsMax).optional(),
+  "dueAt": zod.coerce.date().optional(),
+  "maxPoints": zod.number().gt(updateLearningAssignmentBodyMaxPointsExclusiveMin).max(updateLearningAssignmentBodyMaxPointsMax).optional(),
+  "status": zod.enum(['draft', 'published', 'closed']).optional()
+})
+
+export const UpdateLearningAssignmentResponse = zod.object({
+  "id": zod.uuid(),
+  "sectionId": zod.uuid(),
+  "sectionName": zod.string(),
+  "title": zod.string(),
+  "instructions": zod.string(),
+  "dueAt": zod.coerce.date(),
+  "maxPoints": zod.number(),
+  "status": zod.enum(['draft', 'published', 'closed']),
+  "teacherName": zod.string(),
+  "submissionCount": zod.int(),
+  "studentId": zod.uuid().nullable(),
+  "studentName": zod.string().nullable(),
+  "mySubmission": zod.union([zod.object({
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "content": zod.string(),
+  "submittedAt": zod.coerce.date(),
+  "isLate": zod.boolean(),
+  "gradePoints": zod.number().nullable(),
+  "feedback": zod.string().nullable(),
+  "gradedAt": zod.coerce.date().nullable()
+}),zod.null()])
+})
+
+
+/**
+ * @summary Get submissions or own work
+ */
+export const GetLearningSubmissionsParams = zod.object({
+  "assignmentId": zod.uuid()
+})
+
+export const GetLearningSubmissionsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "content": zod.string(),
+  "submittedAt": zod.coerce.date(),
+  "isLate": zod.boolean(),
+  "gradePoints": zod.number().nullable(),
+  "feedback": zod.string().nullable(),
+  "gradedAt": zod.coerce.date().nullable()
+})),
+  "total": zod.int()
+})
+
+
+/**
+ * @summary Submit the current student's work
+ */
+export const SubmitLearningAssignmentParams = zod.object({
+  "assignmentId": zod.uuid()
+})
+
+export const submitLearningAssignmentBodyContentMax = 12000;
+
+
+
+export const SubmitLearningAssignmentBody = zod.object({
+  "content": zod.string().min(1).max(submitLearningAssignmentBodyContentMax)
+})
+
+export const SubmitLearningAssignmentResponse = zod.object({
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "content": zod.string(),
+  "submittedAt": zod.coerce.date(),
+  "isLate": zod.boolean(),
+  "gradePoints": zod.number().nullable(),
+  "feedback": zod.string().nullable(),
+  "gradedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Grade a student submission
+ */
+export const GradeLearningSubmissionParams = zod.object({
+  "assignmentId": zod.uuid(),
+  "studentId": zod.uuid()
+})
+
+export const gradeLearningSubmissionBodyGradePointsMin = 0;
+
+export const gradeLearningSubmissionBodyFeedbackMax = 4000;
+
+
+
+export const GradeLearningSubmissionBody = zod.object({
+  "gradePoints": zod.number().min(gradeLearningSubmissionBodyGradePointsMin),
+  "feedback": zod.string().max(gradeLearningSubmissionBodyFeedbackMax)
+})
+
+export const GradeLearningSubmissionResponse = zod.object({
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "content": zod.string(),
+  "submittedAt": zod.coerce.date(),
+  "isLate": zod.boolean(),
+  "gradePoints": zod.number().nullable(),
+  "feedback": zod.string().nullable(),
+  "gradedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary List assignments for the current student or linked children
+ */
+export const GetMyLearningAssignmentsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "sectionId": zod.uuid(),
+  "sectionName": zod.string(),
+  "title": zod.string(),
+  "instructions": zod.string(),
+  "dueAt": zod.coerce.date(),
+  "maxPoints": zod.number(),
+  "status": zod.enum(['draft', 'published', 'closed']),
+  "teacherName": zod.string(),
+  "submissionCount": zod.int(),
+  "studentId": zod.uuid().nullable(),
+  "studentName": zod.string().nullable(),
+  "mySubmission": zod.union([zod.object({
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "content": zod.string(),
+  "submittedAt": zod.coerce.date(),
+  "isLate": zod.boolean(),
+  "gradePoints": zod.number().nullable(),
+  "feedback": zod.string().nullable(),
+  "gradedAt": zod.coerce.date().nullable()
+}),zod.null()])
+})),
+  "total": zod.int(),
+  "limit": zod.int(),
+  "offset": zod.int()
+})
+
+
+/**
+ * @summary List one student's assignments
+ */
+export const GetStudentLearningAssignmentsParams = zod.object({
+  "studentId": zod.uuid()
+})
+
+export const GetStudentLearningAssignmentsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "sectionId": zod.uuid(),
+  "sectionName": zod.string(),
+  "title": zod.string(),
+  "instructions": zod.string(),
+  "dueAt": zod.coerce.date(),
+  "maxPoints": zod.number(),
+  "status": zod.enum(['draft', 'published', 'closed']),
+  "teacherName": zod.string(),
+  "submissionCount": zod.int(),
+  "studentId": zod.uuid().nullable(),
+  "studentName": zod.string().nullable(),
+  "mySubmission": zod.union([zod.object({
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "content": zod.string(),
+  "submittedAt": zod.coerce.date(),
+  "isLate": zod.boolean(),
+  "gradePoints": zod.number().nullable(),
+  "feedback": zod.string().nullable(),
+  "gradedAt": zod.coerce.date().nullable()
+}),zod.null()])
+})),
+  "total": zod.int(),
+  "limit": zod.int(),
+  "offset": zod.int()
+})
+
+
+/**
+ * @summary List assessments and published results
+ */
+export const GetLearningExamsQueryParams = zod.object({
+  "sectionId": zod.uuid().optional()
+})
+
+export const GetLearningExamsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "sectionId": zod.uuid(),
+  "sectionName": zod.string(),
+  "termId": zod.uuid().nullable(),
+  "termName": zod.string().nullable(),
+  "title": zod.string(),
+  "examDate": zod.coerce.date(),
+  "maxPoints": zod.number(),
+  "status": zod.enum(['draft', 'published']),
+  "results": zod.array(zod.object({
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "score": zod.number().nullable(),
+  "grade": zod.string().nullable(),
+  "feedback": zod.string().nullable()
+}))
+})),
+  "total": zod.int(),
+  "limit": zod.int(),
+  "offset": zod.int()
+})
+
+
+/**
+ * @summary Create a draft assessment
+ */
+export const createLearningExamBodyTitleMax = 180;
+
+export const createLearningExamBodyMaxPointsExclusiveMin = 0;
+export const createLearningExamBodyMaxPointsMax = 100000;
+
+
+
+export const CreateLearningExamBody = zod.object({
+  "sectionId": zod.uuid(),
+  "termId": zod.uuid().nullish(),
+  "title": zod.string().min(1).max(createLearningExamBodyTitleMax),
+  "examDate": zod.coerce.date(),
+  "maxPoints": zod.number().gt(createLearningExamBodyMaxPointsExclusiveMin).max(createLearningExamBodyMaxPointsMax)
+})
+
+export const CreateLearningExamResponse = zod.object({
+  "id": zod.uuid(),
+  "sectionId": zod.uuid(),
+  "sectionName": zod.string(),
+  "termId": zod.uuid().nullable(),
+  "termName": zod.string().nullable(),
+  "title": zod.string(),
+  "examDate": zod.coerce.date(),
+  "maxPoints": zod.number(),
+  "status": zod.enum(['draft', 'published']),
+  "results": zod.array(zod.object({
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "score": zod.number().nullable(),
+  "grade": zod.string().nullable(),
+  "feedback": zod.string().nullable()
+}))
+})
+
+
+/**
+ * @summary Get the marks grid
+ */
+export const GetLearningExamMarksParams = zod.object({
+  "examId": zod.uuid()
+})
+
+export const GetLearningExamMarksResponse = zod.object({
+  "items": zod.array(zod.object({
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "score": zod.number().nullable(),
+  "feedback": zod.string(),
+  "grade": zod.string().nullable()
+})),
+  "total": zod.int()
+})
+
+
+/**
+ * @summary Save marks for an unpublished assessment
+ */
+export const UpdateLearningExamMarksParams = zod.object({
+  "examId": zod.uuid()
+})
+
+export const updateLearningExamMarksBodyMarksItemScoreMin = 0;
+
+export const updateLearningExamMarksBodyMarksItemFeedbackMax = 4000;
+
+export const updateLearningExamMarksBodyMarksMax = 500;
+
+
+
+export const UpdateLearningExamMarksBody = zod.object({
+  "marks": zod.array(zod.object({
+  "studentId": zod.uuid(),
+  "score": zod.number().min(updateLearningExamMarksBodyMarksItemScoreMin).nullable(),
+  "feedback": zod.string().max(updateLearningExamMarksBodyMarksItemFeedbackMax)
+})).max(updateLearningExamMarksBodyMarksMax)
+})
+
+export const UpdateLearningExamMarksResponse = zod.object({
+  "items": zod.array(zod.object({
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "score": zod.number().nullable(),
+  "feedback": zod.string(),
+  "grade": zod.string().nullable()
+})),
+  "total": zod.int()
+})
+
+
+/**
+ * @summary Publish or unpublish exam results
+ */
+export const PublishLearningExamParams = zod.object({
+  "examId": zod.uuid()
+})
+
+export const PublishLearningExamBody = zod.object({
+  "published": zod.boolean()
+})
+
+export const PublishLearningExamResponse = zod.object({
+  "id": zod.uuid(),
+  "sectionId": zod.uuid(),
+  "sectionName": zod.string(),
+  "termId": zod.uuid().nullable(),
+  "termName": zod.string().nullable(),
+  "title": zod.string(),
+  "examDate": zod.coerce.date(),
+  "maxPoints": zod.number(),
+  "status": zod.enum(['draft', 'published']),
+  "results": zod.array(zod.object({
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "score": zod.number().nullable(),
+  "grade": zod.string().nullable(),
+  "feedback": zod.string().nullable()
+}))
+})
+
+
+/**
+ * @summary List assessment terms
+ */
+export const GetLearningTermsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "name": zod.string(),
+  "startsOn": zod.coerce.date(),
+  "endsOn": zod.coerce.date(),
+  "isCurrent": zod.boolean()
+})),
+  "total": zod.int()
+})
+
+
+/**
+ * @summary Create an assessment term
+ */
+export const createLearningTermBodyNameMax = 100;
+
+
+
+export const CreateLearningTermBody = zod.object({
+  "name": zod.string().min(1).max(createLearningTermBodyNameMax),
+  "startsOn": zod.coerce.date(),
+  "endsOn": zod.coerce.date(),
+  "isCurrent": zod.boolean()
+})
+
+export const CreateLearningTermResponse = zod.object({
+  "id": zod.uuid(),
+  "name": zod.string(),
+  "startsOn": zod.coerce.date(),
+  "endsOn": zod.coerce.date(),
+  "isCurrent": zod.boolean()
+})
+
+
+/**
+ * @summary Get the organization grade scale
+ */
+export const getLearningGradeScaleResponseBandsItemGradeMax = 8;
+
+export const getLearningGradeScaleResponseBandsItemMinPercentMin = 0;
+export const getLearningGradeScaleResponseBandsItemMinPercentMax = 100;
+
+
+
+export const GetLearningGradeScaleResponse = zod.object({
+  "bands": zod.array(zod.object({
+  "grade": zod.string().min(1).max(getLearningGradeScaleResponseBandsItemGradeMax),
+  "minPercent": zod.number().min(getLearningGradeScaleResponseBandsItemMinPercentMin).max(getLearningGradeScaleResponseBandsItemMinPercentMax)
+}))
+})
+
+
+/**
+ * @summary Update the organization grade scale
+ */
+export const updateLearningGradeScaleBodyBandsItemGradeMax = 8;
+
+export const updateLearningGradeScaleBodyBandsItemMinPercentMin = 0;
+export const updateLearningGradeScaleBodyBandsItemMinPercentMax = 100;
+
+export const updateLearningGradeScaleBodyBandsMin = 2;
+export const updateLearningGradeScaleBodyBandsMax = 12;
+
+
+
+export const UpdateLearningGradeScaleBody = zod.object({
+  "bands": zod.array(zod.object({
+  "grade": zod.string().min(1).max(updateLearningGradeScaleBodyBandsItemGradeMax),
+  "minPercent": zod.number().min(updateLearningGradeScaleBodyBandsItemMinPercentMin).max(updateLearningGradeScaleBodyBandsItemMinPercentMax)
+})).min(updateLearningGradeScaleBodyBandsMin).max(updateLearningGradeScaleBodyBandsMax)
+})
+
+export const updateLearningGradeScaleResponseBandsItemGradeMax = 8;
+
+export const updateLearningGradeScaleResponseBandsItemMinPercentMin = 0;
+export const updateLearningGradeScaleResponseBandsItemMinPercentMax = 100;
+
+
+
+export const UpdateLearningGradeScaleResponse = zod.object({
+  "bands": zod.array(zod.object({
+  "grade": zod.string().min(1).max(updateLearningGradeScaleResponseBandsItemGradeMax),
+  "minPercent": zod.number().min(updateLearningGradeScaleResponseBandsItemMinPercentMin).max(updateLearningGradeScaleResponseBandsItemMinPercentMax)
+}))
+})
+
+

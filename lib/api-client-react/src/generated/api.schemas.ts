@@ -425,6 +425,250 @@ export interface BoardTemplateUpdate {
   isDefault?: boolean;
 }
 
+export type LearningAssignmentStatus = typeof LearningAssignmentStatus[keyof typeof LearningAssignmentStatus];
+
+
+export const LearningAssignmentStatus = {
+  draft: 'draft',
+  published: 'published',
+  closed: 'closed',
+} as const;
+
+export interface LearningSubmission {
+  studentId: string;
+  studentName: string;
+  content: string;
+  submittedAt: string;
+  isLate: boolean;
+  /** @nullable */
+  gradePoints: number | null;
+  /** @nullable */
+  feedback: string | null;
+  /** @nullable */
+  gradedAt: string | null;
+}
+
+export interface LearningAssignment {
+  id: string;
+  sectionId: string;
+  sectionName: string;
+  title: string;
+  instructions: string;
+  dueAt: string;
+  maxPoints: number;
+  status: LearningAssignmentStatus;
+  teacherName: string;
+  submissionCount: number;
+  /** @nullable */
+  studentId: string | null;
+  /** @nullable */
+  studentName: string | null;
+  mySubmission: LearningSubmission | null;
+}
+
+export interface LearningAssignmentPage {
+  items: LearningAssignment[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface LearningAssignmentInput {
+  sectionId: string;
+  /**
+     * @minLength 1
+     * @maxLength 180
+     */
+  title: string;
+  /** @maxLength 12000 */
+  instructions: string;
+  dueAt: string;
+  /**
+     * @maximum 100000
+     * @exclusiveMinimum 0
+     */
+  maxPoints: number;
+}
+
+export interface LearningAssignmentUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 180
+     */
+  title?: string;
+  /** @maxLength 12000 */
+  instructions?: string;
+  dueAt?: string;
+  /**
+     * @maximum 100000
+     * @exclusiveMinimum 0
+     */
+  maxPoints?: number;
+  status?: LearningAssignmentStatus;
+}
+
+export interface LearningSubmissionPage {
+  items: LearningSubmission[];
+  total: number;
+}
+
+export interface LearningSubmissionInput {
+  /**
+     * @minLength 1
+     * @maxLength 12000
+     */
+  content: string;
+}
+
+export interface LearningGradeInput {
+  /** @minimum 0 */
+  gradePoints: number;
+  /** @maxLength 4000 */
+  feedback: string;
+}
+
+export type LearningExamStatus = typeof LearningExamStatus[keyof typeof LearningExamStatus];
+
+
+export const LearningExamStatus = {
+  draft: 'draft',
+  published: 'published',
+} as const;
+
+export interface LearningStudentResult {
+  studentId: string;
+  studentName: string;
+  /** @nullable */
+  score: number | null;
+  /** @nullable */
+  grade: string | null;
+  /** @nullable */
+  feedback: string | null;
+}
+
+export interface LearningExam {
+  id: string;
+  sectionId: string;
+  sectionName: string;
+  /** @nullable */
+  termId: string | null;
+  /** @nullable */
+  termName: string | null;
+  title: string;
+  examDate: string;
+  maxPoints: number;
+  status: LearningExamStatus;
+  results: LearningStudentResult[];
+}
+
+export interface LearningExamPage {
+  items: LearningExam[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface LearningExamInput {
+  sectionId: string;
+  /** @nullable */
+  termId?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 180
+     */
+  title: string;
+  examDate: string;
+  /**
+     * @maximum 100000
+     * @exclusiveMinimum 0
+     */
+  maxPoints: number;
+}
+
+export interface LearningExamPublishInput {
+  published: boolean;
+}
+
+export interface LearningMark {
+  studentId: string;
+  studentName: string;
+  /** @nullable */
+  score: number | null;
+  feedback: string;
+  /** @nullable */
+  grade: string | null;
+}
+
+export interface LearningMarkPage {
+  items: LearningMark[];
+  total: number;
+}
+
+export type LearningMarksInputMarksItem = {
+  studentId: string;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  score: number | null;
+  /** @maxLength 4000 */
+  feedback: string;
+};
+
+export interface LearningMarksInput {
+  /** @maxItems 500 */
+  marks: LearningMarksInputMarksItem[];
+}
+
+export interface LearningTerm {
+  id: string;
+  name: string;
+  startsOn: string;
+  endsOn: string;
+  isCurrent: boolean;
+}
+
+export interface LearningTermPage {
+  items: LearningTerm[];
+  total: number;
+}
+
+export interface LearningTermInput {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name: string;
+  startsOn: string;
+  endsOn: string;
+  isCurrent: boolean;
+}
+
+export interface LearningGradeBand {
+  /**
+     * @minLength 1
+     * @maxLength 8
+     */
+  grade: string;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  minPercent: number;
+}
+
+export interface LearningGradeScale {
+  bands: LearningGradeBand[];
+}
+
+export interface LearningGradeScaleInput {
+  /**
+     * @minItems 2
+     * @maxItems 12
+     */
+  bands: LearningGradeBand[];
+}
+
 export type GetClasses200 = {
   items: ClassSummary[];
   total: number;
@@ -473,5 +717,23 @@ export type GetSessions200 = {
 export type GetBoardTemplates200 = {
   items: BoardTemplate[];
   total: number;
+};
+
+export type GetLearningAssignmentsParams = {
+sectionId?: string;
+status?: GetLearningAssignmentsStatus;
+};
+
+export type GetLearningAssignmentsStatus = typeof GetLearningAssignmentsStatus[keyof typeof GetLearningAssignmentsStatus];
+
+
+export const GetLearningAssignmentsStatus = {
+  draft: 'draft',
+  published: 'published',
+  closed: 'closed',
+} as const;
+
+export type GetLearningExamsParams = {
+sectionId?: string;
 };
 

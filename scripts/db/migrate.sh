@@ -36,4 +36,5 @@ live:001|services/live/migrations/001_live.sql
 board:001|services/board/migrations/001_board.sql
 board:002|services/board/migrations/002_realtime.sql
 live:002|services/live/migrations/002_classroom.sql
+learning:001|services/learning/migrations/001_learning.sql
 MIGRATIONS

@@ -4,13 +4,13 @@
 
 ## Current build
 
-This build covers sign-in, a role-scoped dashboard, class/section directories, a paginated student roster, live-session scheduling and state changes, board-template configuration, and the first live-classroom implementation described below.
+This build covers sign-in, a role-scoped dashboard, class/section directories, a paginated student roster, live-session scheduling and state changes, board-template configuration, a learning and assessment workspace, and the live classroom described below.
 
 | Area | Current implementation | Target in `MASTER_SPEC.md` |
 |---|---|---|
 | Web | Next.js 16 App Router + React 19 artifact at `/` | Next.js 16 App Router |
-| API | One Fastify 5 API process at `/api`, with identity, academic, live, board, and dashboard route modules | Fastify 5 gateway plus independently deployed services |
-| Data | PostgreSQL 16; `identity`, `academic`, `live`, and `board` schemas | Those schemas plus notify, school, learning, fees, and registry |
+| API | One Fastify 5 API process at `/api`, with identity, academic, live, board, learning, and dashboard route modules | Fastify 5 gateway plus independently deployed services |
+| Data | PostgreSQL 16; `identity`, `academic`, `live`, `board`, and learning migrations | Those schemas plus notify, school, fees, and registry |
 | Tenant access | `campus_app` is a non-superuser without `BYPASSRLS`; tenant tables use forced RLS and transaction-local `app.org_id` | Same principle, shared helpers and per-service enforcement |
 | Migrations | A separate local `campus_migrator` role applies numbered migrations before the API starts | Release migration job, checksums, lock/statement limits |
 | Redis | Readiness check only | Redis Streams event bus and service consumers |
@@ -56,6 +56,15 @@ This build is a development vertical slice, not a production release. In particu
 - API smoke checks against local PostgreSQL/Redis, including administrator, teacher, student, and parent access
 
 The separate `snyk test` command was attempted but Snyk is not installed in this environment. No production deployment was performed.
+
+## Learning and assessment implementation (2026-10-26)
+
+- The `/learning` page supports role-aware assignment creation, publishing/closing, student submissions, teacher grading and feedback, assessment marks, result publishing/unpublishing, academic terms, and grade-scale configuration.
+- The API checks teacher section assignments, student enrollment, and guardian-child links on the server. Students can submit only their own work; guardian views are read-only; unpublished exam results are hidden from students and guardians. Exam marks lock while results are published.
+- `services/learning/migrations/001_learning.sql` adds organization-scoped tables with forced RLS and org-leading indexes. The migration is registered in `scripts/db/migrate.sh`; it was **not applied in this session** because `.env` and `MIGRATOR_DATABASE_URL` are unavailable.
+- OpenAPI remains the API contract; generated React Query and Zod clients cover the learning routes. Audit entries are written for grading, mark edits, result publication, and grade-scale changes.
+- Verification: `PORT=8081 BASE_PATH=/__mockup npm run build` passed across API, Campus Live, and the mockup sandbox; all workspace type checks passed; 22 API unit tests passed; OpenAPI code generation passed. `/learning` renders its sign-in gate in the unauthenticated preview; real-database and signed-in browser flows were not run.
+- Not included in this slice: report cards/printing, diary, resources, progress, and analytics. No production-readiness gate is claimed closed.
 
 ## Live classroom implementation and evidence (2026-10-26)
 

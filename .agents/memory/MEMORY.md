@@ -1,2 +1,3 @@
 - [Clean dependency validation](clean-dependency-validation.md) — npm lockfile-only resolution can inspect pnpm links; validate package-manager changes with a clean install.
 - [LiveKit webhook authorization](livekit-webhook-authorization.md) — the SDK verifies the raw JWT header, not a Bearer-prefixed token, against the exact raw payload.
+- [Campus Live classroom scope](campus-live-classroom-scope.md) — preserve the existing classroom while building other product areas.
