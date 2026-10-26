@@ -1,9 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
+import { extraTenantCases } from "./rls-write-fixtures.mjs";
 
 const expectedDatabase = "campus_rls_test";
+const expectedTenantTableCount = 31;
 const localHosts = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
 const organizationIds = { a: randomUUID(), b: randomUUID() };
+const auxiliaryIds = {
+  users: { a: randomUUID(), b: randomUUID() },
+  sessions: { a: randomUUID(), b: randomUUID() },
+};
 let fixtureIds = {};
 const failures = [];
 
@@ -36,7 +42,7 @@ function validateUrl(name, value, expectedRole) {
   }
 }
 
-const tableCases = [
+const baseTableCases = [
   {
     table: "identity.users",
     idColumn: "id",
@@ -175,12 +181,15 @@ const tableCases = [
   },
 ];
 
+const tableCases = [...baseTableCases, ...extraTenantCases];
+
 function createContext(tableCase, side, id, isFixture = false) {
   return {
     id,
     orgId: organizationIds[side],
     side,
     ids: fixtureIds,
+    auxiliaryIds,
     isFixture,
     tableCase,
   };
@@ -205,9 +214,28 @@ async function inOrg(pool, orgId, callback, readOnly = false) {
   }
 }
 
+function keySql(tableCase, placeholderOffset = 0) {
+  const predicate = tableCase.keySql ?? `${tableCase.idColumn ?? "id"} = $1`;
+  if (placeholderOffset === 0) return predicate;
+  return predicate.replace(/\$(\d+)/g, (_match, index) => `$${Number(index) + placeholderOffset}`);
+}
+
+function keyValues(tableCase, context) {
+  return tableCase.keyValues ? tableCase.keyValues(context) : [context.id];
+}
+
+function selectRowSql(tableCase) {
+  return `SELECT 1 FROM ${tableCase.table} WHERE ${keySql(tableCase)}`;
+}
+
+function deleteRowSql(tableCase) {
+  return `DELETE FROM ${tableCase.table} WHERE ${keySql(tableCase)} RETURNING 1`;
+}
+
 async function expectForeignInsertDenied(client, tableCase, side, otherSide) {
   const id = randomUUID();
   const context = createContext(tableCase, otherSide, id);
+  if (tableCase.table === "learning.grade_scales") context.orgId = randomUUID();
   await client.query("SAVEPOINT foreign_org_insert");
   let denied = false;
   try {
@@ -222,6 +250,26 @@ async function expectForeignInsertDenied(client, tableCase, side, otherSide) {
   assert(denied, `${tableCase.table}: INSERT for the other org was not rejected while scoped to org ${side}`);
 }
 
+async function expectOrgReassignmentDenied(client, tableCase, side, otherSide, ownContext) {
+  const foreignOrgId =
+    tableCase.table === "learning.grade_scales" ? randomUUID() : organizationIds[otherSide];
+  await client.query("SAVEPOINT foreign_org_reassignment");
+  let denied = false;
+  try {
+    await client.query(
+      `UPDATE ${tableCase.table} SET org_id = $1 WHERE ${keySql(tableCase, 1)} RETURNING 1`,
+      [foreignOrgId, ...keyValues(tableCase, ownContext)],
+    );
+  } catch (error) {
+    if (error?.code === "42501") denied = true;
+    else throw error;
+  } finally {
+    await client.query("ROLLBACK TO SAVEPOINT foreign_org_reassignment");
+    await client.query("RELEASE SAVEPOINT foreign_org_reassignment");
+  }
+  assert(denied, `${tableCase.table}: changing an owned row to a foreign org was not rejected for org ${side}`);
+}
+
 async function runTenantWriteChecks(appPool) {
   const client = await appPool.connect();
   let transactionStarted = false;
@@ -234,39 +282,44 @@ async function runTenantWriteChecks(appPool) {
         const otherSide = side === "a" ? "b" : "a";
         const ownId = fixtureIds[tableCase.table][side];
         const foreignId = fixtureIds[tableCase.table][otherSide];
+        const ownContext = createContext(tableCase, side, ownId, true);
+        const foreignContext = createContext(tableCase, otherSide, foreignId, true);
+        const ownKeys = keyValues(tableCase, ownContext);
+        const foreignKeys = keyValues(tableCase, foreignContext);
+        const predicate = keySql(tableCase);
         await client.query("SELECT set_config('app.org_id', $1, true)", [organizationIds[side]]);
 
-        const ownRow = await client.query(
-          `SELECT id FROM ${tableCase.table} WHERE ${tableCase.idColumn} = $1`,
-          [ownId],
-        );
+        const ownRow = await client.query(selectRowSql(tableCase), ownKeys);
         assert(ownRow.rowCount === 1, `${tableCase.table}: org ${side} cannot see its own fixture row`);
 
-        const foreignRow = await client.query(
-          `SELECT id FROM ${tableCase.table} WHERE ${tableCase.idColumn} = $1`,
-          [foreignId],
-        );
+        const foreignRow = await client.query(selectRowSql(tableCase), foreignKeys);
         assert(foreignRow.rowCount === 0, `${tableCase.table}: org ${side} can see org ${otherSide}'s row`);
 
-        const blockedUpdate = await client.query(tableCase.updateSql, [
-          tableCase.updateValue({ side, id: foreignId }),
-          foreignId,
-        ]);
+        const blockedUpdate = await client.query(
+          `UPDATE ${tableCase.table} SET org_id = org_id WHERE ${predicate} RETURNING 1`,
+          foreignKeys,
+        );
         assert(
           blockedUpdate.rowCount === 0,
           `${tableCase.table}: UPDATE changed a row belonging to org ${otherSide}`,
         );
 
-        const blockedDelete = await client.query(
-          `DELETE FROM ${tableCase.table} WHERE ${tableCase.idColumn} = $1 RETURNING ${tableCase.idColumn}`,
-          [foreignId],
-        );
+        const blockedDelete = await client.query(deleteRowSql(tableCase), foreignKeys);
         assert(
           blockedDelete.rowCount === 0,
           `${tableCase.table}: DELETE changed a row belonging to org ${otherSide}`,
         );
 
         await expectForeignInsertDenied(client, tableCase, side, otherSide);
+        await expectOrgReassignmentDenied(client, tableCase, side, otherSide, ownContext);
+
+        if (tableCase.replaceFixtureBeforeInsert) {
+          const removedFixture = await client.query(deleteRowSql(tableCase), ownKeys);
+          assert(
+            removedFixture.rowCount === 1,
+            `${tableCase.table}: same-org DELETE control was unexpectedly denied`,
+          );
+        }
 
         const transientId = randomUUID();
         const transientContext = createContext(tableCase, side, transientId);
@@ -276,18 +329,14 @@ async function runTenantWriteChecks(appPool) {
         );
         assert(inserted.rowCount === 1, `${tableCase.table}: same-org INSERT was unexpectedly denied`);
 
-        const updated = await client.query(tableCase.updateSql, [
-          tableCase.updateValue({ side, id: transientId }),
-          transientId,
-        ]);
+        const updated = await client.query(
+          `UPDATE ${tableCase.table} SET org_id = org_id WHERE ${keySql(tableCase)} RETURNING 1`,
+          keyValues(tableCase, transientContext),
+        );
         assert(updated.rowCount === 1, `${tableCase.table}: same-org UPDATE was unexpectedly denied`);
 
-        const deleted = await client.query(
-          `DELETE FROM ${tableCase.table} WHERE ${tableCase.idColumn} = $1 RETURNING ${tableCase.idColumn}`,
-          [transientId],
-        );
+        const deleted = await client.query(deleteRowSql(tableCase), keyValues(tableCase, transientContext));
         assert(deleted.rowCount === 1, `${tableCase.table}: same-org DELETE was unexpectedly denied`);
-
       }
     }
 
@@ -309,10 +358,10 @@ async function verifyFixturesUnchanged(migratorPool) {
       async (client) => {
         for (const tableCase of tableCases) {
           const id = fixtureIds[tableCase.table][side];
-          const result = await client.query(tableCase.selectValueSql, [id]);
-          const expected = tableCase.initialValue({ side, id });
+          const context = createContext(tableCase, side, id, true);
+          const result = await client.query(selectRowSql(tableCase), keyValues(tableCase, context));
           assert(
-            result.rowCount === 1 && result.rows[0].value === expected,
+            result.rowCount === 1,
             `${tableCase.table}: rollback did not preserve the org ${side} fixture row`,
           );
         }
@@ -320,6 +369,60 @@ async function verifyFixturesUnchanged(migratorPool) {
       true,
     );
   }
+}
+
+async function verifyTenantCaseCoverage(pool) {
+  const rows = (
+    await pool.query(`
+      SELECT namespace.nspname AS schema_name,
+             relation.relname AS table_name,
+             relation.relrowsecurity AS rls_enabled,
+             relation.relforcerowsecurity AS rls_forced,
+             EXISTS (
+               SELECT 1
+                 FROM pg_attribute attribute
+                WHERE attribute.attrelid = relation.oid
+                  AND attribute.attname = 'org_id'
+                  AND attribute.attnum > 0
+                  AND NOT attribute.attisdropped
+             ) AS has_org_id
+        FROM pg_class relation
+        JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+       WHERE relation.relkind IN ('r', 'p')
+         AND namespace.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
+         AND namespace.nspname NOT LIKE 'pg_temp_%'
+         AND namespace.nspname NOT LIKE 'pg_toast_temp_%'
+      ORDER BY namespace.nspname, relation.relname
+    `)
+  ).rows.filter((row) => row.has_org_id);
+  const actual = new Set(rows.map((row) => `${row.schema_name}.${row.table_name}`));
+  const expected = new Set(tableCases.map((tableCase) => tableCase.table));
+  const missingCases = [...actual].filter((table) => !expected.has(table));
+  const staleCases = [...expected].filter((table) => !actual.has(table));
+  const duplicateCases = tableCases.length !== expected.size;
+  const rlsFailures = rows
+    .filter((row) => !row.rls_enabled || !row.rls_forced)
+    .map((row) => `${row.schema_name}.${row.table_name}`);
+
+  if (
+    rows.length !== expectedTenantTableCount ||
+    missingCases.length ||
+    staleCases.length ||
+    duplicateCases ||
+    rlsFailures.length
+  ) {
+    throw new Error(
+      [
+        `Tenant-table coverage mismatch: database=${rows.length}, expected=${expectedTenantTableCount}, cases=${tableCases.length}.`,
+        missingCases.length ? `Missing test cases: ${missingCases.join(", ")}.` : "",
+        staleCases.length ? `Stale test cases: ${staleCases.join(", ")}.` : "",
+        rlsFailures.length ? `RLS is not enabled and forced for: ${rlsFailures.join(", ")}.` : "",
+      ]
+        .filter(Boolean)
+        .join(" "),
+    );
+  }
+  console.log(`Tenant table inventory: all ${rows.length} tables have a write-test case and forced RLS.`);
 }
 
 async function main() {
@@ -383,6 +486,8 @@ async function main() {
       throw new Error("Migration connection is not the non-superuser campus_migrator role on the temporary database.");
     }
 
+    await verifyTenantCaseCoverage(appPool);
+
     fixtureIds = Object.fromEntries(
       tableCases.map((tableCase) => [
         tableCase.table,
@@ -411,11 +516,36 @@ async function main() {
           if (result.rowCount !== 1) {
             throw new Error(`Could not create isolated fixture for ${tableCase.table}, org ${side}.`);
           }
+
+          if (tableCase.table === "identity.users") {
+            const auxiliaryUser = createContext(
+              tableCase,
+              side,
+              auxiliaryIds.users[side],
+            );
+            await client.query(
+              tableCase.insertSql,
+              tableCase.insertValues(auxiliaryUser),
+            );
+          }
+          if (tableCase.table === "live.sessions") {
+            const auxiliarySession = createContext(
+              tableCase,
+              side,
+              auxiliaryIds.sessions[side],
+            );
+            await client.query(
+              tableCase.insertSql,
+              tableCase.insertValues(auxiliarySession),
+            );
+          }
         }
       });
     }
 
-    console.log("Temporary database: migrations applied; two synthetic organizations and 14 tenant fixtures created.");
+    console.log(
+      `Temporary database: migrations applied; two synthetic organizations, ${tableCases.length * 2} tenant fixtures, and 4 supporting rows created.`,
+    );
     await runTenantWriteChecks(appPool);
     await verifyFixturesUnchanged(migratorPool);
 
@@ -426,11 +556,9 @@ async function main() {
       return;
     }
 
+    console.log(`PASS: all ${tableCases.length} tenant tables across identity, academic, board, learning, live, and school.`);
     console.log(
-      `PASS: ${tableCases.length} representative tenant tables across identity, academic, board, learning, live, and school.`,
-    );
-    console.log(
-      "For both org contexts, cross-org SELECT returned 0 rows, UPDATE/DELETE changed 0 rows, and INSERT was rejected by RLS.",
+      "For both org contexts, cross-org SELECT returned 0 rows, UPDATE/DELETE changed 0 rows, and INSERT plus org reassignment were rejected by RLS.",
     );
     console.log("Same-org INSERT/UPDATE/DELETE controls succeeded inside a rolled-back transaction.");
     console.log("Fixture integrity confirmed after rollback; no shared database was used.");

@@ -8,7 +8,7 @@ _Replace the heading above with the project's name, and this line with one sente
 - `npm run typecheck` — full typecheck across all packages
 - `npm run build` — typecheck + build all packages
 - `npm run rls:check` — read-only tenant RLS audit against the local `campus` DB; requires root `.env`
-- `npm run rls:write-check` — write-denial checks on seven representative tables using a fresh temporary PostgreSQL 16 cluster; requires root `.env` and local PostgreSQL tools; leaves the shared DB untouched
+- `npm run rls:write-check` — write-denial checks on all 31 current tenant tables using a fresh temporary PostgreSQL 16 cluster; requires root `.env` and local PostgreSQL tools; leaves the shared DB untouched
 - `npm run codegen --workspace=@workspace/api-spec` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `npm run push --workspace=@workspace/db` — push DB schema changes (dev only)
 - The API development workflow expects the ignored root `.env`; see `.env.example` for local-only defaults. It needs both `DATABASE_URL` (application role) and `MIGRATOR_DATABASE_URL` (migration role), plus the configured service URLs/secrets.
