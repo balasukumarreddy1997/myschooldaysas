@@ -1,6 +1,6 @@
 # Live-session route slice
 
-This is a convenience summary derived from `MASTER_SPEC.md`; the master spec remains authoritative. These routes currently live in the shared Express API process and are not an independently deployed live service.
+This is a convenience summary derived from `MASTER_SPEC.md`; the master spec remains authoritative. These routes currently run in the shared Fastify API process through a temporary Express compatibility bridge; live is not yet an independently deployed service.
 
 ## Implemented contract
 

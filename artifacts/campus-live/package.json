@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --config vite.config.ts --host 0.0.0.0",
-    "build": "BASE_PATH=${BASE_PATH:-/} PORT=${PORT:-19557} vite build --config vite.config.ts",
-    "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
+    "dev": "next dev --hostname 0.0.0.0 --port ${PORT:-19557}",
+    "build": "next build",
+    "start": "next start --hostname 0.0.0.0 --port ${PORT:-19557}",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
@@ -73,5 +73,9 @@
     "vite": "catalog:",
     "wouter": "^3.3.5",
     "zod": "catalog:"
+  },
+  "dependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "next": "16.4.3"
   }
 }

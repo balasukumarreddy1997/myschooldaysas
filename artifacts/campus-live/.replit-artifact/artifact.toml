@@ -15,13 +15,12 @@ localPort = 19557
 run = "pnpm --filter @workspace/campus-live run dev"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/campus-live", "run", "build" ]
-serve = "static"
-publicDir = "artifacts/campus-live/dist/public"
 
-[[services.production.rewrites]]
-from = "/*"
-to = "/index.html"
+[services.production.build]
+args = [ "pnpm", "--filter", "@workspace/campus-live", "run", "build" ]
+
+[services.production.run]
+args = [ "pnpm", "--filter", "@workspace/campus-live", "run", "start" ]
 
 [services.env]
 PORT = "19557"

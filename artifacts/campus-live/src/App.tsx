@@ -1,3 +1,5 @@
+"use client";
+
 import { type FormEvent, type ReactNode, useMemo, useState } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { Link, Route, Switch, useLocation, useParams } from 'wouter';
@@ -17,9 +19,8 @@ import {
   Sun, Users, Video, X,
 } from 'lucide-react';
 import { ErrorBoundary } from '@/components/error-boundary';
-import NotFound from '@/pages/not-found';
+import NotFound from '@/components/not-found';
 import { setAccessToken } from './auth-token';
-import './index.css';
 
 const queryClient = new QueryClient();
 const fmtDate = (iso?: string) => iso ? `${iso.slice(0, 10)} · ${iso.slice(11, 16)}` : 'Time not set';

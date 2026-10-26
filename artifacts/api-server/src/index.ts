@@ -1,4 +1,6 @@
 import { loadRuntimeConfig } from "./lib/config";
+import Fastify from "fastify";
+import fastifyExpress from "@fastify/express";
 
 const config = loadRuntimeConfig();
 const [appModule, loggerModule, dbModule] = await Promise.all([
@@ -11,19 +13,11 @@ const { logger } = loggerModule;
 const { assertLeastPrivilegeDatabaseRole, pool } = dbModule;
 const port = config.PORT;
 
-const server = app.listen(port, async (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
-
-  try {
-    await assertLeastPrivilegeDatabaseRole(pool);
-    logger.info({ port }, "Server listening");
-  } catch (error) {
-    logger.error({ err: error }, "Database role verification failed");
-    server.close(() => process.exit(1));
-  }
+const server = Fastify({
+  bodyLimit: 1024 * 1024,
+  connectionTimeout: 10_000,
+  requestTimeout: 30_000,
+  logger: false,
 });
 
 let shuttingDown = false;
@@ -31,12 +25,29 @@ async function shutdown(signal: string) {
   if (shuttingDown) return;
   shuttingDown = true;
   logger.info({ signal }, "Graceful shutdown started");
-  server.close(async (error) => {
-    if (error) logger.error({ err: error }, "HTTP server close failed");
+  const timeout = setTimeout(() => process.exit(1), 10_000);
+  timeout.unref();
+  try {
+    await server.close();
     await pool.end();
-    process.exit(error ? 1 : 0);
-  });
-  setTimeout(() => process.exit(1), 10_000).unref();
+    process.exit(0);
+  } catch (error) {
+    logger.error({ err: error }, "Graceful shutdown failed");
+    process.exit(1);
+  }
+}
+
+try {
+  await server.register(fastifyExpress);
+  server.use(app);
+  await assertLeastPrivilegeDatabaseRole(pool);
+  await server.listen({ port, host: "0.0.0.0" });
+  server.server.headersTimeout = 10_000;
+  logger.info({ port, runtime: "fastify", expressCompatibility: true }, "Server listening");
+} catch (error) {
+  logger.error({ err: error }, "API server startup failed");
+  await pool.end();
+  process.exit(1);
 }
 
 process.once("SIGTERM", () => void shutdown("SIGTERM"));
