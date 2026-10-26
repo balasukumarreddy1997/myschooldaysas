@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Campus Live"
+description = "A multi-tenant school platform for administrators, teachers, students, and parents, with academic operations, live classes, a configurable collaborative smartboard, attendance, and learning workflows."
+version = "1.0.0"
+id = "artifacts/campus-live"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19557
+
+[services.development]
+run = "pnpm --filter @workspace/campus-live run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/campus-live", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/campus-live/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19557"
+BASE_PATH = "/"

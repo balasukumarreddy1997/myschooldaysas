@@ -1,0 +1,52 @@
+name: platform
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: platform-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: campus
+      POSTGRES_PASSWORD: postgres_dev_only
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - platform-postgres-data:/var/lib/postgresql/data
+      - ./infra/init.sql:/docker-entrypoint-initdb.d/001-roles.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d campus"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: platform-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - platform-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  livekit:
+    image: livekit/livekit-server:v1.8.4
+    container_name: platform-livekit
+    restart: unless-stopped
+    command: ["--config", "/etc/livekit.yaml", "--node-ip", "127.0.0.1"]
+    ports:
+      - "127.0.0.1:7880:7880"
+      - "127.0.0.1:7881:7881"
+      - "127.0.0.1:7882:7882/udp"
+    volumes:
+      - ./infra/livekit.yaml:/etc/livekit.yaml:ro
+
+volumes:
+  platform-postgres-data:
+  platform-redis-data:
