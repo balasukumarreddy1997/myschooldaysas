@@ -9,13 +9,14 @@ _Replace the heading above with the project's name, and this line with one sente
 - `npm run build` — typecheck + build all packages
 - `npm run codegen --workspace=@workspace/api-spec` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `npm run push --workspace=@workspace/db` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- The API development workflow expects the ignored root `.env`; see `.env.example` for local-only defaults. It needs both `DATABASE_URL` (application role) and `MIGRATOR_DATABASE_URL` (migration role), plus the configured service URLs/secrets.
+- The API development workflow loads the ignored root `.env`, then runs migrations and the development seed before starting. Use `.env.example` only for local development; never copy its defaults into production.
 
 ## Stack
 
 - npm workspaces, Node.js 24, TypeScript 5.9
 - API: Fastify 5
-- DB: PostgreSQL + Drizzle ORM
+- DB: PostgreSQL + `pg` (raw SQL; no ORM)
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (ESM bundle)
