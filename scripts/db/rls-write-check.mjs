@@ -3,7 +3,7 @@ import { Pool } from "pg";
 import { extraTenantCases } from "./rls-write-fixtures.mjs";
 
 const expectedDatabase = "campus_rls_test";
-const expectedTenantTableCount = 31;
+const expectedTenantTableCount = 33;
 const localHosts = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
 const organizationIds = { a: randomUUID(), b: randomUUID() };
 const auxiliaryIds = {

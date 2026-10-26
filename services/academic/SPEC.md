@@ -11,11 +11,20 @@ This is a convenience summary derived from `MASTER_SPEC.md`; these routes now re
 
 ## Data and isolation
 
-The `academic` schema stores classes, sections, enrollments, and teacher assignments. Tenant tables use `org_id` and forced RLS. Guardian links are joined under the same organization scope.
+The `academic` schema stores classes, sections, subjects, enrollments, teacher assignments, timetable slots, consent records, and consent-review status. `identity.guardian_links` stores guardian relationships and the `can_view_live` / `can_pay_fees` flags. Tenant tables use `org_id` and forced RLS; guardian links are joined under the same organization scope. Sections expose optional capacity; enrollment records expose academic year; timetable slots include an optional room.
 
-## Not implemented
+## Implemented in this checkout
 
-The full spec's CRUD, subjects, timetable, teacher workloads, guardians management, attendance, transfers, promotion, and analytics are not part of this slice. Guardian consent list/grant/revoke routes are implemented for linked students; live viewing requires an active `live_view` grant. Recording/photo/marketing enforcement and a first-login consent flow remain open.
+- Admins can manage section capacity and academic year through the academic API and class/roster screens.
+- Timetable slots can be created and removed by admins, are visible according to the caller's section/teacher/guardian relationships, include room, and reject overlapping teacher or section slots.
+- Subject catalog, teacher assignments, student attendance, and term report cards are implemented in adjacent academic/learning screens.
+- Parent consent review status is persisted; the parent must explicitly review choices, and that action grants no permission.
+- Administrators can list guardian links and update live-view/payment flags. Parent live-session discovery and classroom access require session `parent_view`, a linked student, `can_view_live`, and an active `live_view` consent.
+- Recording/photo consent grants return 409 while the corresponding product features are unavailable.
+
+## Remaining gaps
+
+Admissions seat enforcement still uses the legacy `class_capacity` field because registry/admissions is not present in this checkout. No fee-payment feature exists to enforce `can_pay_fees`; audit entries for consent-review and guardian-flag changes, marketing/data-processing consent policy and enforcement remain open. Calendar rules, transfers/promotion UI, and academic analytics are also not implemented.
 
 ## Acceptance checks
 

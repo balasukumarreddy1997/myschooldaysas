@@ -75,6 +75,22 @@ export const extraTenantCases = [
     subjectId(context),
     context.isFixture ? userId(context) : alternateUserId(context),
   ]),
+  idCase("academic.guardian_consent_reviews", "guardian_user_id", (context) => [
+    context.isFixture ? userId(context) : alternateUserId(context),
+  ]),
+  idCase(
+    "academic.timetable_slots",
+    "section_id, subject_id, teacher_user_id, weekday, start_time, end_time, room",
+    (context) => [
+      sectionId(context),
+      subjectId(context),
+      context.isFixture ? userId(context) : alternateUserId(context),
+      1,
+      context.isFixture ? "08:00" : "09:00",
+      context.isFixture ? "08:45" : "09:45",
+      "RLS fixture room",
+    ],
+  ),
   idCase("board.boards", "session_id, config", (context) => [
     context.isFixture ? sessionId(context) : alternateSessionId(context),
     JSON.stringify({ testFixture: true }),

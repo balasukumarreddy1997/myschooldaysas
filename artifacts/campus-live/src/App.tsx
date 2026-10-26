@@ -10,6 +10,7 @@ import {
   useCreateSession, useStartSession, useEndSession, useGetSessionToken,
   useGetBoardTemplates, getGetBoardTemplatesQueryKey, useCreateBoardTemplate, useUpdateBoardTemplate,
   useChangePassword, useGetConsents, getGetConsentsQueryKey, useGrantConsent, useRevokeConsent,
+  getGetConsentReviewStatusQueryKey, useCompleteConsentReview, useGetConsentReviewStatus,
 } from '@workspace/api-client-react';
 import type { BoardConfig, BoardTemplate, BoardTemplateInput, LiveSession, LiveSessionInput, SectionSummary } from '@workspace/api-client-react';
 import {
@@ -24,6 +25,10 @@ import { setAccessToken } from './auth-token';
 import { ClassroomScreen } from '@/components/classroom/classroom-screen';
 import { LearningPage } from '@/components/learning/learning-page';
 import { AttendancePage } from '@/components/attendance/attendance-page';
+import { TimetablePage } from '@/components/academic/timetable-page';
+import { SectionCapacityField } from '@/components/academic/section-capacity-field';
+import { EnrollmentYearField } from '@/components/academic/enrollment-year-field';
+import { GuardianAccessPage } from '@/components/academic/guardian-access-page';
 
 const queryClient = new QueryClient();
 const fmtDate = (iso?: string) => iso ? `${iso.slice(0, 10)} · ${iso.slice(11, 16)}` : 'Time not set';
@@ -49,23 +54,36 @@ function App() {
 function ProtectedApp() {
   const [path, setPath] = useLocation();
   const me = useGetMe({ query: { retry: false } });
+  const consentReview = useGetConsentReviewStatus({
+    query: { enabled: me.data?.roles?.includes('parent') ?? false, retry: false },
+  });
   if (me.isLoading) return <LoadingScreen />;
   if (!me.data) return <LoginGate error={me.error} retry={() => me.refetch()} />;
   const user = me.data;
   if (!Array.isArray(user.roles)) return <LoginGate error={new Error('Your sign-in details are incomplete. Please sign in again.')} retry={() => me.refetch()} />;
   if (user.mustChangePassword) return <PasswordChangePage email={user.email} />;
+  const logout = () => { setAccessToken(null); queryClient.clear(); setPath('/login'); };
+  if (user.roles.includes('parent')) {
+    if (consentReview.isLoading) return <LoadingScreen />;
+    if (consentReview.isError) return <div className="shell grain grid min-h-screen place-items-center p-5"><div className="surface max-w-md p-6 text-center"><h1 className="display text-xl font-extrabold">Privacy choices unavailable</h1><p className="my-3 text-sm text-[hsl(var(--muted-foreground))]">We could not load your consent review status.</p><button className="btn btn-primary" onClick={() => consentReview.refetch()}>Try again</button></div></div>;
+    if (consentReview.data?.required && !consentReview.data.reviewedAt) {
+      return <div className="shell grain min-h-screen"><main className="mx-auto w-full max-w-5xl p-4 pt-8 md:p-8"><div className="mb-7 flex items-center justify-between"><div className="flex items-center gap-2 font-bold"><ShieldCheck size={18} className="text-[hsl(var(--primary))]"/>Campus Live</div><button className="btn btn-muted" onClick={logout}><LogOut size={15}/>Sign out</button></div><ConsentsPage firstLogin /></main></div>;
+    }
+  }
   if (path.startsWith('/classroom/')) return <ErrorBoundary resetKey={path}><ClassroomPage roles={user.roles}/></ErrorBoundary>;
-  return <div className="shell grain"><AppShell user={user} path={path} onLogout={() => { setAccessToken(null); queryClient.clear(); setPath('/login'); }}>
+  return <div className="shell grain"><AppShell user={user} path={path} onLogout={logout}>
     <ErrorBoundary resetKey={path}>
       <Switch>
         <Route path="/" component={() => <DashboardPage />} />
         <Route path="/dashboard" component={() => <DashboardPage />} />
-        <Route path="/admin/classes" component={() => <ClassesPage />} />
-        <Route path="/admin/students" component={() => <StudentsPage />} />
+        <Route path="/admin/classes" component={() => <ClassesPage roles={user.roles} />} />
+        <Route path="/admin/students" component={() => <StudentsPage roles={user.roles} />} />
+        <Route path="/admin/guardians" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <GuardianAccessPage/> : <NotFound/>} />
         <Route path="/live/sessions" component={() => <SessionsPage userRoles={user.roles} />} />
         <Route path="/boards/templates" component={() => <TemplatesPage roles={user.roles} />} />
         <Route path="/learning" component={() => <LearningPage roles={user.roles} />} />
         <Route path="/attendance" component={() => <AttendancePage roles={user.roles} />} />
+        <Route path="/timetable" component={() => <TimetablePage canManage={user.roles.some(role => ['super_admin', 'org_admin', 'campus_admin'].includes(role))} />} />
         <Route path="/family/consents" component={() => user.roles.includes('parent') ? <ConsentsPage/> : <NotFound/>} />
         <Route path="/classroom/:sessionId" component={() => <ClassroomPage roles={user.roles} />} />
         <Route component={NotFound} />
@@ -86,7 +104,11 @@ function AppShell({ user, path, onLogout, children }: { user: { name: string; em
     { label: 'Smartboards', href: '/boards/templates', icon: Library },
     { label: 'Learning', href: '/learning', icon: GraduationCap },
     { label: 'Attendance', href: '/attendance', icon: CalendarCheck },
+    { label: 'Timetable', href: '/timetable', icon: CalendarCheck },
   ];
+  if (user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role))) {
+    nav.push({ label: 'Family access', href: '/admin/guardians', icon: ShieldCheck });
+  }
   if (user.roles.includes('parent')) nav.push({ label: 'Privacy & consent', href: '/family/consents', icon: ShieldCheck });
   return <div className="min-h-[100dvh] md:flex">
     <aside className={`fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col bg-[hsl(var(--sidebar))] px-4 py-5 text-[hsl(var(--sidebar-foreground))] transition-transform md:translate-x-0 ${mobileNav ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -199,24 +221,27 @@ function PasswordChangePage({ email }: { email: string }) {
   </div>;
 }
 
-function ConsentsPage() {
+function ConsentsPage({ firstLogin = false }: { firstLogin?: boolean }) {
   const consents = useGetConsents();
   const queryClient = useQueryClient();
   const grant = useGrantConsent({ mutation: { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetConsentsQueryKey() }) } });
   const revoke = useRevokeConsent({ mutation: { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetConsentsQueryKey() }) } });
+  const review = useCompleteConsentReview({ mutation: { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetConsentReviewStatusQueryKey() }) } });
   const items = consents.data?.items ?? [];
 
   return <div>
-    <PageHeading eyebrow="Family privacy" title="Privacy & consent" description="Review and change consent for each linked student."/>
+    <PageHeading eyebrow={firstLogin ? "Before you continue" : "Family privacy"} title="Privacy & consent" description="Review and change consent for each linked student."/>
     <div className="surface mb-5 border-l-4 border-l-[hsl(var(--accent))] p-4 text-xs leading-5 text-[hsl(var(--muted-foreground))]">
-      Live viewing is checked against the live_view choice. Recording and photo features are not enabled in this build.
+      Live viewing requires an active live-view choice. Recording and photo features are not enabled; they cannot be granted here. Reviewing this page does not grant any consent.
     </div>
+    {firstLogin && <div className="surface mb-5 p-4 text-xs leading-5 text-[hsl(var(--muted-foreground))]">Please review the choices for each linked student. You can grant or revoke available choices below, and change them later from Privacy &amp; consent.</div>}
     <QueryState loading={consents.isLoading} error={consents.error} empty={!items.length} retry={() => consents.refetch()}>
       <div className="surface overflow-hidden">
         <div className="divide-y divide-[hsl(var(--border))]">
           {items.map(item => {
             const busy = grant.isPending || revoke.isPending;
             const label = item.purpose.replaceAll('_', ' ');
+            const unavailable = item.purpose === 'recording' || item.purpose === 'photo';
             return <div key={`${item.studentId}:${item.purpose}`} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
               <div className="min-w-0 flex-1">
                 <div className="font-semibold">{item.studentName}</div>
@@ -225,13 +250,16 @@ function ConsentsPage() {
               <span className={`text-xs font-semibold ${item.granted ? 'text-[hsl(var(--status-good))]' : 'text-[hsl(var(--muted-foreground))]'}`}>{item.granted ? 'Granted' : 'Not granted'}</span>
               {item.granted
                 ? <button disabled={busy} className="btn btn-muted btn-sm" onClick={() => revoke.mutate({ studentId: item.studentId, purpose: item.purpose })}>Revoke</button>
-                : <button disabled={busy} className="btn btn-primary btn-sm" onClick={() => grant.mutate({ data: { studentId: item.studentId, purpose: item.purpose } })}>Grant</button>}
+                : unavailable
+                  ? <span className="text-xs text-[hsl(var(--muted-foreground))]">Feature not enabled</span>
+                  : <button disabled={busy} className="btn btn-primary btn-sm" onClick={() => grant.mutate({ data: { studentId: item.studentId, purpose: item.purpose } })}>Grant</button>}
             </div>;
           })}
         </div>
       </div>
     </QueryState>
-    {(grant.isError || revoke.isError) && <p role="alert" className="mt-3 text-xs text-[hsl(var(--destructive))]">{errorText(grant.error || revoke.error)}</p>}
+    {(grant.isError || revoke.isError || review.isError) && <p role="alert" className="mt-3 text-xs text-[hsl(var(--destructive))]">{errorText(grant.error || revoke.error || review.error)}</p>}
+    {firstLogin && <div className="surface mt-5 flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><p className="m-0 text-xs leading-5 text-[hsl(var(--muted-foreground))]">This records that you reviewed the choices. It does not grant a permission.</p><button className="btn btn-primary" disabled={consents.isLoading || consents.isError || review.isPending} onClick={() => review.mutate(undefined)}>{review.isPending ? 'Saving…' : 'I reviewed these choices and continue'}<ArrowRight size={15}/></button></div>}
   </div>;
 }
 
@@ -276,18 +304,20 @@ function SessionRow({ session, action }: { session: LiveSession; action?: React.
 }
 function StatusTag({ status }: { status: string }) { return <span className={`tag ${status === 'live' ? 'tag-live' : ''}`}>{status}</span>; }
 
-function ClassesPage() {
+function ClassesPage({ roles }: { roles: string[] }) {
+  const canManage = roles.some(role => ['super_admin', 'org_admin', 'campus_admin'].includes(role));
   const classes = useGetClasses(); const sections = useGetSections();
   const byClass = useMemo(() => (sections.data?.items ?? []).reduce<Record<string, SectionSummary[]>>((acc, section) => { (acc[section.classId] ??= []).push(section); return acc; }, {}), [sections.data]);
   const err = classes.error || sections.error;
   return <><PageHeading eyebrow="Academic directory" title="Classes & sections" description="A clear view of the classes and sections in your school."/>
     <QueryState loading={classes.isLoading || sections.isLoading} error={err} empty={!classes.data?.items.length} retry={() => { classes.refetch(); sections.refetch(); }}>
-      {classes.data && <div className="space-y-3">{classes.data.items.map(item => <details key={item.id} className="surface group overflow-hidden" open><summary data-testid={`class-summary-${item.id}`} className="flex cursor-pointer list-none flex-wrap items-center gap-4 p-4 md:p-5"><div className="grid h-11 w-11 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><BookOpen size={19}/></div><div className="min-w-[150px] flex-1"><div className="display text-[15px] font-extrabold">{item.name}</div><div className="mt-1 text-[11px] text-[hsl(var(--muted-foreground))]">Grade {item.gradeLevel}</div></div><div className="flex gap-5 text-center"><div><div className="display font-bold">{item.sectionCount}</div><div className="text-[10px] text-[hsl(var(--muted-foreground))]">Sections</div></div><div><div className="display font-bold">{item.studentCount}</div><div className="text-[10px] text-[hsl(var(--muted-foreground))]">Students</div></div></div><ChevronDown className="ml-2 text-[hsl(var(--muted-foreground))] transition group-open:rotate-180" size={17}/></summary><div className="border-t border-[hsl(var(--border))] px-4 py-3 md:px-5">{byClass[item.id]?.length ? <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{byClass[item.id].map(section => <div key={section.id} data-testid={`section-card-${section.id}`} className="flex items-center justify-between rounded-lg bg-[hsl(var(--background))] p-3"><div><div className="text-xs font-bold">{section.name}</div><div className="mt-1 text-[10px] text-[hsl(var(--muted-foreground))]">{section.studentCount} students</div></div><Users size={15} className="text-[hsl(var(--primary))]"/></div>)}</div> : <p className="text-xs text-[hsl(var(--muted-foreground))]">No sections have been assigned to this class.</p>}</div></details>)}</div>}
+      {classes.data && <div className="space-y-3">{classes.data.items.map(item => <details key={item.id} className="surface group overflow-hidden" open><summary data-testid={`class-summary-${item.id}`} className="flex cursor-pointer list-none flex-wrap items-center gap-4 p-4 md:p-5"><div className="grid h-11 w-11 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><BookOpen size={19}/></div><div className="min-w-[150px] flex-1"><div className="display text-[15px] font-extrabold">{item.name}</div><div className="mt-1 text-[11px] text-[hsl(var(--muted-foreground))]">Grade {item.gradeLevel}</div></div><div className="flex gap-5 text-center"><div><div className="display font-bold">{item.sectionCount}</div><div className="text-[10px] text-[hsl(var(--muted-foreground))]">Sections</div></div><div><div className="display font-bold">{item.studentCount}</div><div className="text-[10px] text-[hsl(var(--muted-foreground))]">Students</div></div></div><ChevronDown className="ml-2 text-[hsl(var(--muted-foreground))] transition group-open:rotate-180" size={17}/></summary><div className="border-t border-[hsl(var(--border))] px-4 py-3 md:px-5">{byClass[item.id]?.length ? <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{byClass[item.id].map(section => <div key={section.id} data-testid={`section-card-${section.id}`} className="space-y-3 rounded-lg bg-[hsl(var(--background))] p-3"><div className="flex items-center justify-between"><div><div className="text-xs font-bold">{section.name}</div><div className="mt-1 text-[10px] text-[hsl(var(--muted-foreground))]">{section.studentCount} students · capacity {section.capacity ?? 'not set'}</div></div><Users size={15} className="text-[hsl(var(--primary))]"/></div>{canManage && <SectionCapacityField sectionId={section.id} sectionName={section.name} capacity={section.capacity}/>}</div>)}</div> : <p className="text-xs text-[hsl(var(--muted-foreground))]">No sections have been assigned to this class.</p>}</div></details>)}</div>}
     </QueryState>
   </>;
 }
 
-function StudentsPage() {
+function StudentsPage({ roles }: { roles: string[] }) {
+  const canManage = roles.some(role => ['super_admin', 'org_admin', 'campus_admin'].includes(role));
   const sections = useGetSections();
   const [sectionId, setSectionId] = useState('');
   const [page, setPage] = useState(0);
@@ -305,7 +335,7 @@ function StudentsPage() {
       <QueryState loading={students.isLoading} error={students.error} empty={!students.data?.items.length} retry={() => students.refetch()}>
         {students.data && <div className="surface overflow-hidden">
           <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-4"><div className="text-xs font-bold">{students.data.total} students</div><div className="text-[11px] text-[hsl(var(--muted-foreground))">Section roster</div></div>
-          <div className="overflow-x-auto"><table className="w-full min-w-[620px] text-left"><thead className="bg-[hsl(var(--muted))] text-[10px] uppercase tracking-[.12em] text-[hsl(var(--muted-foreground))]"><tr><th className="px-4 py-3">Student</th><th className="px-4 py-3">Admission no.</th><th className="px-4 py-3">Section</th><th className="px-4 py-3">Status</th></tr></thead><tbody>{students.data.items.map(student => <tr key={student.id} data-testid={`student-row-${student.id}`} className="border-t border-[hsl(var(--border))]"><td className="px-4 py-3"><div className="flex items-center gap-3"><div className="grid h-8 w-8 place-items-center rounded-full bg-[hsl(var(--secondary))] text-xs font-bold text-[hsl(var(--primary))]">{student.name.slice(0,1).toUpperCase()}</div><span className="text-xs font-bold">{student.name}</span></div></td><td className="px-4 py-3 text-xs text-[hsl(var(--muted-foreground))]">{student.admissionNo}</td><td className="px-4 py-3 text-xs">{student.sectionName}</td><td className="px-4 py-3"><StatusTag status={student.status}/></td></tr>)}</tbody></table></div>
+          <div className="overflow-x-auto"><table className="w-full min-w-[820px] text-left"><thead className="bg-[hsl(var(--muted))] text-[10px] uppercase tracking-[.12em] text-[hsl(var(--muted-foreground))]"><tr><th className="px-4 py-3">Student</th><th className="px-4 py-3">Admission no.</th><th className="px-4 py-3">Section</th><th className="px-4 py-3">Academic year</th><th className="px-4 py-3">Status</th></tr></thead><tbody>{students.data.items.map(student => <tr key={student.enrollmentId} data-testid={`student-row-${student.id}`} className="border-t border-[hsl(var(--border))]"><td className="px-4 py-3"><div className="flex items-center gap-3"><div className="grid h-8 w-8 place-items-center rounded-full bg-[hsl(var(--secondary))] text-xs font-bold text-[hsl(var(--primary))]">{student.name.slice(0,1).toUpperCase()}</div><span className="text-xs font-bold">{student.name}</span></div></td><td className="px-4 py-3 text-xs text-[hsl(var(--muted-foreground))]">{student.admissionNo}</td><td className="px-4 py-3 text-xs">{student.sectionName}</td><td className="px-4 py-3">{canManage ? <EnrollmentYearField enrollmentId={student.enrollmentId} academicYear={student.academicYear}/> : <span className="text-xs">{student.academicYear}</span>}</td><td className="px-4 py-3"><StatusTag status={student.status}/></td></tr>)}</tbody></table></div>
           <div className="flex items-center justify-between border-t border-[hsl(var(--border))] px-4 py-3"><span className="text-[11px] text-[hsl(var(--muted-foreground))">Showing {students.data.total ? page * 20 + 1 : 0}–{Math.min((page + 1) * 20, students.data.total)} of {students.data.total}</span><div className="flex gap-2"><button data-testid="button-students-prev" disabled={page === 0} className="btn btn-muted min-h-8 px-2" onClick={() => setPage(p => p - 1)}><ChevronLeft size={16}/><span className="desktop-only">Previous</span></button><button data-testid="button-students-next" disabled={(page + 1) * 20 >= students.data.total} className="btn btn-muted min-h-8 px-2" onClick={() => setPage(p => p + 1)}><span className="desktop-only">Next</span><ChevronRight size={16}/></button></div></div>
         </div>}
       </QueryState>}

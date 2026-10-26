@@ -1,8 +1,20 @@
 import type { FastifyPluginAsync } from "fastify";
-import { GetStudentsQueryParams, GrantConsentBody, RevokeConsentParams } from "@workspace/api-zod";
+import {
+  GetGuardianLinksQueryParams,
+  GetStudentsQueryParams,
+  GrantConsentBody,
+  RevokeConsentParams,
+  UpdateGuardianLinkFlagsBody,
+  UpdateGuardianLinkFlagsParams,
+  UpdateEnrollmentYearBody,
+  UpdateEnrollmentYearParams,
+  UpdateSectionBody,
+  UpdateSectionParams,
+} from "@workspace/api-zod";
 import { withOrg } from "@workspace/db";
 import { createRouteRegistrar } from "../lib/fastify-routes";
 import { requireAuth, type CampusRole } from "../lib/auth";
+import { canManageAcademicSetup } from "../lib/academic-scheduling-policy";
 
 const routes: FastifyPluginAsync = async (fastify) => {
 const router = createRouteRegistrar(fastify);
@@ -10,6 +22,7 @@ const router = createRouteRegistrar(fastify);
 const adminRoles: CampusRole[] = ["super_admin", "org_admin", "campus_admin"];
 const teachingRoles: CampusRole[] = ["teacher", "class_teacher", "hod"];
 type ConsentPurpose = "live_view" | "recording" | "photo" | "data_processing";
+const unavailableConsentPurposes = new Set<ConsentPurpose>(["recording", "photo"]);
 
 function errorBody(code: string, message: string) {
   return { error: { code, message } };
@@ -23,6 +36,137 @@ function roleFlags(roles: CampusRole[]) {
     isParent: roles.includes("parent"),
   };
 }
+
+router.get("/academic/guardians", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!user.roles.some((role) => adminRoles.includes(role))) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Administrator role required."));
+  }
+  const parsed = GetGuardianLinksQueryParams.safeParse(req.query);
+  if (!parsed.success) return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide valid guardian-list filters."));
+  const { q, limit = 50, offset = 0 } = parsed.data;
+
+  try {
+    const result = await withOrg(user.orgId, async (client) => {
+      const count = await client.query<{ total: string }>(
+        `SELECT COUNT(*)::text AS total
+           FROM identity.guardian_links gl
+           JOIN identity.users student
+             ON student.org_id = gl.org_id AND student.id = gl.student_user_id
+           JOIN identity.users guardian
+             ON guardian.org_id = gl.org_id AND guardian.id = gl.guardian_user_id
+          WHERE gl.org_id = $1
+            AND ($2::text IS NULL OR student.name ILIKE '%' || $2 || '%'
+              OR guardian.name ILIKE '%' || $2 || '%' OR guardian.email ILIKE '%' || $2 || '%')`,
+        [user.orgId, q?.trim() || null],
+      );
+      const rows = await client.query<{
+        student_id: string;
+        student_name: string;
+        guardian_id: string;
+        guardian_name: string;
+        guardian_email: string;
+        relationship: string;
+        can_view_live: boolean;
+        can_pay_fees: boolean;
+      }>(
+        `SELECT gl.student_user_id AS student_id, student.name AS student_name,
+                gl.guardian_user_id AS guardian_id, guardian.name AS guardian_name,
+                guardian.email AS guardian_email, gl.relationship,
+                gl.can_view_live, gl.can_pay_fees
+           FROM identity.guardian_links gl
+           JOIN identity.users student
+             ON student.org_id = gl.org_id AND student.id = gl.student_user_id
+           JOIN identity.users guardian
+             ON guardian.org_id = gl.org_id AND guardian.id = gl.guardian_user_id
+          WHERE gl.org_id = $1
+            AND ($2::text IS NULL OR student.name ILIKE '%' || $2 || '%'
+              OR guardian.name ILIKE '%' || $2 || '%' OR guardian.email ILIKE '%' || $2 || '%')
+          ORDER BY student.name, guardian.name
+          LIMIT $3 OFFSET $4`,
+        [user.orgId, q?.trim() || null, limit, offset],
+      );
+      return {
+        items: rows.rows.map((row) => ({
+          studentId: row.student_id,
+          studentName: row.student_name,
+          guardianId: row.guardian_id,
+          guardianName: row.guardian_name,
+          guardianEmail: row.guardian_email,
+          relationship: row.relationship,
+          canViewLive: row.can_view_live,
+          canPayFees: row.can_pay_fees,
+        })),
+        total: Number(count.rows[0]?.total ?? 0),
+      };
+    });
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch("/academic/guardians/:studentId/:guardianId", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!user.roles.some((role) => adminRoles.includes(role))) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Administrator role required."));
+  }
+  const params = UpdateGuardianLinkFlagsParams.safeParse(req.params);
+  const body = UpdateGuardianLinkFlagsBody.safeParse(req.body);
+  if (!params.success || !body.success) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide valid guardian-link flags."));
+  }
+
+  try {
+    const link = await withOrg(user.orgId, async (client) => {
+      const updated = await client.query(
+        `UPDATE identity.guardian_links
+            SET can_view_live = $4, can_pay_fees = $5
+          WHERE org_id = $1 AND student_user_id = $2 AND guardian_user_id = $3`,
+        [user.orgId, params.data.studentId, params.data.guardianId, body.data.canViewLive, body.data.canPayFees],
+      );
+      if ((updated.rowCount ?? 0) === 0) return null;
+      const result = await client.query<{
+        student_id: string;
+        student_name: string;
+        guardian_id: string;
+        guardian_name: string;
+        guardian_email: string;
+        relationship: string;
+        can_view_live: boolean;
+        can_pay_fees: boolean;
+      }>(
+        `SELECT gl.student_user_id AS student_id, student.name AS student_name,
+                gl.guardian_user_id AS guardian_id, guardian.name AS guardian_name,
+                guardian.email AS guardian_email, gl.relationship,
+                gl.can_view_live, gl.can_pay_fees
+           FROM identity.guardian_links gl
+           JOIN identity.users student
+             ON student.org_id = gl.org_id AND student.id = gl.student_user_id
+           JOIN identity.users guardian
+             ON guardian.org_id = gl.org_id AND guardian.id = gl.guardian_user_id
+          WHERE gl.org_id = $1 AND gl.student_user_id = $2 AND gl.guardian_user_id = $3`,
+        [user.orgId, params.data.studentId, params.data.guardianId],
+      );
+      return result.rows[0] ?? null;
+    });
+    if (!link) return void res.status(404).json(errorBody("NOT_FOUND", "Guardian link not found."));
+    res.json({
+      studentId: link.student_id,
+      studentName: link.student_name,
+      guardianId: link.guardian_id,
+      guardianName: link.guardian_name,
+      guardianEmail: link.guardian_email,
+      relationship: link.relationship,
+      canViewLive: link.can_view_live,
+      canPayFees: link.can_pay_fees,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.get("/academic/classes", requireAuth, async (req, res, next) => {
   const user = req.campusUser;
@@ -100,7 +244,7 @@ router.get("/academic/sections", requireAuth, async (req, res, next) => {
   try {
     const result = await withOrg(user.orgId, (client) =>
       client.query(
-        `SELECT s.id, s.class_id, c.name AS class_name, s.name,
+        `SELECT s.id, s.class_id, c.name AS class_name, s.name, s.capacity,
                 COUNT(DISTINCT e.student_user_id)::int AS student_count
            FROM academic.sections s
            JOIN academic.classes c
@@ -148,9 +292,60 @@ router.get("/academic/sections", requireAuth, async (req, res, next) => {
         className: row.class_name,
         name: row.name,
         studentCount: row.student_count,
+        capacity: row.capacity,
       })),
       total: result.rowCount ?? result.rows.length,
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch("/academic/sections/:sectionId", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!canManageAcademicSetup(user.roles)) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only administrators can manage section capacity."));
+  }
+  const params = UpdateSectionParams.safeParse(req.params);
+  const body = UpdateSectionBody.safeParse(req.body);
+  if (!params.success || !body.success) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a valid section ID and capacity."));
+  }
+
+  try {
+    const section = await withOrg(user.orgId, async (client) => {
+      const updated = await client.query(
+        `UPDATE academic.sections
+            SET capacity = $3
+          WHERE org_id = $1 AND id = $2
+          RETURNING id`,
+        [user.orgId, params.data.sectionId, body.data.capacity],
+      );
+      if (!updated.rowCount) return null;
+      const result = await client.query(
+        `SELECT s.id, s.class_id, c.name AS class_name, s.name, s.capacity,
+                COUNT(DISTINCT e.student_user_id)::int AS student_count
+           FROM academic.sections s
+           JOIN academic.classes c ON c.id = s.class_id AND c.org_id = s.org_id
+           LEFT JOIN academic.enrollments e
+             ON e.org_id = s.org_id AND e.section_id = s.id AND e.status = 'active'
+          WHERE s.org_id = $1 AND s.id = $2
+          GROUP BY s.id, c.name`,
+        [user.orgId, params.data.sectionId],
+      );
+      const row = result.rows[0];
+      return {
+        id: row.id,
+        classId: row.class_id,
+        className: row.class_name,
+        name: row.name,
+        capacity: row.capacity,
+        studentCount: row.student_count,
+      };
+    });
+    if (!section) return void res.status(404).json(errorBody("NOT_FOUND", "Section not found."));
+    res.json(section);
   } catch (error) {
     next(error);
   }
@@ -191,8 +386,8 @@ router.get("/academic/students", requireAuth, async (req, res, next) => {
         [user.orgId, sectionId, flags.isAdmin, flags.isTeacher, flags.isStudent, user.id, flags.isParent, q ?? null],
       );
       const rows = await client.query(
-        `SELECT u.id, u.name, e.admission_no, s.id AS section_id,
-                s.name AS section_name, e.status
+        `SELECT u.id, e.id AS enrollment_id, u.name, e.admission_no, s.id AS section_id,
+                s.name AS section_name, e.status, e.academic_year
            FROM academic.enrollments e
            JOIN academic.sections s ON s.id = e.section_id AND s.org_id = e.org_id
            JOIN identity.users u ON u.id = e.student_user_id AND u.org_id = e.org_id
@@ -207,16 +402,128 @@ router.get("/academic/students", requireAuth, async (req, res, next) => {
     res.json({
       items: result.rows.map((row) => ({
         id: row.id,
+        enrollmentId: row.enrollment_id,
         name: row.name,
         admissionNo: row.admission_no,
         sectionId: row.section_id,
         sectionName: row.section_name,
         status: row.status,
+        academicYear: row.academic_year,
       })),
       total: result.total,
       limit,
       offset,
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch("/academic/enrollments/:enrollmentId", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!canManageAcademicSetup(user.roles)) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only administrators can change enrollment years."));
+  }
+  const params = UpdateEnrollmentYearParams.safeParse(req.params);
+  const body = UpdateEnrollmentYearBody.safeParse(req.body);
+  const academicYear = body.success ? body.data.academicYear.trim() : "";
+  if (!params.success || !body.success || academicYear.length < 4) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a valid enrollment ID and academic year."));
+  }
+
+  try {
+    const updated = await withOrg(user.orgId, async (client) => {
+      const result = await client.query(
+        `UPDATE academic.enrollments
+            SET academic_year = $3
+          WHERE org_id = $1 AND id = $2
+          RETURNING id, student_user_id, admission_no, section_id, status, academic_year`,
+        [user.orgId, params.data.enrollmentId, academicYear],
+      );
+      if (!result.rowCount) return null;
+      const enrollment = result.rows[0];
+      const student = await client.query(
+        `SELECT u.name, s.name AS section_name
+           FROM identity.users u
+           JOIN academic.sections s ON s.org_id = u.org_id
+          WHERE u.org_id = $1 AND u.id = $2 AND s.id = $3`,
+        [user.orgId, enrollment.student_user_id, enrollment.section_id],
+      );
+      if (!student.rowCount) return null;
+      return {
+        id: enrollment.student_user_id,
+        enrollmentId: enrollment.id,
+        name: student.rows[0].name,
+        admissionNo: enrollment.admission_no,
+        sectionId: enrollment.section_id,
+        sectionName: student.rows[0].section_name,
+        status: enrollment.status,
+        academicYear: enrollment.academic_year,
+      };
+    });
+    if (!updated) return void res.status(404).json(errorBody("NOT_FOUND", "Enrollment not found."));
+    res.json(updated);
+  } catch (error: any) {
+    if (error?.code === "23505") {
+      return void res.status(409).json(errorBody("CONFLICT", "That student already has an enrollment for this academic year."));
+    }
+    next(error);
+  }
+});
+
+router.get("/academic/consents/review-status", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!user.roles.includes("parent")) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only a guardian can review consent choices."));
+  }
+
+  try {
+    const result = await withOrg(user.orgId, (client) =>
+      client.query<{ required: boolean; reviewed_at: Date | null }>(
+        `SELECT EXISTS (
+           SELECT 1 FROM identity.guardian_links
+            WHERE org_id = $1 AND guardian_user_id = $2
+         ) AS required,
+         (SELECT reviewed_at FROM academic.guardian_consent_reviews
+           WHERE org_id = $1 AND guardian_user_id = $2) AS reviewed_at`,
+        [user.orgId, user.id],
+      ),
+    );
+    const row = result.rows[0];
+    res.json({ required: row?.required ?? false, reviewedAt: row?.reviewed_at?.toISOString() ?? null });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/academic/consents/review", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!user.roles.includes("parent")) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only a guardian can review consent choices."));
+  }
+
+  try {
+    const result = await withOrg(user.orgId, async (client) => {
+      const saved = await client.query<{ reviewed_at: Date }>(
+        `INSERT INTO academic.guardian_consent_reviews (org_id, guardian_user_id)
+         VALUES ($1, $2)
+         ON CONFLICT (org_id, guardian_user_id)
+         DO UPDATE SET reviewed_at = now()
+         RETURNING reviewed_at`,
+        [user.orgId, user.id],
+      );
+      const linked = await client.query(
+        `SELECT 1 FROM identity.guardian_links
+          WHERE org_id = $1 AND guardian_user_id = $2
+          LIMIT 1`,
+        [user.orgId, user.id],
+      );
+      return { required: Boolean(linked.rowCount), reviewedAt: saved.rows[0]?.reviewed_at ?? null };
+    });
+    res.json({ required: result.required, reviewedAt: result.reviewedAt?.toISOString() ?? null });
   } catch (error) {
     next(error);
   }
@@ -286,6 +593,9 @@ router.post("/academic/consents", requireAuth, async (req, res, next) => {
   }
   const parsed = GrantConsentBody.safeParse(req.body);
   if (!parsed.success) return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a valid student and consent purpose."));
+  if (unavailableConsentPurposes.has(parsed.data.purpose)) {
+    return void res.status(409).json(errorBody("FEATURE_UNAVAILABLE", "Recording and photo features are not enabled."));
+  }
 
   try {
     const record = await withOrg(user.orgId, async (client) => {

@@ -8,6 +8,7 @@ import classroomBoardRouter from "./classroom-board";
 import dashboardRouter from "./dashboard";
 import learningRouter from "./learning";
 import academicSubjectsRouter from "./academic-subjects";
+import academicTimetableRouter from "./academic-timetable";
 import schoolRouter from "./school";
 import reportCardsRouter from "./report-cards";
 
@@ -16,6 +17,7 @@ const routes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(identityRouter);
   await fastify.register(academicRouter);
   await fastify.register(academicSubjectsRouter);
+  await fastify.register(academicTimetableRouter);
   await fastify.register(schoolRouter);
   await fastify.register(liveRouter);
   await fastify.register(boardRouter);

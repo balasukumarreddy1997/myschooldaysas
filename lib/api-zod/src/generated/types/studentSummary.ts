@@ -9,9 +9,15 @@ import type { StudentSummaryStatus } from './studentSummaryStatus';
 
 export interface StudentSummary {
   id: string;
+  enrollmentId: string;
   name: string;
   admissionNo: string;
   sectionId: string;
   sectionName: string;
   status: StudentSummaryStatus;
+  /**
+     * @minLength 4
+     * @maxLength 24
+     */
+  academicYear: string;
 }

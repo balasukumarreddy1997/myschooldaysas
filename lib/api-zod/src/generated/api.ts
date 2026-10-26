@@ -355,15 +355,46 @@ export const GetSectionsQueryParams = zod.object({
   "classId": zod.uuid().optional()
 })
 
+
+
+
 export const GetSectionsResponse = zod.object({
   "items": zod.array(zod.object({
   "id": zod.uuid(),
   "classId": zod.uuid(),
   "className": zod.string(),
   "name": zod.string(),
-  "studentCount": zod.int()
+  "studentCount": zod.int(),
+  "capacity": zod.int().min(1).nullable()
 })),
   "total": zod.int()
+})
+
+
+/**
+ * @summary Update section capacity
+ */
+export const UpdateSectionParams = zod.object({
+  "sectionId": zod.uuid()
+})
+
+
+
+
+export const UpdateSectionBody = zod.object({
+  "capacity": zod.int().min(1).nullable()
+})
+
+
+
+
+export const UpdateSectionResponse = zod.object({
+  "id": zod.uuid(),
+  "classId": zod.uuid(),
+  "className": zod.string(),
+  "name": zod.string(),
+  "studentCount": zod.int(),
+  "capacity": zod.int().min(1).nullable()
 })
 
 
@@ -387,19 +418,141 @@ export const GetStudentsQueryParams = zod.object({
   "offset": zod.coerce.number().int().min(getStudentsQueryOffsetMin).default(getStudentsQueryOffsetDefault)
 })
 
+export const getStudentsResponseItemsItemAcademicYearMin = 4;
+export const getStudentsResponseItemsItemAcademicYearMax = 24;
+
+
+
 export const GetStudentsResponse = zod.object({
   "items": zod.array(zod.object({
   "id": zod.uuid(),
+  "enrollmentId": zod.uuid(),
   "name": zod.string(),
   "admissionNo": zod.string(),
   "sectionId": zod.uuid(),
   "sectionName": zod.string(),
-  "status": zod.enum(['active', 'disabled'])
+  "status": zod.enum(['active', 'disabled']),
+  "academicYear": zod.string().min(getStudentsResponseItemsItemAcademicYearMin).max(getStudentsResponseItemsItemAcademicYearMax)
 })),
   "total": zod.int(),
   "limit": zod.int(),
   "offset": zod.int()
 })
+
+
+/**
+ * @summary Update enrollment academic year
+ */
+export const UpdateEnrollmentYearParams = zod.object({
+  "enrollmentId": zod.uuid()
+})
+
+export const updateEnrollmentYearBodyAcademicYearMin = 4;
+export const updateEnrollmentYearBodyAcademicYearMax = 24;
+
+
+
+export const UpdateEnrollmentYearBody = zod.object({
+  "academicYear": zod.string().min(updateEnrollmentYearBodyAcademicYearMin).max(updateEnrollmentYearBodyAcademicYearMax)
+})
+
+export const updateEnrollmentYearResponseAcademicYearMin = 4;
+export const updateEnrollmentYearResponseAcademicYearMax = 24;
+
+
+
+export const UpdateEnrollmentYearResponse = zod.object({
+  "id": zod.uuid(),
+  "enrollmentId": zod.uuid(),
+  "name": zod.string(),
+  "admissionNo": zod.string(),
+  "sectionId": zod.uuid(),
+  "sectionName": zod.string(),
+  "status": zod.enum(['active', 'disabled']),
+  "academicYear": zod.string().min(updateEnrollmentYearResponseAcademicYearMin).max(updateEnrollmentYearResponseAcademicYearMax)
+})
+
+
+/**
+ * @summary List timetable slots visible to the current user
+ */
+export const GetTimetableQueryParams = zod.object({
+  "sectionId": zod.uuid().optional()
+})
+
+export const getTimetableResponseItemsItemWeekdayMin = 0;
+export const getTimetableResponseItemsItemWeekdayMax = 6;
+
+
+
+export const GetTimetableResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "sectionId": zod.uuid(),
+  "sectionName": zod.string(),
+  "subjectId": zod.uuid(),
+  "subjectName": zod.string(),
+  "teacherId": zod.uuid(),
+  "teacherName": zod.string(),
+  "weekday": zod.int().min(getTimetableResponseItemsItemWeekdayMin).max(getTimetableResponseItemsItemWeekdayMax),
+  "startTime": zod.string(),
+  "endTime": zod.string(),
+  "room": zod.string().nullable()
+})),
+  "total": zod.int()
+})
+
+
+/**
+ * @summary Create a timetable slot
+ */
+export const createTimetableSlotBodyWeekdayMin = 0;
+export const createTimetableSlotBodyWeekdayMax = 6;
+
+export const createTimetableSlotBodyStartTimeRegExp = new RegExp('^(?:[01][0-9]|2[0-3]):[0-5][0-9]$');
+export const createTimetableSlotBodyEndTimeRegExp = new RegExp('^(?:[01][0-9]|2[0-3]):[0-5][0-9]$');
+export const createTimetableSlotBodyRoomMax = 80;
+
+
+
+export const CreateTimetableSlotBody = zod.object({
+  "sectionId": zod.uuid(),
+  "subjectId": zod.uuid(),
+  "teacherId": zod.uuid(),
+  "weekday": zod.int().min(createTimetableSlotBodyWeekdayMin).max(createTimetableSlotBodyWeekdayMax),
+  "startTime": zod.string().regex(createTimetableSlotBodyStartTimeRegExp),
+  "endTime": zod.string().regex(createTimetableSlotBodyEndTimeRegExp),
+  "room": zod.string().max(createTimetableSlotBodyRoomMax).nullish()
+})
+
+export const createTimetableSlotResponseWeekdayMin = 0;
+export const createTimetableSlotResponseWeekdayMax = 6;
+
+
+
+export const CreateTimetableSlotResponse = zod.object({
+  "id": zod.uuid(),
+  "sectionId": zod.uuid(),
+  "sectionName": zod.string(),
+  "subjectId": zod.uuid(),
+  "subjectName": zod.string(),
+  "teacherId": zod.uuid(),
+  "teacherName": zod.string(),
+  "weekday": zod.int().min(createTimetableSlotResponseWeekdayMin).max(createTimetableSlotResponseWeekdayMax),
+  "startTime": zod.string(),
+  "endTime": zod.string(),
+  "room": zod.string().nullable()
+})
+
+
+/**
+ * @summary Delete a timetable slot
+ */
+export const DeleteTimetableSlotParams = zod.object({
+  "slotId": zod.uuid()
+})
+
+export const DeleteTimetableSlotResponse = zod.void()
 
 
 /**
@@ -446,6 +599,83 @@ export const RevokeConsentParams = zod.object({
 
 export const RevokeConsentResponse = zod.object({
   "revoked": zod.boolean()
+})
+
+
+/**
+ * @summary Get whether the current guardian has reviewed consent choices
+ */
+export const GetConsentReviewStatusResponse = zod.object({
+  "required": zod.boolean(),
+  "reviewedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Record that the current guardian reviewed consent choices
+ */
+export const CompleteConsentReviewResponse = zod.object({
+  "required": zod.boolean(),
+  "reviewedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary List guardian links and privacy flags for administrators
+ */
+export const getGuardianLinksQueryQMax = 120;
+
+export const getGuardianLinksQueryLimitDefault = 50;
+export const getGuardianLinksQueryLimitMax = 100;
+
+export const getGuardianLinksQueryOffsetDefault = 0;
+export const getGuardianLinksQueryOffsetMin = 0;
+
+
+
+export const GetGuardianLinksQueryParams = zod.object({
+  "q": zod.string().max(getGuardianLinksQueryQMax).optional(),
+  "limit": zod.coerce.number().int().min(1).max(getGuardianLinksQueryLimitMax).default(getGuardianLinksQueryLimitDefault),
+  "offset": zod.coerce.number().int().min(getGuardianLinksQueryOffsetMin).default(getGuardianLinksQueryOffsetDefault)
+})
+
+export const GetGuardianLinksResponse = zod.object({
+  "items": zod.array(zod.object({
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "guardianId": zod.uuid(),
+  "guardianName": zod.string(),
+  "guardianEmail": zod.email(),
+  "relationship": zod.string(),
+  "canViewLive": zod.boolean(),
+  "canPayFees": zod.boolean()
+})),
+  "total": zod.int()
+})
+
+
+/**
+ * @summary Update privacy and payment flags for a guardian link
+ */
+export const UpdateGuardianLinkFlagsParams = zod.object({
+  "studentId": zod.uuid(),
+  "guardianId": zod.uuid()
+})
+
+export const UpdateGuardianLinkFlagsBody = zod.object({
+  "canViewLive": zod.boolean(),
+  "canPayFees": zod.boolean()
+})
+
+export const UpdateGuardianLinkFlagsResponse = zod.object({
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "guardianId": zod.uuid(),
+  "guardianName": zod.string(),
+  "guardianEmail": zod.email(),
+  "relationship": zod.string(),
+  "canViewLive": zod.boolean(),
+  "canPayFees": zod.boolean()
 })
 
 

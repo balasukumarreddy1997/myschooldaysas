@@ -144,6 +144,11 @@ export interface SectionSummary {
   className: string;
   name: string;
   studentCount: number;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  capacity: number | null;
 }
 
 export type StudentSummaryStatus = typeof StudentSummaryStatus[keyof typeof StudentSummaryStatus];
@@ -156,11 +161,17 @@ export const StudentSummaryStatus = {
 
 export interface StudentSummary {
   id: string;
+  enrollmentId: string;
   name: string;
   admissionNo: string;
   sectionId: string;
   sectionName: string;
   status: StudentSummaryStatus;
+  /**
+     * @minLength 4
+     * @maxLength 24
+     */
+  academicYear: string;
 }
 
 export interface StudentPage {
@@ -168,6 +179,66 @@ export interface StudentPage {
   total: number;
   limit: number;
   offset: number;
+}
+
+export interface SectionCapacityUpdateInput {
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  capacity: number | null;
+}
+
+export interface EnrollmentYearUpdateInput {
+  /**
+     * @minLength 4
+     * @maxLength 24
+     */
+  academicYear: string;
+}
+
+export interface CreateTimetableSlotInput {
+  sectionId: string;
+  subjectId: string;
+  teacherId: string;
+  /**
+     * @minimum 0
+     * @maximum 6
+     */
+  weekday: number;
+  /** @pattern ^(?:[01][0-9]|2[0-3]):[0-5][0-9]$ */
+  startTime: string;
+  /** @pattern ^(?:[01][0-9]|2[0-3]):[0-5][0-9]$ */
+  endTime: string;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  room?: string | null;
+}
+
+export interface TimetableSlot {
+  id: string;
+  sectionId: string;
+  sectionName: string;
+  subjectId: string;
+  subjectName: string;
+  teacherId: string;
+  teacherName: string;
+  /**
+     * @minimum 0
+     * @maximum 6
+     */
+  weekday: number;
+  startTime: string;
+  endTime: string;
+  /** @nullable */
+  room: string | null;
+}
+
+export interface TimetableSlotPage {
+  items: TimetableSlot[];
+  total: number;
 }
 
 export type ConsentPurpose = typeof ConsentPurpose[keyof typeof ConsentPurpose];
@@ -194,6 +265,33 @@ export interface ConsentRecord {
   grantedAt: string | null;
   /** @nullable */
   revokedAt: string | null;
+}
+
+export interface ConsentReviewStatus {
+  required: boolean;
+  /** @nullable */
+  reviewedAt: string | null;
+}
+
+export interface GuardianLink {
+  studentId: string;
+  studentName: string;
+  guardianId: string;
+  guardianName: string;
+  guardianEmail: string;
+  relationship: string;
+  canViewLive: boolean;
+  canPayFees: boolean;
+}
+
+export interface GuardianLinkPage {
+  items: GuardianLink[];
+  total: number;
+}
+
+export interface GuardianLinkFlagsInput {
+  canViewLive: boolean;
+  canPayFees: boolean;
 }
 
 export type LiveSessionInputMode = typeof LiveSessionInputMode[keyof typeof LiveSessionInputMode];
@@ -896,6 +994,10 @@ limit?: number;
 offset?: number;
 };
 
+export type GetTimetableParams = {
+sectionId?: string;
+};
+
 export type GetConsents200 = {
   items: ConsentRecord[];
   total: number;
@@ -903,6 +1005,22 @@ export type GetConsents200 = {
 
 export type RevokeConsent200 = {
   revoked: boolean;
+};
+
+export type GetGuardianLinksParams = {
+/**
+ * @maxLength 120
+ */
+q?: string;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
 };
 
 export type GetSessions200 = {

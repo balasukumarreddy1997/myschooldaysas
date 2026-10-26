@@ -30,9 +30,12 @@ while IFS='|' read -r version migration; do
 done <<'MIGRATIONS'
 identity:001|services/identity/migrations/001_identity.sql
 identity:002|services/identity/migrations/002_identity_org_fk.sql
+identity:003|services/identity/migrations/003_guardian_privacy_flags.sql
 academic:001|services/academic/migrations/001_academic.sql
 academic:002|services/academic/migrations/002_consents.sql
 academic:003|services/academic/migrations/003_subjects.sql
+academic:004|services/academic/migrations/004_section_capacity_timetable.sql
+academic:005|services/academic/migrations/005_guardian_consent_reviews.sql
 school:001|services/school/migrations/001_attendance.sql
 live:001|services/live/migrations/001_live.sql
 board:001|services/board/migrations/001_board.sql

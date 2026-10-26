@@ -50,7 +50,7 @@ router.get("/dashboard/overview", requireAuth, async (req, res, next) => {
                   JOIN identity.guardian_links gl
                     ON gl.org_id = child.org_id AND gl.student_user_id = child.student_user_id
                    WHERE child.org_id = s.org_id AND child.section_id = s.id
-                     AND gl.guardian_user_id = $4 AND child.status = 'active'
+                     AND gl.guardian_user_id = $4 AND gl.can_view_live = true AND child.status = 'active'
                 ))
               )
          )
@@ -98,7 +98,7 @@ router.get("/dashboard/overview", requireAuth, async (req, res, next) => {
                 JOIN identity.guardian_links gl
                   ON gl.org_id = e.org_id AND gl.student_user_id = e.student_user_id
                  WHERE e.org_id = s.org_id AND e.section_id = ss.section_id
-                   AND gl.guardian_user_id = $3 AND e.status = 'active'
+                   AND gl.guardian_user_id = $3 AND gl.can_view_live = true AND e.status = 'active'
               ))
             )
           GROUP BY s.id, teacher.name

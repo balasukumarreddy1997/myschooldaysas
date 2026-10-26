@@ -327,6 +327,32 @@ paths:
                       $ref: "#/components/schemas/SectionSummary"
                   total:
                     type: integer
+  /academic/sections/{sectionId}:
+    patch:
+      operationId: updateSection
+      tags: [academic]
+      summary: Update section capacity
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: sectionId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SectionCapacityUpdateInput" }
+      responses:
+        "200":
+          description: Updated section capacity
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SectionSummary" }
+        "400": { description: Invalid request }
+        "403": { description: Administrator role required }
+        "404": { description: Section not found }
   /academic/students:
     get:
       operationId: getStudents
@@ -366,6 +392,86 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/StudentPage"
+  /academic/enrollments/{enrollmentId}:
+    patch:
+      operationId: updateEnrollmentYear
+      tags: [academic]
+      summary: Update enrollment academic year
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: enrollmentId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EnrollmentYearUpdateInput" }
+      responses:
+        "200":
+          description: Updated enrollment year
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentSummary" }
+        "400": { description: Invalid request }
+        "403": { description: Administrator role required }
+        "404": { description: Enrollment not found }
+        "409": { description: Enrollment year conflicts with an existing record }
+  /academic/timetable:
+    get:
+      operationId: getTimetable
+      tags: [academic]
+      summary: List timetable slots visible to the current user
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: sectionId
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Authorized timetable slots
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TimetableSlotPage" }
+    post:
+      operationId: createTimetableSlot
+      tags: [academic]
+      summary: Create a timetable slot
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateTimetableSlotInput" }
+      responses:
+        "201":
+          description: Timetable slot created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TimetableSlot" }
+        "400": { description: Invalid request }
+        "403": { description: Administrator role required }
+        "409": { description: Teacher or section time conflict }
+  /academic/timetable/{slotId}:
+    delete:
+      operationId: deleteTimetableSlot
+      tags: [academic]
+      summary: Delete a timetable slot
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: slotId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Timetable slot deleted }
+        "403": { description: Administrator role required }
+        "404": { description: Timetable slot not found }
   /academic/consents:
     get:
       operationId: getConsents
@@ -441,6 +547,97 @@ paths:
                     type: boolean
         "403":
           description: Caller is not the guardian who granted the consent
+  /academic/consents/review-status:
+    get:
+      operationId: getConsentReviewStatus
+      tags: [academic]
+      summary: Get whether the current guardian has reviewed consent choices
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Consent review status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentReviewStatus"
+        "403":
+          description: Caller is not a guardian
+  /academic/consents/review:
+    post:
+      operationId: completeConsentReview
+      tags: [academic]
+      summary: Record that the current guardian reviewed consent choices
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Updated consent review status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentReviewStatus"
+        "403":
+          description: Caller is not a guardian
+  /academic/guardians:
+    get:
+      operationId: getGuardianLinks
+      tags: [academic]
+      summary: List guardian links and privacy flags for administrators
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string, maxLength: 120 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - in: query
+          name: offset
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        "200":
+          description: Paginated guardian links
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuardianLinkPage"
+        "403":
+          description: Administrator role required
+  /academic/guardians/{studentId}/{guardianId}:
+    patch:
+      operationId: updateGuardianLinkFlags
+      tags: [academic]
+      summary: Update privacy and payment flags for a guardian link
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: studentId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: guardianId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GuardianLinkFlagsInput"
+      responses:
+        "200":
+          description: Updated guardian link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuardianLink"
+        "403":
+          description: Administrator role required
+        "404":
+          description: Guardian link not found
   /live/sessions:
     get:
       operationId: getSessions
@@ -1112,23 +1309,26 @@ components:
         studentCount: { type: integer }
     SectionSummary:
       type: object
-      required: [id, classId, className, name, studentCount]
+      required: [id, classId, className, name, studentCount, capacity]
       properties:
         id: { type: string, format: uuid }
         classId: { type: string, format: uuid }
         className: { type: string }
         name: { type: string }
         studentCount: { type: integer }
+        capacity: { type: [integer, "null"], minimum: 1 }
     StudentSummary:
       type: object
-      required: [id, name, admissionNo, sectionId, sectionName, status]
+      required: [id, enrollmentId, name, admissionNo, sectionId, sectionName, status, academicYear]
       properties:
         id: { type: string, format: uuid }
+        enrollmentId: { type: string, format: uuid }
         name: { type: string }
         admissionNo: { type: string }
         sectionId: { type: string, format: uuid }
         sectionName: { type: string }
         status: { type: string, enum: [active, disabled] }
+        academicYear: { type: string, minLength: 4, maxLength: 24 }
     StudentPage:
       type: object
       required: [items, total, limit, offset]
@@ -1139,6 +1339,50 @@ components:
         total: { type: integer }
         limit: { type: integer }
         offset: { type: integer }
+    SectionCapacityUpdateInput:
+      type: object
+      required: [capacity]
+      properties:
+        capacity: { type: [integer, "null"], minimum: 1 }
+    EnrollmentYearUpdateInput:
+      type: object
+      required: [academicYear]
+      properties:
+        academicYear: { type: string, minLength: 4, maxLength: 24 }
+    CreateTimetableSlotInput:
+      type: object
+      required: [sectionId, subjectId, teacherId, weekday, startTime, endTime]
+      properties:
+        sectionId: { type: string, format: uuid }
+        subjectId: { type: string, format: uuid }
+        teacherId: { type: string, format: uuid }
+        weekday: { type: integer, minimum: 0, maximum: 6 }
+        startTime: { type: string, pattern: "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$" }
+        endTime: { type: string, pattern: "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$" }
+        room: { type: [string, "null"], maxLength: 80 }
+    TimetableSlot:
+      type: object
+      required: [id, sectionId, sectionName, subjectId, subjectName, teacherId, teacherName, weekday, startTime, endTime, room]
+      properties:
+        id: { type: string, format: uuid }
+        sectionId: { type: string, format: uuid }
+        sectionName: { type: string }
+        subjectId: { type: string, format: uuid }
+        subjectName: { type: string }
+        teacherId: { type: string, format: uuid }
+        teacherName: { type: string }
+        weekday: { type: integer, minimum: 0, maximum: 6 }
+        startTime: { type: string }
+        endTime: { type: string }
+        room: { type: [string, "null"] }
+    TimetableSlotPage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/TimetableSlot" }
+        total: { type: integer }
     ConsentPurpose:
       type: string
       enum: [live_view, recording, photo, data_processing]
@@ -1158,6 +1402,38 @@ components:
         granted: { type: boolean }
         grantedAt: { type: ["string", "null"], format: date-time }
         revokedAt: { type: ["string", "null"], format: date-time }
+    ConsentReviewStatus:
+      type: object
+      required: [required, reviewedAt]
+      properties:
+        required: { type: boolean }
+        reviewedAt: { type: ["string", "null"], format: date-time }
+    GuardianLink:
+      type: object
+      required: [studentId, studentName, guardianId, guardianName, guardianEmail, relationship, canViewLive, canPayFees]
+      properties:
+        studentId: { type: string, format: uuid }
+        studentName: { type: string }
+        guardianId: { type: string, format: uuid }
+        guardianName: { type: string }
+        guardianEmail: { type: string, format: email }
+        relationship: { type: string }
+        canViewLive: { type: boolean }
+        canPayFees: { type: boolean }
+    GuardianLinkPage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/GuardianLink" }
+        total: { type: integer }
+    GuardianLinkFlagsInput:
+      type: object
+      required: [canViewLive, canPayFees]
+      properties:
+        canViewLive: { type: boolean }
+        canPayFees: { type: boolean }
     LiveSession:
       type: object
       required: [id, title, teacherName, mode, status, startAt, parentView, sections]

@@ -75,7 +75,7 @@ async function listVisibleSessions(
             JOIN identity.guardian_links gl
               ON gl.org_id = e.org_id AND gl.student_user_id = e.student_user_id
              WHERE e.org_id = s.org_id AND e.section_id = ss.section_id
-               AND gl.guardian_user_id = $3 AND e.status = 'active'
+               AND gl.guardian_user_id = $3 AND gl.can_view_live = true AND e.status = 'active'
           )))
         AND (NOT $7::boolean OR (s.status IN ('scheduled', 'live') AND s.starts_at >= now() - interval '2 hours'))
       GROUP BY s.id, teacher.name

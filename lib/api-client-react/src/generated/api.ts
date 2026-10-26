@@ -41,11 +41,15 @@ import type {
   ConsentGrantInput,
   ConsentPurpose,
   ConsentRecord,
+  ConsentReviewStatus,
+  CreateTimetableSlotInput,
   DashboardOverview,
+  EnrollmentYearUpdateInput,
   GetAcademicTeacherAssignmentsParams,
   GetBoardTemplates200,
   GetClasses200,
   GetConsents200,
+  GetGuardianLinksParams,
   GetLearningAssignmentsParams,
   GetLearningExamsParams,
   GetLearningReportCardsParams,
@@ -54,6 +58,10 @@ import type {
   GetSectionsParams,
   GetSessions200,
   GetStudentsParams,
+  GetTimetableParams,
+  GuardianLink,
+  GuardianLinkFlagsInput,
+  GuardianLinkPage,
   HealthStatus,
   LearningAssignment,
   LearningAssignmentInput,
@@ -86,8 +94,13 @@ import type {
   RevokeConsent200,
   SchoolAttendanceInput,
   SchoolAttendancePage,
+  SectionCapacityUpdateInput,
+  SectionSummary,
   StudentPage,
+  StudentSummary,
   TemporaryPasswordResult,
+  TimetableSlot,
+  TimetableSlotPage,
   User
 } from './api.schemas';
 
@@ -1800,6 +1813,95 @@ export function useGetSections<TData = Awaited<ReturnType<typeof getSections>>, 
 
 
 
+export const getUpdateSectionUrl = (sectionId: string,) => {
+
+
+
+
+  return `/api/academic/sections/${sectionId}`
+}
+
+/**
+ * @summary Update section capacity
+ */
+export const updateSection = async (sectionId: string,
+    sectionCapacityUpdateInput: SectionCapacityUpdateInput, options?: Parameters<typeof customFetch>[1]): Promise<SectionSummary> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SectionSummary>(getUpdateSectionUrl(sectionId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(sectionCapacityUpdateInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateSectionMutationKey = () => ['updateSection'] as const;
+
+export const getUpdateSectionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSection>>, TError,UpdateSectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSection>>, TError,UpdateSectionMutationVariables, TContext> => {
+
+const mutationKey = getUpdateSectionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSection>>, UpdateSectionMutationVariables> = (props) => {
+          const {sectionId,data} = props ?? {};
+
+          return  updateSection(sectionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSectionMutationResult = NonNullable<Awaited<ReturnType<typeof updateSection>>>
+    export type UpdateSectionMutationBody = BodyType<SectionCapacityUpdateInput>
+    export type UpdateSectionMutationError = ErrorType<void>
+    export type UpdateSectionMutationVariables = {sectionId: string;data: BodyType<SectionCapacityUpdateInput>}
+
+    /**
+ * @summary Update section capacity
+ */
+export const useUpdateSection = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSection>>, TError,UpdateSectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateSection>>,
+        TError,
+        UpdateSectionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateSectionMutationOptions(options), queryClient);
+    }
+
 export const getGetStudentsUrl = (params: GetStudentsParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -1907,6 +2009,365 @@ export function useGetStudents<TData = Awaited<ReturnType<typeof getStudents>>, 
 
 
 
+
+export const getUpdateEnrollmentYearUrl = (enrollmentId: string,) => {
+
+
+
+
+  return `/api/academic/enrollments/${enrollmentId}`
+}
+
+/**
+ * @summary Update enrollment academic year
+ */
+export const updateEnrollmentYear = async (enrollmentId: string,
+    enrollmentYearUpdateInput: EnrollmentYearUpdateInput, options?: Parameters<typeof customFetch>[1]): Promise<StudentSummary> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<StudentSummary>(getUpdateEnrollmentYearUrl(enrollmentId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(enrollmentYearUpdateInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateEnrollmentYearMutationKey = () => ['updateEnrollmentYear'] as const;
+
+export const getUpdateEnrollmentYearMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateEnrollmentYear>>, TError,UpdateEnrollmentYearMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateEnrollmentYear>>, TError,UpdateEnrollmentYearMutationVariables, TContext> => {
+
+const mutationKey = getUpdateEnrollmentYearMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateEnrollmentYear>>, UpdateEnrollmentYearMutationVariables> = (props) => {
+          const {enrollmentId,data} = props ?? {};
+
+          return  updateEnrollmentYear(enrollmentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateEnrollmentYearMutationResult = NonNullable<Awaited<ReturnType<typeof updateEnrollmentYear>>>
+    export type UpdateEnrollmentYearMutationBody = BodyType<EnrollmentYearUpdateInput>
+    export type UpdateEnrollmentYearMutationError = ErrorType<void>
+    export type UpdateEnrollmentYearMutationVariables = {enrollmentId: string;data: BodyType<EnrollmentYearUpdateInput>}
+
+    /**
+ * @summary Update enrollment academic year
+ */
+export const useUpdateEnrollmentYear = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateEnrollmentYear>>, TError,UpdateEnrollmentYearMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateEnrollmentYear>>,
+        TError,
+        UpdateEnrollmentYearMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateEnrollmentYearMutationOptions(options), queryClient);
+    }
+
+export const getGetTimetableUrl = (params?: GetTimetableParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/academic/timetable?${stringifiedParams}` : `/api/academic/timetable`
+}
+
+/**
+ * @summary List timetable slots visible to the current user
+ */
+export const getTimetable = async (params?: GetTimetableParams, options?: Parameters<typeof customFetch>[1]): Promise<TimetableSlotPage> => {
+
+  return customFetch<TimetableSlotPage>(getGetTimetableUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTimetableQueryKey = (params?: GetTimetableParams,) => {
+    return [
+    `/api/academic/timetable`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetTimetableQueryOptions = <TData = Awaited<ReturnType<typeof getTimetable>>, TError = ErrorType<unknown>>(params?: GetTimetableParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTimetable>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTimetableQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTimetable>>> = ({ signal }) => getTimetable(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTimetable>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetTimetableQueryResult = NonNullable<Awaited<ReturnType<typeof getTimetable>>>
+export type GetTimetableQueryError = ErrorType<unknown>
+
+
+export function useGetTimetable<TData = Awaited<ReturnType<typeof getTimetable>>, TError = ErrorType<unknown>>(
+ params: undefined |  GetTimetableParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTimetable>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTimetable>>,
+          TError,
+          Awaited<ReturnType<typeof getTimetable>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTimetable<TData = Awaited<ReturnType<typeof getTimetable>>, TError = ErrorType<unknown>>(
+ params?: GetTimetableParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTimetable>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTimetable>>,
+          TError,
+          Awaited<ReturnType<typeof getTimetable>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTimetable<TData = Awaited<ReturnType<typeof getTimetable>>, TError = ErrorType<unknown>>(
+ params?: GetTimetableParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTimetable>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List timetable slots visible to the current user
+ */
+
+export function useGetTimetable<TData = Awaited<ReturnType<typeof getTimetable>>, TError = ErrorType<unknown>>(
+ params?: GetTimetableParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTimetable>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetTimetableQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateTimetableSlotUrl = () => {
+
+
+
+
+  return `/api/academic/timetable`
+}
+
+/**
+ * @summary Create a timetable slot
+ */
+export const createTimetableSlot = async (createTimetableSlotInput: CreateTimetableSlotInput, options?: Parameters<typeof customFetch>[1]): Promise<TimetableSlot> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TimetableSlot>(getCreateTimetableSlotUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createTimetableSlotInput)
+  }
+);}
+
+
+
+
+
+export const getCreateTimetableSlotMutationKey = () => ['createTimetableSlot'] as const;
+
+export const getCreateTimetableSlotMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTimetableSlot>>, TError,CreateTimetableSlotMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createTimetableSlot>>, TError,CreateTimetableSlotMutationVariables, TContext> => {
+
+const mutationKey = getCreateTimetableSlotMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createTimetableSlot>>, CreateTimetableSlotMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createTimetableSlot(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateTimetableSlotMutationResult = NonNullable<Awaited<ReturnType<typeof createTimetableSlot>>>
+    export type CreateTimetableSlotMutationBody = BodyType<CreateTimetableSlotInput>
+    export type CreateTimetableSlotMutationError = ErrorType<void>
+    export type CreateTimetableSlotMutationVariables = {data: BodyType<CreateTimetableSlotInput>}
+
+    /**
+ * @summary Create a timetable slot
+ */
+export const useCreateTimetableSlot = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTimetableSlot>>, TError,CreateTimetableSlotMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createTimetableSlot>>,
+        TError,
+        CreateTimetableSlotMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateTimetableSlotMutationOptions(options), queryClient);
+    }
+
+export const getDeleteTimetableSlotUrl = (slotId: string,) => {
+
+
+
+
+  return `/api/academic/timetable/${slotId}`
+}
+
+/**
+ * @summary Delete a timetable slot
+ */
+export const deleteTimetableSlot = async (slotId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteTimetableSlotUrl(slotId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteTimetableSlotMutationKey = () => ['deleteTimetableSlot'] as const;
+
+export const getDeleteTimetableSlotMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTimetableSlot>>, TError,DeleteTimetableSlotMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteTimetableSlot>>, TError,DeleteTimetableSlotMutationVariables, TContext> => {
+
+const mutationKey = getDeleteTimetableSlotMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteTimetableSlot>>, DeleteTimetableSlotMutationVariables> = (props) => {
+          const {slotId} = props ?? {};
+
+          return  deleteTimetableSlot(slotId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteTimetableSlotMutationResult = NonNullable<Awaited<ReturnType<typeof deleteTimetableSlot>>>
+
+    export type DeleteTimetableSlotMutationError = ErrorType<void>
+    export type DeleteTimetableSlotMutationVariables = {slotId: string}
+
+    /**
+ * @summary Delete a timetable slot
+ */
+export const useDeleteTimetableSlot = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTimetableSlot>>, TError,DeleteTimetableSlotMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteTimetableSlot>>,
+        TError,
+        DeleteTimetableSlotMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteTimetableSlotMutationOptions(options), queryClient);
+    }
 
 export const getGetConsentsUrl = () => {
 
@@ -2171,6 +2632,380 @@ export const useRevokeConsent = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getRevokeConsentMutationOptions(options), queryClient);
+    }
+
+export const getGetConsentReviewStatusUrl = () => {
+
+
+
+
+  return `/api/academic/consents/review-status`
+}
+
+/**
+ * @summary Get whether the current guardian has reviewed consent choices
+ */
+export const getConsentReviewStatus = async ( options?: Parameters<typeof customFetch>[1]): Promise<ConsentReviewStatus> => {
+
+  return customFetch<ConsentReviewStatus>(getGetConsentReviewStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetConsentReviewStatusQueryKey = () => {
+    return [
+    `/api/academic/consents/review-status`
+    ] as const;
+    }
+
+
+export const getGetConsentReviewStatusQueryOptions = <TData = Awaited<ReturnType<typeof getConsentReviewStatus>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getConsentReviewStatus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetConsentReviewStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getConsentReviewStatus>>> = ({ signal }) => getConsentReviewStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getConsentReviewStatus>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetConsentReviewStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getConsentReviewStatus>>>
+export type GetConsentReviewStatusQueryError = ErrorType<void>
+
+
+export function useGetConsentReviewStatus<TData = Awaited<ReturnType<typeof getConsentReviewStatus>>, TError = ErrorType<void>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getConsentReviewStatus>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getConsentReviewStatus>>,
+          TError,
+          Awaited<ReturnType<typeof getConsentReviewStatus>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetConsentReviewStatus<TData = Awaited<ReturnType<typeof getConsentReviewStatus>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getConsentReviewStatus>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getConsentReviewStatus>>,
+          TError,
+          Awaited<ReturnType<typeof getConsentReviewStatus>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetConsentReviewStatus<TData = Awaited<ReturnType<typeof getConsentReviewStatus>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getConsentReviewStatus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get whether the current guardian has reviewed consent choices
+ */
+
+export function useGetConsentReviewStatus<TData = Awaited<ReturnType<typeof getConsentReviewStatus>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getConsentReviewStatus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetConsentReviewStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCompleteConsentReviewUrl = () => {
+
+
+
+
+  return `/api/academic/consents/review`
+}
+
+/**
+ * @summary Record that the current guardian reviewed consent choices
+ */
+export const completeConsentReview = async ( options?: Parameters<typeof customFetch>[1]): Promise<ConsentReviewStatus> => {
+
+  return customFetch<ConsentReviewStatus>(getCompleteConsentReviewUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCompleteConsentReviewMutationKey = () => ['completeConsentReview'] as const;
+
+export const getCompleteConsentReviewMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeConsentReview>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof completeConsentReview>>, TError,void, TContext> => {
+
+const mutationKey = getCompleteConsentReviewMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof completeConsentReview>>, void> = () => {
+
+
+          return  completeConsentReview(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CompleteConsentReviewMutationResult = NonNullable<Awaited<ReturnType<typeof completeConsentReview>>>
+
+    export type CompleteConsentReviewMutationError = ErrorType<void>
+
+
+    /**
+ * @summary Record that the current guardian reviewed consent choices
+ */
+export const useCompleteConsentReview = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeConsentReview>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof completeConsentReview>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getCompleteConsentReviewMutationOptions(options), queryClient);
+    }
+
+export const getGetGuardianLinksUrl = (params?: GetGuardianLinksParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/academic/guardians?${stringifiedParams}` : `/api/academic/guardians`
+}
+
+/**
+ * @summary List guardian links and privacy flags for administrators
+ */
+export const getGuardianLinks = async (params?: GetGuardianLinksParams, options?: Parameters<typeof customFetch>[1]): Promise<GuardianLinkPage> => {
+
+  return customFetch<GuardianLinkPage>(getGetGuardianLinksUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGuardianLinksQueryKey = (params?: GetGuardianLinksParams,) => {
+    return [
+    `/api/academic/guardians`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetGuardianLinksQueryOptions = <TData = Awaited<ReturnType<typeof getGuardianLinks>>, TError = ErrorType<void>>(params?: GetGuardianLinksParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getGuardianLinks>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGuardianLinksQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGuardianLinks>>> = ({ signal }) => getGuardianLinks(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGuardianLinks>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetGuardianLinksQueryResult = NonNullable<Awaited<ReturnType<typeof getGuardianLinks>>>
+export type GetGuardianLinksQueryError = ErrorType<void>
+
+
+export function useGetGuardianLinks<TData = Awaited<ReturnType<typeof getGuardianLinks>>, TError = ErrorType<void>>(
+ params: undefined |  GetGuardianLinksParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getGuardianLinks>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getGuardianLinks>>,
+          TError,
+          Awaited<ReturnType<typeof getGuardianLinks>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetGuardianLinks<TData = Awaited<ReturnType<typeof getGuardianLinks>>, TError = ErrorType<void>>(
+ params?: GetGuardianLinksParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getGuardianLinks>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getGuardianLinks>>,
+          TError,
+          Awaited<ReturnType<typeof getGuardianLinks>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetGuardianLinks<TData = Awaited<ReturnType<typeof getGuardianLinks>>, TError = ErrorType<void>>(
+ params?: GetGuardianLinksParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getGuardianLinks>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List guardian links and privacy flags for administrators
+ */
+
+export function useGetGuardianLinks<TData = Awaited<ReturnType<typeof getGuardianLinks>>, TError = ErrorType<void>>(
+ params?: GetGuardianLinksParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getGuardianLinks>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetGuardianLinksQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateGuardianLinkFlagsUrl = (studentId: string,
+    guardianId: string,) => {
+
+
+
+
+  return `/api/academic/guardians/${studentId}/${guardianId}`
+}
+
+/**
+ * @summary Update privacy and payment flags for a guardian link
+ */
+export const updateGuardianLinkFlags = async (studentId: string,
+    guardianId: string,
+    guardianLinkFlagsInput: GuardianLinkFlagsInput, options?: Parameters<typeof customFetch>[1]): Promise<GuardianLink> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<GuardianLink>(getUpdateGuardianLinkFlagsUrl(studentId,guardianId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(guardianLinkFlagsInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateGuardianLinkFlagsMutationKey = () => ['updateGuardianLinkFlags'] as const;
+
+export const getUpdateGuardianLinkFlagsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateGuardianLinkFlags>>, TError,UpdateGuardianLinkFlagsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateGuardianLinkFlags>>, TError,UpdateGuardianLinkFlagsMutationVariables, TContext> => {
+
+const mutationKey = getUpdateGuardianLinkFlagsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateGuardianLinkFlags>>, UpdateGuardianLinkFlagsMutationVariables> = (props) => {
+          const {studentId,guardianId,data} = props ?? {};
+
+          return  updateGuardianLinkFlags(studentId,guardianId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateGuardianLinkFlagsMutationResult = NonNullable<Awaited<ReturnType<typeof updateGuardianLinkFlags>>>
+    export type UpdateGuardianLinkFlagsMutationBody = BodyType<GuardianLinkFlagsInput>
+    export type UpdateGuardianLinkFlagsMutationError = ErrorType<void>
+    export type UpdateGuardianLinkFlagsMutationVariables = {studentId: string;guardianId: string;data: BodyType<GuardianLinkFlagsInput>}
+
+    /**
+ * @summary Update privacy and payment flags for a guardian link
+ */
+export const useUpdateGuardianLinkFlags = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateGuardianLinkFlags>>, TError,UpdateGuardianLinkFlagsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateGuardianLinkFlags>>,
+        TError,
+        UpdateGuardianLinkFlagsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateGuardianLinkFlagsMutationOptions(options), queryClient);
     }
 
 export const getGetSessionsUrl = () => {

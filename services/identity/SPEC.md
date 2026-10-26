@@ -11,7 +11,7 @@ This is a convenience summary derived from `MASTER_SPEC.md`; the master spec rem
 
 ## Data and isolation
 
-The `identity` schema stores organizations, users, user roles, and guardian links. Tenant rows carry `org_id` and use forced RLS. The runtime database role is separate from the local migration role.
+The `identity` schema stores organizations, users, user roles, and guardian links. Guardian links carry `can_view_live` and `can_pay_fees` flags, added by migration `identity:003`. Tenant rows carry `org_id` and use forced RLS. The runtime database role is separate from the local migration role.
 
 ## Not implemented
 

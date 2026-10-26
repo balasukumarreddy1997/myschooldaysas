@@ -12,4 +12,9 @@ export interface SectionSummary {
   className: string;
   name: string;
   studentCount: number;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  capacity: number | null;
 }

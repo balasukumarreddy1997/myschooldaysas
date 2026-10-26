@@ -1,6 +1,7 @@
 import type { PoolClient } from "@workspace/db";
 import type { AuthUser } from "./auth";
 import type { ClassroomRole } from "./classroom-policy";
+import { canParentViewLiveClassroom } from "./academic-scheduling-policy";
 
 export interface ClassroomAccess {
   id: string;
@@ -61,7 +62,7 @@ export async function classroomAccess(
               JOIN academic.consents c ON c.org_id = e.org_id AND c.student_id = e.student_user_id
                 AND c.parent_id = gl.guardian_user_id AND c.purpose = 'live_view' AND c.revoked_at IS NULL
               WHERE ss.org_id = s.org_id AND ss.session_id = s.id AND e.status = 'active'
-                AND gl.guardian_user_id = $3) live_view_consented
+                AND gl.guardian_user_id = $3 AND gl.can_view_live = true) live_view_consented
        FROM live.sessions s WHERE s.org_id = $1 AND s.id = $2`,
     [user.orgId, sessionId, user.id],
   );
@@ -71,7 +72,12 @@ export async function classroomAccess(
   const teacher = user.roles.some((role) => ["teacher", "class_teacher", "hod"].includes(role));
   const owner = teacher && row.teacher_user_id === user.id;
   const assigned = teacher && row.assigned_teacher;
-  const parent = user.roles.includes("parent") && row.parent_view && row.linked_parent && row.live_view_consented;
+  const parent = canParentViewLiveClassroom(
+    user.roles.includes("parent"),
+    row.parent_view,
+    row.linked_parent,
+    row.live_view_consented,
+  );
   const student = user.roles.includes("student") && row.enrolled_student;
   if (!(owner || assigned || admin || student || parent)) {
     throw Object.assign(new Error("You are not a participant in this classroom."), { status: 403, code: "FORBIDDEN" });
