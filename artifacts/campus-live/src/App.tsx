@@ -23,6 +23,7 @@ import {
 import { ErrorBoundary } from '@/components/error-boundary';
 import NotFound from '@/components/not-found';
 import '@/components/auth/login-page.css';
+import '@/components/dashboard/dashboard-page.css';
 import { setAccessToken } from './auth-token';
 import { ClassroomScreen } from '@/components/classroom/classroom-screen';
 import { LearningPage } from '@/components/learning/learning-page';
@@ -112,6 +113,7 @@ function AppShell({ user, path, onLogout, children }: { user: { name: string; em
   const [mobileNav, setMobileNav] = useState(false);
   const [dark, setDark] = useState(() => typeof document !== 'undefined' && document.documentElement.classList.contains('dark'));
   const toggleTheme = () => { document.documentElement.classList.toggle('dark'); setDark(!dark); };
+  const isDashboard = path === '/' || path === '/dashboard';
   const nav = [
     { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
     { label: 'Classes', href: '/admin/classes', icon: BookOpen },
@@ -132,10 +134,10 @@ function AppShell({ user, path, onLogout, children }: { user: { name: string; em
     nav.push({ label: 'Fees', href: '/fees', icon: CreditCard });
     nav.push({ label: 'Privacy & consent', href: '/family/consents', icon: ShieldCheck });
   }
-  return <div className="min-h-[100dvh] md:flex">
+  return <div className={`min-h-[100dvh] md:flex ${isDashboard ? 'dashboard-app-shell' : ''}`}>
     <aside className={`fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col bg-[hsl(var(--sidebar))] px-4 py-5 text-[hsl(var(--sidebar-foreground))] transition-transform md:translate-x-0 ${mobileNav ? 'translate-x-0' : '-translate-x-full'}`}>
       <div className="mb-9 flex items-center gap-3 px-2">
-        <div className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--primary))] text-white"><GraduationCap size={22}/></div>
+        <div className={`grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--primary))] text-white ${isDashboard ? 'dashboard-shell-crest' : ''}`}><GraduationCap size={22}/></div>
         <div className="min-w-0"><div className="display text-[14px] font-extrabold leading-tight tracking-tight">{SCHOOL_NAME}</div><div className="mt-1 text-[9px] uppercase tracking-[.14em] opacity-60">Powered by {PLATFORM_NAME}</div></div>
         <button aria-label="Close navigation" className="ml-auto text-white/60 md:hidden" onClick={() => setMobileNav(false)}><X size={18}/></button>
       </div>
@@ -344,22 +346,63 @@ function QueryState({ loading, error, empty, retry, children }: { loading: boole
 function DashboardPage() {
   const overview = useGetDashboardOverview();
   const data = overview.data;
-  return <><PageHeading eyebrow="Your school, at a glance" title={`Good to see you${data?.userName ? `, ${data.userName.split(' ')[0]}` : ''}.`} description="A clear view of what’s happening across your learning day." action={<Link href="/live/sessions" className="btn btn-primary">Explore live classes <ArrowRight size={15}/></Link>}/>
+  return <div className="dashboard-page">
+    <section className="dashboard-welcome" aria-labelledby="dashboard-welcome-title">
+      <div className="dashboard-welcome-copy">
+        <div className="dashboard-eyebrow"><span aria-hidden="true"/>Your school, at a glance</div>
+        <h1 id="dashboard-welcome-title">Good to see you{data?.userName ? <>, <em>{data.userName.split(' ')[0]}</em></> : null}.</h1>
+        <p>A clear view of what’s happening across your learning day.</p>
+      </div>
+      <Link href="/live/sessions" className="dashboard-primary-link">Explore live classes <ArrowRight size={16}/></Link>
+    </section>
     <QueryState loading={overview.isLoading} error={overview.error} empty={!data} retry={() => overview.refetch()}>
-      {data && <div className="space-y-6">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{data.metrics.map((metric, i) => <div key={metric.label} className="surface relative overflow-hidden p-5"><div className="mb-5 flex items-start justify-between"><span className="text-[12px] font-semibold text-[hsl(var(--muted-foreground))]">{metric.label}</span><div className={`grid h-8 w-8 place-items-center rounded-lg ${i === 0 ? 'bg-[hsl(var(--status-good-bg))] text-[hsl(var(--brand-mint-ink))]' : 'bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]'}`}>{i === 0 ? <Users size={16}/> : i === 1 ? <BookOpen size={16}/> : i === 2 ? <Video size={16}/> : <Activity size={16}/>}</div></div><div data-testid={`metric-value-${i}`} className="display text-[27px] font-extrabold tracking-tight">{metric.value}</div><div className="mt-2 flex items-center gap-1 text-[10px] text-[hsl(var(--muted-foreground))]">{metric.tone === 'positive' ? <ArrowUpRight size={13} className="text-[hsl(var(--status-good))]"/> : metric.tone === 'warning' ? <ArrowDown size={13} className="text-[hsl(var(--accent))]"/> : null}<span>{metric.change}</span></div></div>)}</div>
-        <div className="grid gap-5 xl:grid-cols-[1.35fr_.85fr]">
-          <section className="surface p-5 md:p-6"><div className="mb-5 flex items-center justify-between"><div><h2 className="display m-0 text-lg font-extrabold">Coming up</h2><p className="mb-0 mt-1 text-xs text-[hsl(var(--muted-foreground))]">Your next scheduled learning sessions</p></div><Link href="/live/sessions" className="text-xs font-bold text-[hsl(var(--primary))]">All sessions <ArrowRight className="ml-1 inline" size={13}/></Link></div>
-            {data.upcomingSessions.length ? <div className="space-y-2">{data.upcomingSessions.map(session => <SessionRow key={session.id} session={session}/>)}</div> : <InlineEmpty text="No upcoming sessions have been scheduled."/>}
+      {data && <div className="dashboard-content">
+        <section className="dashboard-metrics" aria-label="School overview metrics">
+          {data.metrics.map((metric, i) => {
+            const Icon = [Users, BookOpen, Video, Activity][i] ?? Activity;
+            return <article key={metric.label} className={`dashboard-metric dashboard-metric-${metric.tone}`}>
+              <div className="dashboard-metric-top"><span>{metric.label}</span><div className="dashboard-metric-icon"><Icon size={17} strokeWidth={1.8}/></div></div>
+              <div data-testid={`metric-value-${i}`} className="dashboard-metric-value">{metric.value}</div>
+              <div className="dashboard-metric-change">{metric.tone === 'positive' ? <ArrowUpRight size={13}/> : metric.tone === 'warning' ? <ArrowDown size={13}/> : null}<span>{metric.change}</span></div>
+            </article>;
+          })}
+        </section>
+        <div className="dashboard-panels">
+          <section className="dashboard-panel dashboard-sessions" aria-labelledby="dashboard-sessions-title">
+            <div className="dashboard-panel-heading">
+              <div>
+                <div className="dashboard-panel-kicker">ON THE TIMETABLE</div>
+                <h2 id="dashboard-sessions-title">Coming up</h2>
+                <p>Your next scheduled learning sessions</p>
+              </div>
+              <Link href="/live/sessions" className="dashboard-text-link">All sessions <ArrowRight size={14}/></Link>
+            </div>
+            {data.upcomingSessions.length ? <div className="dashboard-session-list">{data.upcomingSessions.map(session => <div key={session.id} data-testid={`session-row-${session.id}`} className="dashboard-session">
+              <div className="dashboard-session-icon"><Video size={18} strokeWidth={1.8}/></div>
+              <div className="dashboard-session-copy"><div className="dashboard-session-title">{session.title}</div><div className="dashboard-session-meta">{session.teacherName} <span>·</span> {session.sections.join(', ') || (session.mode === 'class' ? 'Whole class' : 'Section')}</div></div>
+              <div className="dashboard-session-time"><div><Clock3 size={13}/>{fmtDate(session.startAt)}</div><StatusTag status={session.status}/></div>
+            </div>)}</div> : <InlineEmpty text="No upcoming sessions have been scheduled."/>}
           </section>
-          <section className="surface p-5 md:p-6"><div className="mb-5 flex items-center gap-3"><div className="grid h-9 w-9 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><Activity size={17}/></div><div><h2 className="display m-0 text-lg font-extrabold">Recent activity</h2><p className="mb-0 mt-1 text-xs text-[hsl(var(--muted-foreground))]">Latest updates from your school</p></div></div>
-            {data.recentActivity.length ? <div className="space-y-4">{data.recentActivity.map(item => <div key={item.id} data-testid={`activity-${item.id}`} className="flex gap-3 border-l border-[hsl(var(--border))] pl-4"><span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[hsl(var(--primary))]"/><div><div className="text-[12px] font-bold">{item.label}</div><div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{item.description}</div><div className="mt-1.5 text-[10px] text-[hsl(var(--muted-foreground))]">{fmtDate(item.occurredAt)}</div></div></div>)}</div> : <InlineEmpty text="No recent updates to show."/>}
+          <section className="dashboard-panel dashboard-activity" aria-labelledby="dashboard-activity-title">
+            <div className="dashboard-panel-heading dashboard-activity-heading">
+              <div className="dashboard-activity-emblem"><Activity size={18}/></div>
+              <div><div className="dashboard-panel-kicker">ACROSS THE SCHOOL</div><h2 id="dashboard-activity-title">Recent activity</h2><p>Latest updates from your school</p></div>
+            </div>
+            {data.recentActivity.length ? <div className="dashboard-activity-list">{data.recentActivity.map((item, index) => <article key={item.id} data-testid={`activity-${item.id}`} className="dashboard-activity-item">
+              <span className={`dashboard-activity-node node-${index + 1}`} aria-hidden="true"/>
+              <div><div className="dashboard-activity-label">{item.label}</div><div className="dashboard-activity-description">{item.description}</div><div className="dashboard-activity-time">{fmtDate(item.occurredAt)}</div></div>
+            </article>)}</div> : <InlineEmpty text="No recent updates to show."/>}
           </section>
         </div>
-        <div className="surface flex flex-col justify-between gap-4 overflow-hidden bg-[hsl(var(--brand-forest))] p-6 text-[hsl(var(--brand-inverse))] sm:flex-row sm:items-center md:px-8"><div><div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(var(--classroom-ready))]"><span className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--brand-accent))]"/>Learning in sync</div><h3 className="display m-0 text-xl font-extrabold">One school day. Many ways to connect.</h3><p className="mb-0 mt-2 max-w-xl text-xs leading-5 text-white/60">Find live classes and classroom resources shared with your role.</p></div><Link href="/boards/templates" className="btn shrink-0 bg-[hsl(var(--brand-accent))] text-[hsl(var(--brand-ink))]">Browse smartboards <ArrowRight size={15}/></Link></div>
+        <section className="dashboard-community">
+          <div className="dashboard-community-ornament" aria-hidden="true"><span/><span/><span/></div>
+          <div className="dashboard-community-copy"><div className="dashboard-community-kicker"><span/>Learning in sync</div><h2>One school day. Many ways to connect.</h2><p>Find live classes and classroom resources shared with your role.</p></div>
+          <Link href="/boards/templates" className="dashboard-community-link">Browse smartboards <ArrowRight size={15}/></Link>
+        </section>
+        <footer className="dashboard-footer"><BookOpen size={14}/><span>Learning, belonging, becoming.</span><span className="dashboard-footer-rule"/><span>{SCHOOL_NAME.toUpperCase()}</span></footer>
       </div>}
     </QueryState>
-  </>;
+  </div>;
 }
 function InlineEmpty({ text }: { text: string }) { return <div className="rounded-xl border border-dashed border-[hsl(var(--border))] p-5 text-center text-xs text-[hsl(var(--muted-foreground))]">{text}</div>; }
 function SessionRow({ session, action }: { session: LiveSession; action?: React.ReactNode }) {

@@ -2,6 +2,7 @@
 - [LiveKit webhook authorization](livekit-webhook-authorization.md) — the SDK verifies the raw JWT header, not a Bearer-prefixed token, against the exact raw payload.
 - [Campus Live classroom scope](campus-live-classroom-scope.md) — preserve the existing classroom while building other product areas.
 - [Campus Live MVP priority](campus-live-mvp-priority.md) — ship core acceptance journeys before polishing or extending features.
+- [Campus Live visual direction](campus-live-visual-direction.md) — carry the approved forest-green, warm-paper, muted-gold school identity from sign-in through the dashboard.
 - [Local container health checks](local-container-healthchecks.md) — an OCI health-check exec failure can mark reachable Postgres/Redis containers unhealthy; confirm with host probes before restarting.
 - [PostgreSQL policy role arrays](postgres-policy-role-arrays.md) — cast `pg_policies.roles` to `text[]`; node-postgres may otherwise return `"{public}"` as a plain string.
 - [RLS write fixtures](rls-write-fixtures.md) — use distinct support rows for natural-key tables so unique constraints do not mask RLS behavior.

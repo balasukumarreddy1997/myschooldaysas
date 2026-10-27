@@ -1,0 +1,85 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
+
+:root {
+  color-scheme: light;
+  --background: 42 34% 96%;
+  --foreground: 218 28% 19%;
+  --card: 0 0% 100%;
+  --card-foreground: 218 28% 19%;
+  --border: 38 20% 87%;
+  --input: 38 20% 82%;
+  --primary: 167 56% 30%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 42 30% 91%;
+  --secondary-foreground: 218 27% 24%;
+  --muted: 40 25% 92%;
+  --muted-foreground: 218 12% 48%;
+  --accent: 30 83% 58%;
+  --accent-foreground: 218 28% 19%;
+  --destructive: 0 64% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --ring: 167 56% 30%;
+  --popover: 0 0% 100%;
+  --sidebar: 218 32% 18%;
+  --sidebar-foreground: 42 30% 93%;
+  --brand-forest: 157 45% 20%;
+  --brand-ink: 158 38% 15%;
+  --brand-inverse: 42 34% 96%;
+  --brand-accent: 30 72% 63%;
+  --brand-mint: 153 38% 88%;
+  --brand-mint-ink: 157 49% 27%;
+  --status-good: 154 51% 42%;
+  --status-good-bg: 148 47% 93%;
+  --classroom-ready: 153 54% 68%;
+  --app-font-sans: 'DM Sans', sans-serif;
+  --app-font-display: 'Manrope', sans-serif;
+  --radius: 0.85rem;
+}
+
+.dark {
+  color-scheme: dark;
+  --background: 219 29% 11%;
+  --foreground: 40 27% 92%;
+  --card: 219 25% 15%;
+  --card-foreground: 40 27% 92%;
+  --border: 218 18% 26%;
+  --input: 218 18% 31%;
+  --primary: 163 48% 48%;
+  --primary-foreground: 219 29% 11%;
+  --secondary: 219 20% 21%;
+  --secondary-foreground: 40 27% 92%;
+  --muted: 219 20% 19%;
+  --muted-foreground: 218 13% 65%;
+  --accent: 31 80% 61%;
+  --accent-foreground: 219 29% 11%;
+  --destructive: 0 60% 58%;
+  --destructive-foreground: 0 0% 100%;
+  --ring: 163 48% 48%;
+  --popover: 219 25% 15%;
+  --sidebar: 220 34% 9%;
+  --sidebar-foreground: 40 27% 92%;
+  --brand-forest: 157 42% 19%;
+  --brand-ink: 158 38% 15%;
+  --brand-inverse: 42 34% 96%;
+  --brand-accent: 30 72% 63%;
+  --brand-mint: 153 32% 27%;
+  --brand-mint-ink: 153 58% 87%;
+  --status-good: 154 51% 58%;
+  --status-good-bg: 153 44% 18%;
+  --classroom-ready: 153 54% 68%;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--app-font-sans); background: hsl(var(--background)); color: hsl(var(--foreground)); }
+button, input, select { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+.display { font-family: var(--app-font-display); }
+.surface { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: var(--radius); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; border: 0; border-radius: 10px; padding: 0 15px; cursor: pointer; font-weight: 700; transition: transform .18s, opacity .18s, background .18s; text-decoration: none; }
+.btn:hover { transform: translateY(-1px); }
+.btn-primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+.btn-muted { background: hsl(var(--secondary)); color: hsl(var(--secondary-foreground)); }
+.tag { display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 9px; background: hsl(var(--secondary)); color: hsl(var(--secondary-foreground)); font-size: 11px; font-weight: 700; text-transform: capitalize; }
+.tag-live { color: hsl(var(--brand-mint-ink)); background: hsl(var(--brand-mint)); }
+.skeleton { background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--secondary)) 50%, hsl(var(--muted)) 75%); background-size: 200% 100%; animation: shimmer 1.35s infinite; border-radius: 8px; }
+@keyframes shimmer { to { background-position: -200% 0; } }
