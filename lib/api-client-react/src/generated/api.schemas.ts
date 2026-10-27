@@ -223,10 +223,79 @@ export interface StudentProfileFields {
 }
 
 export interface StudentCurrentEnrollment {
+  enrollmentId: string;
+  sectionId: string;
   admissionNo: string;
   academicYear: string;
   className: string;
   sectionName: string;
+}
+
+export type StudentEnrollmentHistoryItemStatus = typeof StudentEnrollmentHistoryItemStatus[keyof typeof StudentEnrollmentHistoryItemStatus];
+
+
+export const StudentEnrollmentHistoryItemStatus = {
+  active: 'active',
+  disabled: 'disabled',
+} as const;
+
+/**
+ * @nullable
+ */
+export type StudentEnrollmentHistoryItemEndedReason = typeof StudentEnrollmentHistoryItemEndedReason[keyof typeof StudentEnrollmentHistoryItemEndedReason] | null;
+
+
+export const StudentEnrollmentHistoryItemEndedReason = {
+  transferred: 'transferred',
+  promoted: 'promoted',
+} as const;
+
+export interface StudentEnrollmentHistoryItem {
+  id: string;
+  admissionNo: string;
+  academicYear: string;
+  className: string;
+  sectionName: string;
+  status: StudentEnrollmentHistoryItemStatus;
+  createdAt: string;
+  /** @nullable */
+  endedAt: string | null;
+  /** @nullable */
+  endedReason: StudentEnrollmentHistoryItemEndedReason;
+}
+
+export interface StudentEnrollmentHistoryPage {
+  items: StudentEnrollmentHistoryItem[];
+  total: number;
+}
+
+export interface TransferEnrollmentInput {
+  enrollmentId: string;
+  targetSectionId: string;
+}
+
+export type PromoteStudentsInputSectionMap = {[key: string]: string};
+
+export interface PromoteStudentsInput {
+  fromClassId: string;
+  toClassId: string;
+  /**
+     * @minLength 4
+     * @maxLength 24
+     */
+  fromAcademicYear: string;
+  /**
+     * @minLength 4
+     * @maxLength 24
+     */
+  toAcademicYear: string;
+  sectionMap: PromoteStudentsInputSectionMap;
+}
+
+export interface PromotionResult {
+  /** @minimum 0 */
+  promotedCount: number;
+  items: StudentSummary[];
 }
 
 export type StudentProfileResponseStatus = typeof StudentProfileResponseStatus[keyof typeof StudentProfileResponseStatus];

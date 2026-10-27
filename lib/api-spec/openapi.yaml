@@ -461,6 +461,26 @@ paths:
         "400": { description: Invalid profile data }
         "403": { description: Administrator role required }
         "404": { description: Student not found }
+  /academic/students/{studentId}/enrollments:
+    get:
+      operationId: getStudentEnrollmentHistory
+      tags: [academic]
+      summary: List a student's current and previous enrollments
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: studentId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Enrollment history
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentEnrollmentHistoryPage" }
+        "403": { description: Administrator role required }
+        "404": { description: Student not found }
   /academic/enrollments:
     post:
       operationId: createEnrollment
@@ -483,6 +503,50 @@ paths:
         "403": { description: Administrator role required }
         "404": { description: Student or section not found }
         "409": { description: Section is full or an enrollment already exists }
+  /academic/enrollments/transfer:
+    post:
+      operationId: transferStudentEnrollment
+      tags: [academic]
+      summary: Transfer a student while preserving the previous enrollment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TransferEnrollmentInput" }
+      responses:
+        "200":
+          description: Student transferred to the target section
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentSummary" }
+        "400": { description: Invalid request }
+        "403": { description: Administrator role required }
+        "404": { description: Active enrollment or target section not found }
+        "409": { description: Target is full or transfer conflicts with enrollment state }
+  /academic/enrollments/promote:
+    post:
+      operationId: promoteStudents
+      tags: [academic]
+      summary: Promote a class cohort and preserve previous-year enrollments
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PromoteStudentsInput" }
+      responses:
+        "200":
+          description: Promoted students
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PromotionResult" }
+        "400": { description: "Invalid class, year, or section mapping" }
+        "403": { description: Administrator role required }
+        "404": { description: Source or target class not found }
+        "409": { description: "No eligible students, capacity exceeded, or enrollment conflict" }
   /academic/admissions/preview:
     post:
       operationId: previewStudentAdmissions
@@ -1478,12 +1542,63 @@ components:
         guardianRelationship: { type: [string, "null"], maxLength: 40 }
     StudentCurrentEnrollment:
       type: object
-      required: [admissionNo, academicYear, className, sectionName]
+      required: [enrollmentId, sectionId, admissionNo, academicYear, className, sectionName]
       properties:
+        enrollmentId: { type: string, format: uuid }
+        sectionId: { type: string, format: uuid }
         admissionNo: { type: string }
         academicYear: { type: string }
         className: { type: string }
         sectionName: { type: string }
+    StudentEnrollmentHistoryItem:
+      type: object
+      required: [id, admissionNo, academicYear, className, sectionName, status, createdAt, endedAt, endedReason]
+      properties:
+        id: { type: string, format: uuid }
+        admissionNo: { type: string }
+        academicYear: { type: string }
+        className: { type: string }
+        sectionName: { type: string }
+        status: { type: string, enum: [active, disabled] }
+        createdAt: { type: string, format: date-time }
+        endedAt: { type: [string, "null"], format: date-time }
+        endedReason: { type: [string, "null"], enum: [transferred, promoted, null] }
+    StudentEnrollmentHistoryPage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/StudentEnrollmentHistoryItem" }
+        total: { type: integer }
+    TransferEnrollmentInput:
+      type: object
+      additionalProperties: false
+      required: [enrollmentId, targetSectionId]
+      properties:
+        enrollmentId: { type: string, format: uuid }
+        targetSectionId: { type: string, format: uuid }
+    PromoteStudentsInput:
+      type: object
+      additionalProperties: false
+      required: [fromClassId, toClassId, fromAcademicYear, toAcademicYear, sectionMap]
+      properties:
+        fromClassId: { type: string, format: uuid }
+        toClassId: { type: string, format: uuid }
+        fromAcademicYear: { type: string, minLength: 4, maxLength: 24 }
+        toAcademicYear: { type: string, minLength: 4, maxLength: 24 }
+        sectionMap:
+          type: object
+          minProperties: 1
+          additionalProperties: { type: string, format: uuid }
+    PromotionResult:
+      type: object
+      required: [promotedCount, items]
+      properties:
+        promotedCount: { type: integer, minimum: 0 }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/StudentSummary" }
     StudentProfileResponse:
       type: object
       required: [id, name, email, status, currentEnrollment, profile]

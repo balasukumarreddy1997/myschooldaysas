@@ -7,6 +7,8 @@
  */
 
 export interface StudentCurrentEnrollment {
+  enrollmentId: string;
+  sectionId: string;
   admissionNo: string;
   academicYear: string;
   className: string;

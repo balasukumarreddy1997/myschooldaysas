@@ -170,7 +170,7 @@ try {
         `INSERT INTO academic.enrollments
            (org_id, student_user_id, section_id, admission_no, academic_year)
          VALUES ($1, $2, $3, $4, '2026-27')
-         ON CONFLICT (org_id, student_user_id, academic_year) DO UPDATE
+         ON CONFLICT (org_id, student_user_id, academic_year) WHERE status = 'active' DO UPDATE
            SET section_id = EXCLUDED.section_id`,
         [orgId, userIds.get(student.email), sectionId, `ADM2026${String(index + 1).padStart(3, "0")}`],
       );

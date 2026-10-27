@@ -26,6 +26,8 @@ while IFS='|' read -r version migration; do
     continue
   fi
   psql "$MIGRATOR_DATABASE_URL" --single-transaction -v ON_ERROR_STOP=1 -f "$migration"
+  psql "$MIGRATOR_DATABASE_URL" -v ON_ERROR_STOP=1 -c \
+    "INSERT INTO public.schema_migrations (version) VALUES ('$version') ON CONFLICT (version) DO NOTHING"
   echo "Applied: $version"
 done <<'MIGRATIONS'
 identity:001|services/identity/migrations/001_identity.sql
@@ -37,6 +39,7 @@ academic:002|services/academic/migrations/002_consents.sql
 academic:003|services/academic/migrations/003_subjects.sql
 academic:004|services/academic/migrations/004_section_capacity_timetable.sql
 academic:005|services/academic/migrations/005_guardian_consent_reviews.sql
+academic:006|services/academic/migrations/006_enrollment_transitions.sql
 school:001|services/school/migrations/001_attendance.sql
 live:001|services/live/migrations/001_live.sql
 board:001|services/board/migrations/001_board.sql

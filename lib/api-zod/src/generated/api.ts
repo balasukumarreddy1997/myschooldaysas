@@ -507,6 +507,8 @@ export const GetStudentProfileResponse = zod.object({
   "email": zod.email(),
   "status": zod.enum(['active', 'disabled']),
   "currentEnrollment": zod.union([zod.object({
+  "enrollmentId": zod.uuid(),
+  "sectionId": zod.uuid(),
   "admissionNo": zod.string(),
   "academicYear": zod.string(),
   "className": zod.string(),
@@ -589,6 +591,8 @@ export const UpdateStudentProfileResponse = zod.object({
   "email": zod.email(),
   "status": zod.enum(['active', 'disabled']),
   "currentEnrollment": zod.union([zod.object({
+  "enrollmentId": zod.uuid(),
+  "sectionId": zod.uuid(),
   "admissionNo": zod.string(),
   "academicYear": zod.string(),
   "className": zod.string(),
@@ -605,6 +609,29 @@ export const UpdateStudentProfileResponse = zod.object({
   "guardianPhone": zod.string().max(updateStudentProfileResponseProfileGuardianPhoneMax).nullable(),
   "guardianRelationship": zod.string().max(updateStudentProfileResponseProfileGuardianRelationshipMax).nullable()
 })
+})
+
+
+/**
+ * @summary List a student's current and previous enrollments
+ */
+export const GetStudentEnrollmentHistoryParams = zod.object({
+  "studentId": zod.uuid()
+})
+
+export const GetStudentEnrollmentHistoryResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "admissionNo": zod.string(),
+  "academicYear": zod.string(),
+  "className": zod.string(),
+  "sectionName": zod.string(),
+  "status": zod.enum(['active', 'disabled']),
+  "createdAt": zod.coerce.date(),
+  "endedAt": zod.coerce.date().nullable(),
+  "endedReason": zod.union([zod.literal('transferred'),zod.literal('promoted'),zod.literal(null)]).nullable()
+})),
+  "total": zod.int()
 })
 
 
@@ -639,6 +666,72 @@ export const CreateEnrollmentResponse = zod.object({
   "sectionName": zod.string(),
   "status": zod.enum(['active', 'disabled']),
   "academicYear": zod.string().min(createEnrollmentResponseAcademicYearMin).max(createEnrollmentResponseAcademicYearMax)
+})
+
+
+/**
+ * @summary Transfer a student while preserving the previous enrollment
+ */
+export const TransferStudentEnrollmentBody = zod.object({
+  "enrollmentId": zod.uuid(),
+  "targetSectionId": zod.uuid()
+})
+
+export const transferStudentEnrollmentResponseAcademicYearMin = 4;
+export const transferStudentEnrollmentResponseAcademicYearMax = 24;
+
+
+
+export const TransferStudentEnrollmentResponse = zod.object({
+  "id": zod.uuid(),
+  "enrollmentId": zod.uuid(),
+  "name": zod.string(),
+  "admissionNo": zod.string(),
+  "sectionId": zod.uuid(),
+  "sectionName": zod.string(),
+  "status": zod.enum(['active', 'disabled']),
+  "academicYear": zod.string().min(transferStudentEnrollmentResponseAcademicYearMin).max(transferStudentEnrollmentResponseAcademicYearMax)
+})
+
+
+/**
+ * @summary Promote a class cohort and preserve previous-year enrollments
+ */
+export const promoteStudentsBodyFromAcademicYearMin = 4;
+export const promoteStudentsBodyFromAcademicYearMax = 24;
+
+export const promoteStudentsBodyToAcademicYearMin = 4;
+export const promoteStudentsBodyToAcademicYearMax = 24;
+
+
+
+export const PromoteStudentsBody = zod.object({
+  "fromClassId": zod.uuid(),
+  "toClassId": zod.uuid(),
+  "fromAcademicYear": zod.string().min(promoteStudentsBodyFromAcademicYearMin).max(promoteStudentsBodyFromAcademicYearMax),
+  "toAcademicYear": zod.string().min(promoteStudentsBodyToAcademicYearMin).max(promoteStudentsBodyToAcademicYearMax),
+  "sectionMap": zod.record(zod.string(), zod.uuid())
+})
+
+export const promoteStudentsResponsePromotedCountMin = 0;
+
+export const promoteStudentsResponseItemsItemAcademicYearMin = 4;
+export const promoteStudentsResponseItemsItemAcademicYearMax = 24;
+
+
+
+export const PromoteStudentsResponse = zod.object({
+  "promotedCount": zod.int().min(promoteStudentsResponsePromotedCountMin),
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "enrollmentId": zod.uuid(),
+  "name": zod.string(),
+  "admissionNo": zod.string(),
+  "sectionId": zod.uuid(),
+  "sectionName": zod.string(),
+  "status": zod.enum(['active', 'disabled']),
+  "academicYear": zod.string().min(promoteStudentsResponseItemsItemAcademicYearMin).max(promoteStudentsResponseItemsItemAcademicYearMax)
+}))
 })
 
 

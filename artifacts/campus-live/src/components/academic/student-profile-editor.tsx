@@ -9,6 +9,7 @@ import {
 } from "@workspace/api-client-react";
 import type { StudentProfileFields } from "@workspace/api-client-react";
 import { Save, X } from "lucide-react";
+import { StudentEnrollmentManager } from "./student-enrollment-manager";
 
 const emptyProfile: StudentProfileFields = {
   dateOfBirth: null,
@@ -138,6 +139,7 @@ export function StudentProfileEditor({
           </button>
         </div>
       </form>
+      <StudentEnrollmentManager studentId={studentId} currentEnrollment={data.currentEnrollment} />
     </section>
   );
 }
