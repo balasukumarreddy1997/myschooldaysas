@@ -194,6 +194,34 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
     assert.ok(section, "The teacher assignment section must be visible to the administrator.");
     const targetSection = sectionList.body.items.find((item) => item.classId !== section.classId);
     assert.ok(targetSection, "A section in another class is required for transfer and promotion checks.");
+    const schoolRegistry = await api("/academic/students?limit=100&offset=0", admin);
+    assert.equal(schoolRegistry.status, 200, JSON.stringify(schoolRegistry.body));
+    assert.ok(schoolRegistry.body.items.length > 0);
+    assert.ok(schoolRegistry.body.items.some((item) => item.classId && item.className && item.sectionName));
+    const classRegistry = await api(
+      `/academic/students?classId=${encodeURIComponent(section.classId)}&limit=100&offset=0`,
+      admin,
+    );
+    assert.equal(classRegistry.status, 200, JSON.stringify(classRegistry.body));
+    assert.ok(classRegistry.body.items.length > 0);
+    assert.ok(classRegistry.body.items.every((item) => item.classId === section.classId));
+    assert.equal((await api("/academic/students?limit=20&offset=0", teacher)).status, 400);
+    assert.equal(
+      (await api(`/academic/students?sectionId=${encodeURIComponent(assignment.section_id)}&classId=${encodeURIComponent(section.classId)}&limit=20`, teacher)).status,
+      403,
+    );
+    const teacherSections = await api("/academic/sections", teacher);
+    assert.equal(teacherSections.status, 200, JSON.stringify(teacherSections.body));
+    const unassignedSection = sectionList.body.items.find(
+      (item) => !teacherSections.body.items.some((teacherSection) => teacherSection.id === item.id),
+    );
+    assert.ok(unassignedSection, "A section outside the teacher's assignments is required.");
+    const unassignedRoster = await api(
+      `/academic/students?sectionId=${encodeURIComponent(unassignedSection.id)}&limit=20&offset=0`,
+      teacher,
+    );
+    assert.equal(unassignedRoster.status, 200, JSON.stringify(unassignedRoster.body));
+    assert.equal(unassignedRoster.body.total, 0);
     const originalCapacity = section.capacity;
     const temporaryCapacity = originalCapacity === 9001 ? 9002 : 9001;
 

@@ -6,7 +6,7 @@ This is a convenience summary derived from `MASTER_SPEC.md`; these routes now re
 
 - `GET /api/academic/classes` lists classes visible to the caller.
 - `GET /api/academic/sections` lists sections visible to the caller and accepts optional `classId`.
-- `GET /api/academic/students` requires `sectionId`; supports `q`, `limit` (1–100), and `offset`; returns `{ items, total, limit, offset }`. Administrators can search by student email/phone and guardian contact details; non-admin search is limited to student name and admission number.
+- `GET /api/academic/students` supports `q`, `classId`, `sectionId`, `limit` (1–100), and `offset`; returns `{ items, total, limit, offset }`. Administrators may omit both scope filters to search school-wide or filter by class/section. Other roles must provide a section and remain within their own student, linked-child, or assigned-teacher scope. Admin search includes student email/phone and guardian contact details; non-admin search is limited to student name and admission number.
 - `GET /api/academic/students/:studentId/profile` and `PUT /api/academic/students/:studentId/profile` are admin-only and organization-scoped. The response includes account status, current enrollment, and profile fields; updates can clear optional values. Guardian contact data does not create a guardian account or access link.
 - `GET /api/academic/students/:studentId/enrollments` is admin-only and returns the student's current and ended enrollment records.
 - `POST /api/academic/enrollments/transfer` is admin-only. It moves one active enrollment to a different section in the same academic year, checks destination capacity, and retains the ended enrollment row with its end time and `transferred` reason.
@@ -23,6 +23,7 @@ The `academic` schema stores classes, sections, subjects, enrollments, teacher a
 - Admins can enroll an existing active student account for an academic year from the student area. The API locks the section while checking active enrollment count, so concurrent requests cannot exceed its configured capacity.
 - Admins can preview and create one or up to 20 student accounts from the student area using single-entry fields or CSV. The account, student role, and enrollment are created in one transaction; each account receives a random temporary password that expires after seven days and must be changed at first sign-in.
 - Admins can search the section roster using student and guardian contact details, then view and edit student profile fields and current enrollment. Profile updates preserve the student account and enrollment; guardian data stays contact-only.
+- Administrators can search current students across all classes and sections, filter by class or section, and review each student's class, section, and current academic year. The registry returns one current enrollment per student.
 - Admins can transfer a single student between sections without overwriting the old enrollment. A class-level promotion wizard maps every source section to a target section; the API rejects a capacity overflow without partially updating the cohort.
 - Student profile pages expose enrollment history, including whether a prior row ended through transfer or promotion.
 - Timetable slots can be created and removed by admins, are visible according to the caller's section/teacher/guardian relationships, include room, and reject overlapping teacher or section slots.
@@ -33,7 +34,7 @@ The `academic` schema stores classes, sections, subjects, enrollments, teacher a
 
 ## Remaining gaps
 
-The school-wide registry across all sections and admission audit history are not implemented. Profile search currently runs within the selected section. Guardian account creation/linking is not part of admission or profile editing. CSV admission currently targets one section and academic year per batch, with a 20-student limit. No fee-payment feature exists to enforce `can_pay_fees`; audit entries for consent-review and guardian-flag changes, marketing/data-processing consent policy and enforcement remain open. Calendar rules and academic analytics are also not implemented.
+Admission audit history is not implemented. Guardian account creation/linking is not part of admission or profile editing. CSV admission currently targets one section and academic year per batch, with a 20-student limit. No fee-payment feature exists to enforce `can_pay_fees`; audit entries for consent-review and guardian-flag changes, marketing/data-processing consent policy and enforcement remain open. Calendar rules and academic analytics are also not implemented.
 
 ## Acceptance checks
 

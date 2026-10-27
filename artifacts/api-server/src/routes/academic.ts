@@ -974,62 +974,104 @@ router.get("/academic/students", requireAuth, async (req, res, next) => {
   if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
   const parsed = GetStudentsQueryParams.safeParse(req.query);
   if (!parsed.success) {
-    return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a valid sectionId and pagination."));
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide valid registry filters and pagination."));
   }
-  const { sectionId, q, limit = 50, offset = 0 } = parsed.data;
+  const { sectionId, classId, q, limit = 50, offset = 0 } = parsed.data;
   const flags = roleFlags(user.roles);
   const maySeeRoster = flags.isAdmin || flags.isTeacher || flags.isStudent || flags.isParent;
 
   if (!maySeeRoster) return void res.status(403).json(errorBody("FORBIDDEN", "You cannot view this roster."));
+  if (!flags.isAdmin && !sectionId) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "A sectionId is required for this roster."));
+  }
+  if (!flags.isAdmin && classId) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only administrators can search across classes."));
+  }
 
   try {
     const result = await withOrg(user.orgId, async (client) => {
-      const where = `e.org_id = $1 AND e.section_id = $2 AND e.status = 'active'
+      const currentEnrollments = `WITH current_enrollments AS (
+        SELECT DISTINCT ON (e.org_id, e.student_user_id) e.*
+          FROM academic.enrollments e
+         WHERE e.org_id = $1 AND e.status = 'active'
+         ORDER BY e.org_id, e.student_user_id, e.academic_year DESC, e.created_at DESC, e.id DESC
+      )`;
+      const where = `e.org_id = $1
+        AND ($2::uuid IS NULL OR e.section_id = $2)
+        AND ($3::uuid IS NULL OR c.id = $3)
         AND (
-          $3::boolean OR $4::boolean
-          OR ($5::boolean AND u.id = $6)
-          OR ($7::boolean AND EXISTS (
+          $4::boolean
+          OR ($5::boolean AND (
+            EXISTS (
+              SELECT 1 FROM academic.section_teachers st
+               WHERE st.org_id = e.org_id AND st.section_id = e.section_id
+                 AND st.teacher_user_id = $7
+            )
+            OR EXISTS (
+              SELECT 1 FROM academic.teacher_assignments ta
+               WHERE ta.org_id = e.org_id AND ta.section_id = e.section_id
+                 AND ta.teacher_user_id = $7
+            )
+          ))
+          OR ($6::boolean AND u.id = $7)
+          OR ($8::boolean AND EXISTS (
             SELECT 1 FROM identity.guardian_links gl
              WHERE gl.org_id = e.org_id AND gl.student_user_id = u.id
-               AND gl.guardian_user_id = $6
+               AND gl.guardian_user_id = $7
           ))
         )
         AND (
-          $8::text IS NULL
-          OR u.name ILIKE '%' || $8 || '%'
-          OR e.admission_no ILIKE '%' || $8 || '%'
-          OR ($3::boolean AND (
-            u.email ILIKE '%' || $8 || '%'
+          $9::text IS NULL
+          OR u.name ILIKE '%' || $9 || '%'
+          OR e.admission_no ILIKE '%' || $9 || '%'
+          OR ($4::boolean AND (
+            u.email ILIKE '%' || $9 || '%'
             OR EXISTS (
               SELECT 1 FROM identity.profiles profile
                WHERE profile.org_id = e.org_id AND profile.user_id = u.id
                  AND (
-                   profile.phone ILIKE '%' || $8 || '%'
-                   OR profile.guardian_name ILIKE '%' || $8 || '%'
-                   OR profile.guardian_email ILIKE '%' || $8 || '%'
-                   OR profile.guardian_phone ILIKE '%' || $8 || '%'
+                    profile.phone ILIKE '%' || $9 || '%'
+                    OR profile.guardian_name ILIKE '%' || $9 || '%'
+                    OR profile.guardian_email ILIKE '%' || $9 || '%'
+                    OR profile.guardian_phone ILIKE '%' || $9 || '%'
                  )
             )
           ))
         )`;
+      const queryParams = [
+        user.orgId,
+        sectionId ?? null,
+        classId ?? null,
+        flags.isAdmin,
+        flags.isTeacher,
+        flags.isStudent,
+        user.id,
+        flags.isParent,
+        q ?? null,
+      ];
       const count = await client.query<{ total: string }>(
-        `SELECT COUNT(*)::text AS total
-           FROM academic.enrollments e
+        `${currentEnrollments}
+         SELECT COUNT(*)::text AS total
+           FROM current_enrollments e
            JOIN academic.sections s ON s.id = e.section_id AND s.org_id = e.org_id
+           JOIN academic.classes c ON c.id = s.class_id AND c.org_id = s.org_id
            JOIN identity.users u ON u.id = e.student_user_id AND u.org_id = e.org_id
           WHERE ${where}`,
-        [user.orgId, sectionId, flags.isAdmin, flags.isTeacher, flags.isStudent, user.id, flags.isParent, q ?? null],
+        queryParams,
       );
       const rows = await client.query(
-        `SELECT u.id, e.id AS enrollment_id, u.name, e.admission_no, s.id AS section_id,
-                s.name AS section_name, e.status, e.academic_year
-           FROM academic.enrollments e
+        `${currentEnrollments}
+         SELECT u.id, e.id AS enrollment_id, u.name, e.admission_no, s.id AS section_id,
+                s.name AS section_name, c.id AS class_id, c.name AS class_name,
+                e.status, e.academic_year
+           FROM current_enrollments e
            JOIN academic.sections s ON s.id = e.section_id AND s.org_id = e.org_id
+           JOIN academic.classes c ON c.id = s.class_id AND c.org_id = s.org_id
            JOIN identity.users u ON u.id = e.student_user_id AND u.org_id = e.org_id
           WHERE ${where}
-          ORDER BY u.name
-          LIMIT $9 OFFSET $10`,
-        [user.orgId, sectionId, flags.isAdmin, flags.isTeacher, flags.isStudent, user.id, flags.isParent, q ?? null, limit, offset],
+           ORDER BY u.name, u.id
+           LIMIT $10 OFFSET $11`,
+        [...queryParams, limit, offset],
       );
       return { rows: rows.rows, total: Number(count.rows[0]?.total ?? 0) };
     });
@@ -1042,6 +1084,8 @@ router.get("/academic/students", requireAuth, async (req, res, next) => {
         admissionNo: row.admission_no,
         sectionId: row.section_id,
         sectionName: row.section_name,
+        classId: row.class_id,
+        className: row.class_name,
         status: row.status,
         academicYear: row.academic_year,
       })),

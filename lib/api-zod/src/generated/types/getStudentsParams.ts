@@ -7,7 +7,8 @@
  */
 
 export type GetStudentsParams = {
-sectionId: string;
+sectionId?: string;
+classId?: string;
 /**
  * @maxLength 100
  */

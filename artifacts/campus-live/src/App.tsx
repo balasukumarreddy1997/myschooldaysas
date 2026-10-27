@@ -323,29 +323,46 @@ function ClassesPage({ roles }: { roles: string[] }) {
 
 function StudentsPage({ roles }: { roles: string[] }) {
   const canManage = roles.some(role => ['super_admin', 'org_admin', 'campus_admin'].includes(role));
+  const classes = useGetClasses();
   const sections = useGetSections();
+  const [classId, setClassId] = useState('');
   const [sectionId, setSectionId] = useState('');
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState('');
   const [profileStudentId, setProfileStudentId] = useState<string | null>(null);
-  const params = useMemo(() => ({ sectionId: sectionId || sections.data?.items[0]?.id || '', limit: 20, offset: page * 20, ...(search.trim() ? { q: search.trim() } : {}) }), [sectionId, sections.data?.items, page, search]);
-  const students = useGetStudents(params, { query: { enabled: !!params.sectionId, queryKey: getGetStudentsQueryKey(params) } });
-  const effectiveSection = sectionId || sections.data?.items[0]?.id || '';
-  return <><PageHeading eyebrow="Academic directory" title="Student roster" description="Find a student and review their current section."/>
+  const visibleSections = useMemo(
+    () => (sections.data?.items ?? []).filter(section => !classId || section.classId === classId),
+    [classId, sections.data?.items],
+  );
+  const effectiveSection = canManage ? sectionId : sectionId || sections.data?.items[0]?.id || '';
+  const params = useMemo(() => ({
+    ...(effectiveSection ? { sectionId: effectiveSection } : {}),
+    ...(canManage && classId ? { classId } : {}),
+    limit: 20,
+    offset: page * 20,
+    ...(search.trim() ? { q: search.trim() } : {}),
+  }), [canManage, classId, effectiveSection, page, search]);
+  const students = useGetStudents(params, {
+    query: { enabled: canManage || !!effectiveSection, queryKey: getGetStudentsQueryKey(params) },
+  });
+  const filterError = sections.error || (canManage ? classes.error : null);
+  const filtersLoading = sections.isLoading || (canManage && classes.isLoading);
+  return <><PageHeading eyebrow="Academic directory" title={canManage ? "Student registry" : "Student roster"} description={canManage ? "Find and review students across every class and section." : "Find a student and review their current section."}/>
     <div className="surface mb-5 flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
-       <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={16}/><input aria-label="Search students" data-testid="input-search-students" className="field pl-9" placeholder={canManage ? "Search name, admission no., email, or guardian" : "Search by name or admission number"} value={search} onChange={e => { setSearch(e.target.value); setPage(0); setProfileStudentId(null); }}/></div>
-       <label className="flex items-center gap-2 text-xs font-semibold"><span>Section</span><select data-testid="select-student-section" className="field min-w-[150px]" value={effectiveSection} onChange={e => { setSectionId(e.target.value); setPage(0); setProfileStudentId(null); }}><option value="">Choose section</option>{sections.data?.items.map(s => <option key={s.id} value={s.id}>{s.className} · {s.name}</option>)}</select></label>
+       <div className="relative min-w-[220px] flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={16}/><input aria-label="Search students" data-testid="input-search-students" className="field pl-9" placeholder={canManage ? "Search name, admission no., email, or guardian" : "Search by name or admission number"} value={search} onChange={e => { setSearch(e.target.value); setPage(0); setProfileStudentId(null); }}/></div>
+       {canManage && <label className="flex items-center gap-2 text-xs font-semibold"><span>Class</span><select data-testid="select-student-class" className="field min-w-[145px]" value={classId} onChange={e => { setClassId(e.target.value); setSectionId(''); setPage(0); setProfileStudentId(null); }}><option value="">All classes</option>{classes.data?.items.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
+       <label className="flex items-center gap-2 text-xs font-semibold"><span>Section</span><select data-testid="select-student-section" className="field min-w-[150px]" value={effectiveSection} onChange={e => { setSectionId(e.target.value); setPage(0); setProfileStudentId(null); }}>{canManage ? <option value="">All sections</option> : <option value="">Choose section</option>}{visibleSections.map(s => <option key={s.id} value={s.id}>{s.className} · {s.name}</option>)}</select></label>
     </div>
     {canManage && sections.data && <>
       <AdmissionIntake sections={sections.data.items}/>
       <EnrollmentForm sections={sections.data.items}/>
     </>}
-    {sections.isLoading ? <div className="skeleton h-48"/> : sections.error ? <QueryState loading={false} error={sections.error} empty={false} retry={() => sections.refetch()}><></></QueryState> :
-      !effectiveSection ? <InlineEmpty text="No sections are available to display students."/> :
+     {filtersLoading ? <div className="skeleton h-48"/> : filterError ? <QueryState loading={false} error={filterError} empty={false} retry={() => { sections.refetch(); if (canManage) classes.refetch(); }}><></></QueryState> :
+       !canManage && !effectiveSection ? <InlineEmpty text="No sections are available to display students."/> :
       <QueryState loading={students.isLoading} error={students.error} empty={!students.data?.items.length} retry={() => students.refetch()}>
          {students.data && <div className="surface overflow-hidden">
-          <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-4"><div className="text-xs font-bold">{students.data.total} students</div><div className="text-[11px] text-[hsl(var(--muted-foreground))">Section roster</div></div>
-           <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left"><thead className="bg-[hsl(var(--muted))] text-[10px] uppercase tracking-[.12em] text-[hsl(var(--muted-foreground))]"><tr><th className="px-4 py-3">Student</th><th className="px-4 py-3">Admission no.</th><th className="px-4 py-3">Section</th><th className="px-4 py-3">Academic year</th><th className="px-4 py-3">Status</th>{canManage && <th className="px-4 py-3">Profile</th>}</tr></thead><tbody>{students.data.items.map(student => <tr key={student.enrollmentId} data-testid={`student-row-${student.id}`} className="border-t border-[hsl(var(--border))]"><td className="px-4 py-3"><div className="flex items-center gap-3"><div className="grid h-8 w-8 place-items-center rounded-full bg-[hsl(var(--secondary))] text-xs font-bold text-[hsl(var(--primary))]">{student.name.slice(0,1).toUpperCase()}</div><span className="text-xs font-bold">{student.name}</span></div></td><td className="px-4 py-3 text-xs text-[hsl(var(--muted-foreground))]">{student.admissionNo}</td><td className="px-4 py-3 text-xs">{student.sectionName}</td><td className="px-4 py-3">{canManage ? <EnrollmentYearField enrollmentId={student.enrollmentId} academicYear={student.academicYear}/> : <span className="text-xs">{student.academicYear}</span>}</td><td className="px-4 py-3"><StatusTag status={student.status}/></td>{canManage && <td className="px-4 py-3"><button type="button" className="btn btn-muted min-h-8 px-3 text-[10px]" aria-expanded={profileStudentId === student.id} onClick={() => setProfileStudentId(current => current === student.id ? null : student.id)}>{profileStudentId === student.id ? "Close" : "View profile"}</button></td>}</tr>)}</tbody></table></div>
+           <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-4"><div className="text-xs font-bold">{students.data.total} students</div><div className="text-[11px] text-[hsl(var(--muted-foreground))">{canManage ? "School-wide registry" : "Section roster"}</div></div>
+            <div className="overflow-x-auto"><table className="w-full min-w-[1000px] text-left"><thead className="bg-[hsl(var(--muted))] text-[10px] uppercase tracking-[.12em] text-[hsl(var(--muted-foreground))]"><tr><th className="px-4 py-3">Student</th><th className="px-4 py-3">Admission no.</th><th className="px-4 py-3">Class</th><th className="px-4 py-3">Section</th><th className="px-4 py-3">Academic year</th><th className="px-4 py-3">Status</th>{canManage && <th className="px-4 py-3">Profile</th>}</tr></thead><tbody>{students.data.items.map(student => <tr key={student.enrollmentId} data-testid={`student-row-${student.id}`} className="border-t border-[hsl(var(--border))]"><td className="px-4 py-3"><div className="flex items-center gap-3"><div className="grid h-8 w-8 place-items-center rounded-full bg-[hsl(var(--secondary))] text-xs font-bold text-[hsl(var(--primary))]">{student.name.slice(0,1).toUpperCase()}</div><span className="text-xs font-bold">{student.name}</span></div></td><td className="px-4 py-3 text-xs text-[hsl(var(--muted-foreground))]">{student.admissionNo}</td><td className="px-4 py-3 text-xs">{student.className ?? '—'}</td><td className="px-4 py-3 text-xs">{student.sectionName}</td><td className="px-4 py-3">{canManage ? <EnrollmentYearField enrollmentId={student.enrollmentId} academicYear={student.academicYear}/> : <span className="text-xs">{student.academicYear}</span>}</td><td className="px-4 py-3"><StatusTag status={student.status}/></td>{canManage && <td className="px-4 py-3"><button type="button" className="btn btn-muted min-h-8 px-3 text-[10px]" aria-expanded={profileStudentId === student.id} onClick={() => setProfileStudentId(current => current === student.id ? null : student.id)}>{profileStudentId === student.id ? "Close" : "View profile"}</button></td>}</tr>)}</tbody></table></div>
           <div className="flex items-center justify-between border-t border-[hsl(var(--border))] px-4 py-3"><span className="text-[11px] text-[hsl(var(--muted-foreground))">Showing {students.data.total ? page * 20 + 1 : 0}–{Math.min((page + 1) * 20, students.data.total)} of {students.data.total}</span><div className="flex gap-2"><button data-testid="button-students-prev" disabled={page === 0} className="btn btn-muted min-h-8 px-2" onClick={() => setPage(p => p - 1)}><ChevronLeft size={16}/><span className="desktop-only">Previous</span></button><button data-testid="button-students-next" disabled={(page + 1) * 20 >= students.data.total} className="btn btn-muted min-h-8 px-2" onClick={() => setPage(p => p + 1)}><span className="desktop-only">Next</span><ChevronRight size={16}/></button></div></div>
         </div>}
       </QueryState>}

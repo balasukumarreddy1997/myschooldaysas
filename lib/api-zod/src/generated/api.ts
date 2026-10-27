@@ -434,7 +434,8 @@ export const GetAvailableStudentsResponse = zod.object({
 
 
 /**
- * @summary List students in an authorized section
+ * Administrators may omit sectionId to search across the school or filter by classId. Other roles must supply sectionId and are limited to students they are authorized to see.
+ * @summary Search the student registry or an authorized section roster
  */
 export const getStudentsQueryQMax = 100;
 
@@ -447,7 +448,8 @@ export const getStudentsQueryOffsetMin = 0;
 
 
 export const GetStudentsQueryParams = zod.object({
-  "sectionId": zod.uuid(),
+  "sectionId": zod.uuid().optional(),
+  "classId": zod.uuid().optional(),
   "q": zod.string().max(getStudentsQueryQMax).optional(),
   "limit": zod.coerce.number().int().min(1).max(getStudentsQueryLimitMax).default(getStudentsQueryLimitDefault),
   "offset": zod.coerce.number().int().min(getStudentsQueryOffsetMin).default(getStudentsQueryOffsetDefault)
@@ -466,6 +468,8 @@ export const GetStudentsResponse = zod.object({
   "admissionNo": zod.string(),
   "sectionId": zod.uuid(),
   "sectionName": zod.string(),
+  "classId": zod.uuid().optional(),
+  "className": zod.string().optional(),
   "status": zod.enum(['active', 'disabled']),
   "academicYear": zod.string().min(getStudentsResponseItemsItemAcademicYearMin).max(getStudentsResponseItemsItemAcademicYearMax)
 })),
@@ -664,6 +668,8 @@ export const CreateEnrollmentResponse = zod.object({
   "admissionNo": zod.string(),
   "sectionId": zod.uuid(),
   "sectionName": zod.string(),
+  "classId": zod.uuid().optional(),
+  "className": zod.string().optional(),
   "status": zod.enum(['active', 'disabled']),
   "academicYear": zod.string().min(createEnrollmentResponseAcademicYearMin).max(createEnrollmentResponseAcademicYearMax)
 })
@@ -689,6 +695,8 @@ export const TransferStudentEnrollmentResponse = zod.object({
   "admissionNo": zod.string(),
   "sectionId": zod.uuid(),
   "sectionName": zod.string(),
+  "classId": zod.uuid().optional(),
+  "className": zod.string().optional(),
   "status": zod.enum(['active', 'disabled']),
   "academicYear": zod.string().min(transferStudentEnrollmentResponseAcademicYearMin).max(transferStudentEnrollmentResponseAcademicYearMax)
 })
@@ -729,6 +737,8 @@ export const PromoteStudentsResponse = zod.object({
   "admissionNo": zod.string(),
   "sectionId": zod.uuid(),
   "sectionName": zod.string(),
+  "classId": zod.uuid().optional(),
+  "className": zod.string().optional(),
   "status": zod.enum(['active', 'disabled']),
   "academicYear": zod.string().min(promoteStudentsResponseItemsItemAcademicYearMin).max(promoteStudentsResponseItemsItemAcademicYearMax)
 }))
@@ -919,6 +929,8 @@ export const UpdateEnrollmentYearResponse = zod.object({
   "admissionNo": zod.string(),
   "sectionId": zod.uuid(),
   "sectionName": zod.string(),
+  "classId": zod.uuid().optional(),
+  "className": zod.string().optional(),
   "status": zod.enum(['active', 'disabled']),
   "academicYear": zod.string().min(updateEnrollmentYearResponseAcademicYearMin).max(updateEnrollmentYearResponseAcademicYearMax)
 })

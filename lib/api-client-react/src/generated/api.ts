@@ -2022,7 +2022,7 @@ export function useGetAvailableStudents<TData = Awaited<ReturnType<typeof getAva
 
 
 
-export const getGetStudentsUrl = (params: GetStudentsParams,) => {
+export const getGetStudentsUrl = (params?: GetStudentsParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -2038,9 +2038,10 @@ export const getGetStudentsUrl = (params: GetStudentsParams,) => {
 }
 
 /**
- * @summary List students in an authorized section
+ * Administrators may omit sectionId to search across the school or filter by classId. Other roles must supply sectionId and are limited to students they are authorized to see.
+ * @summary Search the student registry or an authorized section roster
  */
-export const getStudents = async (params: GetStudentsParams, options?: Parameters<typeof customFetch>[1]): Promise<StudentPage> => {
+export const getStudents = async (params?: GetStudentsParams, options?: Parameters<typeof customFetch>[1]): Promise<StudentPage> => {
 
   return customFetch<StudentPage>(getGetStudentsUrl(params),
   {
@@ -2062,7 +2063,7 @@ export const getGetStudentsQueryKey = (params?: GetStudentsParams,) => {
     }
 
 
-export const getGetStudentsQueryOptions = <TData = Awaited<ReturnType<typeof getStudents>>, TError = ErrorType<unknown>>(params: GetStudentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudents>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getGetStudentsQueryOptions = <TData = Awaited<ReturnType<typeof getStudents>>, TError = ErrorType<unknown>>(params?: GetStudentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudents>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -2085,7 +2086,7 @@ export type GetStudentsQueryError = ErrorType<unknown>
 
 
 export function useGetStudents<TData = Awaited<ReturnType<typeof getStudents>>, TError = ErrorType<unknown>>(
- params: GetStudentsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudents>>, TError, TData>> & Pick<
+ params: undefined |  GetStudentsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudents>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getStudents>>,
           TError,
@@ -2095,7 +2096,7 @@ export function useGetStudents<TData = Awaited<ReturnType<typeof getStudents>>, 
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetStudents<TData = Awaited<ReturnType<typeof getStudents>>, TError = ErrorType<unknown>>(
- params: GetStudentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudents>>, TError, TData>> & Pick<
+ params?: GetStudentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudents>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getStudents>>,
           TError,
@@ -2105,15 +2106,15 @@ export function useGetStudents<TData = Awaited<ReturnType<typeof getStudents>>, 
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetStudents<TData = Awaited<ReturnType<typeof getStudents>>, TError = ErrorType<unknown>>(
- params: GetStudentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudents>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ params?: GetStudentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudents>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary List students in an authorized section
+ * @summary Search the student registry or an authorized section roster
  */
 
 export function useGetStudents<TData = Awaited<ReturnType<typeof getStudents>>, TError = ErrorType<unknown>>(
- params: GetStudentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudents>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ params?: GetStudentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudents>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 

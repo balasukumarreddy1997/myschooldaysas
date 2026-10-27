@@ -166,6 +166,8 @@ export interface StudentSummary {
   admissionNo: string;
   sectionId: string;
   sectionName: string;
+  classId?: string;
+  className?: string;
   status: StudentSummaryStatus;
   /**
      * @minLength 4
@@ -1284,7 +1286,8 @@ offset?: number;
 };
 
 export type GetStudentsParams = {
-sectionId: string;
+sectionId?: string;
+classId?: string;
 /**
  * @maxLength 100
  */

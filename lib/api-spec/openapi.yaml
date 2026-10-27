@@ -386,13 +386,18 @@ paths:
     get:
       operationId: getStudents
       tags: [academic]
-      summary: List students in an authorized section
+      summary: Search the student registry or an authorized section roster
+      description: Administrators may omit sectionId to search across the school or filter by classId. Other roles must supply sectionId and are limited to students they are authorized to see.
       security:
         - bearerAuth: []
       parameters:
         - in: query
           name: sectionId
-          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: classId
           schema:
             type: string
             format: uuid
@@ -1525,6 +1530,8 @@ components:
         admissionNo: { type: string }
         sectionId: { type: string, format: uuid }
         sectionName: { type: string }
+        classId: { type: string, format: uuid }
+        className: { type: string }
         status: { type: string, enum: [active, disabled] }
         academicYear: { type: string, minLength: 4, maxLength: 24 }
     StudentProfileFields:
