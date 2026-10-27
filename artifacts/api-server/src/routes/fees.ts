@@ -174,7 +174,7 @@ const routes: FastifyPluginAsync = async (fastify) => {
               input.period,
               input.description.trim(),
               input.amountPaise,
-              input.dueDate,
+              dateValue(input.dueDate),
               user.id,
             ],
           );
@@ -201,7 +201,7 @@ const routes: FastifyPluginAsync = async (fastify) => {
           && Number(invoice.amount_paise) === input.amountPaise
           && dateValue(invoice.due_date) === dateValue(input.dueDate),
         );
-        if (!allInvoicesMatch) {
+        if (!allInvoicesMatch || (rows.rowCount ?? 0) !== studentIds.length) {
           const conflict = new Error("Invoice generation conflicted with a concurrent request.") as Error & { code: string };
           conflict.code = "FEE_INVOICE_CONFLICT";
           throw conflict;

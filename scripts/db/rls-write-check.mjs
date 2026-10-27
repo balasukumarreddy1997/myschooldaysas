@@ -13,6 +13,14 @@ const auxiliaryIds = {
     a: { foreign: randomUUID(), transient: randomUUID() },
     b: { foreign: randomUUID(), transient: randomUUID() },
   },
+  feeStudents: {
+    a: { foreign: randomUUID(), transient: randomUUID() },
+    b: { foreign: randomUUID(), transient: randomUUID() },
+  },
+  feeInvoices: {
+    a: { foreign: randomUUID(), transient: randomUUID() },
+    b: { foreign: randomUUID(), transient: randomUUID() },
+  },
 };
 let fixtureIds = {};
 const failures = [];
@@ -222,15 +230,26 @@ const baseTableCases = [
       INSERT INTO fees.invoices
         (id, org_id, student_user_id, section_id, invoice_number, academic_year, period,
          description, amount_paise, due_date, created_by)
-      VALUES ($1, $2, $3, $4, $5, '2026-2027', 'rls-check', 'RLS invoice fixture', 10000, '2026-12-31', $3)
+      VALUES ($1, $2, $3, $4, $5, '2026-2027', $6, 'RLS invoice fixture', 10000, '2026-12-31', $7)
       RETURNING id
     `,
-    insertValues: ({ id, orgId, side, ids }) => [
+    insertValues: ({ id, orgId, side, ids, auxiliaryIds, isFixture }) => [
       id,
       orgId,
-      ids["identity.users"][side],
+      isFixture ? ids["identity.users"][side] : auxiliaryIds.feeStudents[side].transient,
       ids["academic.sections"][side],
       `RLS-INV-${side}-${id.slice(0, 8)}`,
+      `rls-${id.slice(0, 12)}`,
+      ids["identity.users"][side],
+    ],
+    foreignInsertValues: ({ id, orgId, side, ids, auxiliaryIds }) => [
+      id,
+      orgId,
+      auxiliaryIds.feeStudents[side].foreign,
+      ids["academic.sections"][side],
+      `RLS-FOREIGN-INV-${side}-${id.slice(0, 8)}`,
+      `rls-${id.slice(0, 12)}`,
+      ids["identity.users"][side],
     ],
     updateSql: "UPDATE fees.invoices SET invoice_number = $1 WHERE id = $2 RETURNING id",
     initialValue: ({ side, id }) => `RLS-INV-${side}-${id.slice(0, 8)}`,
@@ -247,12 +266,20 @@ const baseTableCases = [
       VALUES ($1, $2, $3, 10000, 'mock', $4, $5, $6)
       RETURNING id
     `,
-    insertValues: ({ id, orgId, side, ids }) => [
+    insertValues: ({ id, orgId, side, ids, auxiliaryIds, isFixture }) => [
       id,
       orgId,
-      ids["fees.invoices"][side],
+      isFixture ? ids["fees.invoices"][side] : auxiliaryIds.feeInvoices[side].transient,
       `RLS-PAY-${side}-${id.slice(0, 8)}`,
       `RLS-RCT-${side}-${id.slice(0, 8)}`,
+      ids["identity.users"][side],
+    ],
+    foreignInsertValues: ({ id, orgId, side, ids, auxiliaryIds }) => [
+      id,
+      orgId,
+      auxiliaryIds.feeInvoices[side].foreign,
+      `RLS-FOREIGN-PAY-${side}-${id.slice(0, 8)}`,
+      `RLS-FOREIGN-RCT-${side}-${id.slice(0, 8)}`,
       ids["identity.users"][side],
     ],
     updateSql: "UPDATE fees.payments SET receipt_number = $1 WHERE id = $2 RETURNING id",
@@ -617,6 +644,33 @@ async function main() {
                 tableCase.insertValues(profileUser),
               );
             }
+            for (const userId of Object.values(auxiliaryIds.feeStudents[side])) {
+              const feeStudent = createContext(tableCase, side, userId);
+              await client.query(
+                tableCase.insertSql,
+                tableCase.insertValues(feeStudent),
+              );
+            }
+          }
+          if (tableCase.table === "fees.invoices") {
+            for (const kind of ["foreign", "transient"]) {
+              const auxiliaryInvoiceId = auxiliaryIds.feeInvoices[side][kind];
+              await client.query(
+                `INSERT INTO fees.invoices
+                   (id, org_id, student_user_id, section_id, invoice_number, academic_year,
+                    period, description, amount_paise, due_date, created_by)
+                 VALUES ($1, $2, $3, $4, $5, '2026-2027', 'rls-check',
+                         'RLS auxiliary invoice', 10000, '2026-12-31', $6)`,
+                [
+                  auxiliaryInvoiceId,
+                  organizationIds[side],
+                  auxiliaryIds.feeStudents[side][kind],
+                  fixtureIds["academic.sections"][side],
+                  `RLS-AUX-INV-${side}-${kind}-${auxiliaryInvoiceId.slice(0, 8)}`,
+                  fixtureIds["identity.users"][side],
+                ],
+              );
+            }
           }
           if (tableCase.table === "live.sessions") {
             const auxiliarySession = createContext(
@@ -634,7 +688,7 @@ async function main() {
     }
 
     console.log(
-      `Temporary database: migrations applied; two synthetic organizations, ${tableCases.length * 2} tenant fixtures, and 8 supporting rows created.`,
+      `Temporary database: migrations applied; two synthetic organizations, ${tableCases.length * 2} tenant fixtures, and 16 supporting rows created.`,
     );
     await runTenantWriteChecks(appPool);
     await verifyFixturesUnchanged(migratorPool);

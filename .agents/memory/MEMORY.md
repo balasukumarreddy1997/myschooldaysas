@@ -1,6 +1,8 @@
 - [Clean dependency validation](clean-dependency-validation.md) — npm lockfile-only resolution can inspect pnpm links; validate package-manager changes with a clean install.
 - [LiveKit webhook authorization](livekit-webhook-authorization.md) — the SDK verifies the raw JWT header, not a Bearer-prefixed token, against the exact raw payload.
 - [Campus Live classroom scope](campus-live-classroom-scope.md) — preserve the existing classroom while building other product areas.
+- [Campus Live MVP priority](campus-live-mvp-priority.md) — ship core acceptance journeys before polishing or extending features.
 - [Local container health checks](local-container-healthchecks.md) — an OCI health-check exec failure can mark reachable Postgres/Redis containers unhealthy; confirm with host probes before restarting.
 - [PostgreSQL policy role arrays](postgres-policy-role-arrays.md) — cast `pg_policies.roles` to `text[]`; node-postgres may otherwise return `"{public}"` as a plain string.
+- [RLS write fixtures](rls-write-fixtures.md) — use distinct support rows for natural-key tables so unique constraints do not mask RLS behavior.
 - [Enrollment transition migrations](enrollment-transition-migrations.md) — active-only unique indexes require matching seed upsert predicates and reliable migration-version recording.

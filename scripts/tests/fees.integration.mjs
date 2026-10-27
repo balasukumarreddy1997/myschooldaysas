@@ -1,13 +1,68 @@
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 import { after, test } from "node:test";
-import Fastify from "fastify";
-import { pool, withOrg } from "@workspace/db";
-import feeRoutes from "../../artifacts/api-server/src/routes/fees.ts";
-import { createAccessToken } from "../../artifacts/api-server/src/lib/auth.ts";
+import { Pool } from "pg";
 
 const adminRoles = ["super_admin", "org_admin", "campus_admin"];
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const apiBase = new URL(process.env.FEES_API_URL ?? "http://127.0.0.1:8080/api");
+if (!["127.0.0.1", "localhost", "::1"].includes(apiBase.hostname)) {
+  throw new Error("Fee integration tests may only call a loopback API server.");
+}
+const developmentJwtSecret = "campus-live-development-jwt-secret-not-for-production";
 let cleanupTarget = null;
+
+async function withOrg(orgId, callback) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT set_config('app.org_id', $1, true)", [orgId]);
+    const result = await callback(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+function createTestToken(user) {
+  const secret = process.env.JWT_SECRET ?? developmentJwtSecret;
+  const now = Math.floor(Date.now() / 1000);
+  const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+  const payload = Buffer.from(JSON.stringify({
+    ...user,
+    iss: "campus-live-identity",
+    aud: "campus-live-web",
+    iat: now,
+    exp: now + 900,
+    sub: user.id,
+  })).toString("base64url");
+  const content = `${header}.${payload}`;
+  const signature = createHmac("sha256", secret).update(content).digest("base64url");
+  return `${content}.${signature}`;
+}
+
+async function apiRequest(method, path, token, payload) {
+  const response = await fetch(`${apiBase.toString().replace(/\/+$/, "")}${path}`, {
+    method,
+    headers: {
+      authorization: `Bearer ${token}`,
+      ...(payload ? { "content-type": "application/json" } : {}),
+    },
+    ...(payload ? { body: JSON.stringify(payload) } : {}),
+  });
+  const body = await response.text();
+  let parsed;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    parsed = body;
+  }
+  return { statusCode: response.status, body, json: () => parsed };
+}
 
 after(async () => {
   if (cleanupTarget) {
@@ -89,7 +144,7 @@ test("fee MVP issues invoices, gates parent payment, and returns one idempotent 
 
   const period = `fee-test-${randomUUID().slice(0, 10)}`;
   cleanupTarget = { orgId, academicYear: users.parent.academic_year, period };
-  const adminToken = createAccessToken({
+  const adminToken = createTestToken({
     id: users.admin.id,
     orgId,
     name: users.admin.name,
@@ -97,7 +152,7 @@ test("fee MVP issues invoices, gates parent payment, and returns one idempotent 
     roles: users.admin.roles,
     mustChangePassword: false,
   });
-  const parentToken = createAccessToken({
+  const parentToken = createTestToken({
     id: users.parent.id,
     orgId,
     name: users.parent.name,
@@ -105,11 +160,6 @@ test("fee MVP issues invoices, gates parent payment, and returns one idempotent 
     roles: ["parent"],
     mustChangePassword: false,
   });
-
-  const app = Fastify();
-  await app.register(feeRoutes, { prefix: "/api" });
-  await app.ready();
-  t.after(() => app.close());
 
   const generateBody = {
     sectionId: users.parent.section_id,
@@ -119,71 +169,37 @@ test("fee MVP issues invoices, gates parent payment, and returns one idempotent 
     amountPaise: 12345,
     dueDate: "2099-12-31",
   };
-  const adminHeaders = { authorization: `Bearer ${adminToken}` };
-  const parentHeaders = { authorization: `Bearer ${parentToken}` };
-
-  const generated = await app.inject({
-    method: "POST",
-    url: "/api/fees/invoices/generate",
-    headers: adminHeaders,
-    payload: generateBody,
-  });
+  const generated = await apiRequest("POST", "/fees/invoices/generate", adminToken, generateBody);
   assert.equal(generated.statusCode, 200, generated.body);
   const generatedBody = generated.json();
   assert.ok(generatedBody.generatedCount > 0);
   assert.ok(generatedBody.items.some((invoice) => invoice.studentId));
 
-  const repeated = await app.inject({
-    method: "POST",
-    url: "/api/fees/invoices/generate",
-    headers: adminHeaders,
-    payload: generateBody,
-  });
+  const repeated = await apiRequest("POST", "/fees/invoices/generate", adminToken, generateBody);
   assert.equal(repeated.statusCode, 200, repeated.body);
   assert.equal(repeated.json().generatedCount, 0, "repeating a section period must not issue duplicate invoices");
 
-  const forbiddenAdminPayment = await app.inject({
-    method: "POST",
-    url: `/api/fees/invoices/${generatedBody.items[0].id}/pay`,
-    headers: adminHeaders,
-  });
+  const forbiddenAdminPayment = await apiRequest("POST", `/fees/invoices/${generatedBody.items[0].id}/pay`, adminToken);
   assert.equal(forbiddenAdminPayment.statusCode, 403);
 
-  const parentList = await app.inject({
-    method: "GET",
-    url: "/api/fees/my-invoices",
-    headers: parentHeaders,
-  });
+  const parentList = await apiRequest("GET", "/fees/my-invoices", parentToken);
   assert.equal(parentList.statusCode, 200, parentList.body);
   const parentInvoice = parentList.json().items.find((invoice) => invoice.period === period);
   assert.ok(parentInvoice, "linked parent should see the child's invoice");
   assert.equal(parentInvoice.canPay, true);
 
-  const firstPayment = await app.inject({
-    method: "POST",
-    url: `/api/fees/invoices/${parentInvoice.id}/pay`,
-    headers: parentHeaders,
-    payload: { amountPaise: 1 },
-  });
+  const firstPayment = await apiRequest("POST", `/fees/invoices/${parentInvoice.id}/pay`, parentToken, { amountPaise: 1 });
   assert.equal(firstPayment.statusCode, 200, firstPayment.body);
   const payment = firstPayment.json();
   assert.equal(payment.status, "paid");
   assert.equal(payment.amountPaise, 12345, "the server must take the invoice amount, not a client-supplied amount");
   assert.ok(payment.receiptNumber);
 
-  const repeatedPayment = await app.inject({
-    method: "POST",
-    url: `/api/fees/invoices/${parentInvoice.id}/pay`,
-    headers: parentHeaders,
-  });
+  const repeatedPayment = await apiRequest("POST", `/fees/invoices/${parentInvoice.id}/pay`, parentToken);
   assert.equal(repeatedPayment.statusCode, 200, repeatedPayment.body);
   assert.equal(repeatedPayment.json().receiptNumber, payment.receiptNumber);
 
-  const receipt = await app.inject({
-    method: "GET",
-    url: `/api/fees/receipts/${encodeURIComponent(payment.receiptNumber)}`,
-    headers: parentHeaders,
-  });
+  const receipt = await apiRequest("GET", `/fees/receipts/${encodeURIComponent(payment.receiptNumber)}`, parentToken);
   assert.equal(receipt.statusCode, 200, receipt.body);
   assert.equal(receipt.json().paymentMethod, "mock");
   assert.equal(receipt.json().amountPaise, 12345);
