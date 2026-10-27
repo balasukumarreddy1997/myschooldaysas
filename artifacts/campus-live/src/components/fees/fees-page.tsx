@@ -13,6 +13,7 @@ import {
   useGetSections,
   usePayFeeInvoice,
 } from "@workspace/api-client-react";
+import { SCHOOL_NAME } from "@/lib/branding";
 
 const adminRoles = ["super_admin", "org_admin", "campus_admin"];
 const money = (paise: number) => `₹${(paise / 100).toFixed(2)}`;
@@ -229,7 +230,7 @@ export function FeeReceiptPage() {
       <article id="fee-receipt" className="surface p-7 md:p-10">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="eyebrow">Campus Live · payment receipt</p>
+            <p className="eyebrow">{SCHOOL_NAME} · payment receipt</p>
             <h1 className="display mt-2 text-3xl font-extrabold">Payment received</h1>
           </div>
           <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">PAID</span>

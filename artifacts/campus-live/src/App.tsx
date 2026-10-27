@@ -38,6 +38,7 @@ import { FeeReceiptPage, FeesPage } from '@/components/fees/fees-page';
 import { EnrollmentLifecycle } from '@/components/academic/enrollment-lifecycle';
 import { AdmissionsInbox, PublicAdmissionForm } from '@/components/admissions';
 import { AnnouncementsPage } from '@/components/announcements/announcements-page';
+import { PLATFORM_NAME, SCHOOL_NAME } from '@/lib/branding';
 
 const queryClient = new QueryClient();
 const fmtDate = (iso?: string) => iso ? `${iso.slice(0, 10)} · ${iso.slice(11, 16)}` : 'Time not set';
@@ -77,7 +78,7 @@ function ProtectedApp() {
     if (consentReview.isLoading) return <LoadingScreen />;
     if (consentReview.isError) return <div className="shell grain grid min-h-screen place-items-center p-5"><div className="surface max-w-md p-6 text-center"><h1 className="display text-xl font-extrabold">Privacy choices unavailable</h1><p className="my-3 text-sm text-[hsl(var(--muted-foreground))]">We could not load your consent review status.</p><button className="btn btn-primary" onClick={() => consentReview.refetch()}>Try again</button></div></div>;
     if (consentReview.data?.required && !consentReview.data.reviewedAt) {
-      return <div className="shell grain min-h-screen"><main className="mx-auto w-full max-w-5xl p-4 pt-8 md:p-8"><div className="mb-7 flex items-center justify-between"><div className="flex items-center gap-2 font-bold"><ShieldCheck size={18} className="text-[hsl(var(--primary))]"/>Campus Live</div><button className="btn btn-muted" onClick={logout}><LogOut size={15}/>Sign out</button></div><ConsentsPage firstLogin /></main></div>;
+      return <div className="shell grain min-h-screen"><main className="mx-auto w-full max-w-5xl p-4 pt-8 md:p-8"><div className="mb-7 flex items-center justify-between"><div className="flex items-center gap-2 font-bold"><ShieldCheck size={18} className="text-[hsl(var(--primary))]"/>{SCHOOL_NAME}</div><button className="btn btn-muted" onClick={logout}><LogOut size={15}/>Sign out</button></div><ConsentsPage firstLogin /></main></div>;
     }
   }
   if (path.startsWith('/classroom/')) return <ErrorBoundary resetKey={path}><ClassroomPage roles={user.roles}/></ErrorBoundary>;
@@ -134,7 +135,7 @@ function AppShell({ user, path, onLogout, children }: { user: { name: string; em
     <aside className={`fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col bg-[hsl(var(--sidebar))] px-4 py-5 text-[hsl(var(--sidebar-foreground))] transition-transform md:translate-x-0 ${mobileNav ? 'translate-x-0' : '-translate-x-full'}`}>
       <div className="mb-9 flex items-center gap-3 px-2">
         <div className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--primary))] text-white"><GraduationCap size={22}/></div>
-        <div><div className="display text-[17px] font-extrabold tracking-tight">Campus Live</div><div className="mt-0.5 text-[10px] uppercase tracking-[.18em] opacity-60">School, connected</div></div>
+        <div className="min-w-0"><div className="display text-[14px] font-extrabold leading-tight tracking-tight">{SCHOOL_NAME}</div><div className="mt-1 text-[9px] uppercase tracking-[.14em] opacity-60">Powered by {PLATFORM_NAME}</div></div>
         <button aria-label="Close navigation" className="ml-auto text-white/60 md:hidden" onClick={() => setMobileNav(false)}><X size={18}/></button>
       </div>
       <div className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.17em] text-white/40">Workspace</div>
@@ -164,9 +165,9 @@ function AppShell({ user, path, onLogout, children }: { user: { name: string; em
       <header className="sticky top-0 z-20 flex h-[68px] items-center justify-between border-b border-[hsl(var(--border))] bg-[hsl(var(--background)/.94)] px-4 backdrop-blur-md md:px-9">
         <div className="flex items-center gap-3">
           <button aria-label="Open navigation" data-testid="button-open-navigation" onClick={() => setMobileNav(true)} className="grid h-9 w-9 place-items-center rounded-lg border border-[hsl(var(--border))] md:hidden"><Menu size={18}/></button>
-          <div className="text-[11px] text-[hsl(var(--muted-foreground))]">Campus / <span className="font-semibold capitalize text-[hsl(var(--foreground))]">{nav.find(item => path.startsWith(item.href))?.label ?? 'Classroom'}</span></div>
+          <div className="text-[11px] text-[hsl(var(--muted-foreground))]">Workspace / <span className="font-semibold capitalize text-[hsl(var(--foreground))]">{nav.find(item => path.startsWith(item.href))?.label ?? 'Classroom'}</span></div>
         </div>
-        <div className="flex items-center gap-3 text-[11px] text-[hsl(var(--muted-foreground))]"><span className="hidden items-center gap-2 sm:flex"><span className="h-2 w-2 rounded-full bg-[hsl(var(--status-good))]"/>School workspace</span><div className="grid h-8 w-8 place-items-center rounded-full bg-[hsl(var(--secondary))] font-bold text-[hsl(var(--secondary-foreground))]">{user.name.slice(0, 1).toUpperCase()}</div></div>
+        <div className="flex items-center gap-3 text-[11px] text-[hsl(var(--muted-foreground))]"><span className="max-w-[118px] truncate sm:max-w-none"><span className="mr-2 inline-block h-2 w-2 rounded-full bg-[hsl(var(--status-good))]"/>{SCHOOL_NAME}</span><div className="grid h-8 w-8 place-items-center rounded-full bg-[hsl(var(--secondary))] font-bold text-[hsl(var(--secondary-foreground))]">{user.name.slice(0, 1).toUpperCase()}</div></div>
       </header>
       <div className="page-enter mx-auto w-full max-w-[1450px] px-4 py-7 md:px-9 md:py-9">{children}</div>
     </main>
@@ -188,13 +189,13 @@ function LoginPage() {
   return <div className="grid min-h-[100dvh] md:grid-cols-[1.05fr_.95fr]">
     <section className="relative hidden overflow-hidden bg-[hsl(var(--brand-forest))] p-12 text-[hsl(var(--brand-inverse))] md:flex md:flex-col md:justify-between">
       <div className="absolute -right-24 -top-24 h-[440px] w-[440px] rounded-full border border-white/10"/><div className="absolute -right-5 top-[-70px] h-[300px] w-[300px] rounded-full border border-white/10"/>
-      <div className="relative flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--brand-accent))] text-[hsl(var(--brand-ink))]"><GraduationCap/></div><span className="display text-lg font-extrabold">Campus Live</span></div>
+       <div className="relative flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--brand-accent))] text-[hsl(var(--brand-ink))]"><GraduationCap/></div><div><div className="display text-base font-extrabold leading-tight">{SCHOOL_NAME}</div><div className="mt-1 text-[10px] uppercase tracking-[.14em] text-white/55">{PLATFORM_NAME}</div></div></div>
       <div className="relative max-w-xl pb-12"><div className="mb-6 flex items-center gap-2 text-xs font-bold uppercase tracking-[.18em] text-[hsl(var(--classroom-ready))]"><span className="h-px w-8 bg-[hsl(var(--brand-accent))]"/>A closer school community</div><h1 className="display text-5xl font-extrabold leading-[1.08] tracking-[-.04em]">Learning moves<br/>better <span className="text-[hsl(var(--brand-accent))]">together.</span></h1><p className="mt-6 max-w-md text-[15px] leading-7 text-white/65">Classes, teachers and families — connected in one dependable space built around your school.</p></div>
-      <div className="relative flex justify-between border-t border-white/15 pt-5 text-[10px] uppercase tracking-[.16em] text-white/45"><span>Campus Live</span><span>For every learner</span></div>
+      <div className="relative flex justify-between border-t border-white/15 pt-5 text-[10px] uppercase tracking-[.16em] text-white/45"><span>{PLATFORM_NAME}</span><span>For every learner</span></div>
     </section>
     <section className="flex min-h-[100dvh] items-center justify-center px-5 py-10">
       <div className="w-full max-w-[410px]">
-        <div className="mb-9 md:hidden"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--primary))] text-white"><GraduationCap/></div><span className="display text-lg font-extrabold">Campus Live</span></div></div>
+         <div className="mb-9 md:hidden"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--primary))] text-white"><GraduationCap/></div><div><div className="display text-base font-extrabold leading-tight">{SCHOOL_NAME}</div><div className="mt-1 text-[10px] uppercase tracking-[.14em] text-[hsl(var(--muted-foreground))]">{PLATFORM_NAME}</div></div></div></div>
         <div className="mb-8"><span className="tag mb-4">School sign-in</span><h2 className="display mb-2 text-[30px] font-extrabold tracking-[-.04em]">Welcome back</h2><p className="m-0 text-sm text-[hsl(var(--muted-foreground))]">Sign in with your school account to continue.</p></div>
         <form className="space-y-4" onSubmit={event => { event.preventDefault(); login.mutate({ data: { orgSlug, email, password } }); }}>
            <label className="block text-xs font-bold">Organization<div className="mt-1.5"><input required autoComplete="organization" data-testid="input-organization" className="field" placeholder="Your school’s organization" value={orgSlug} onChange={e => setOrgSlug(e.target.value)}/></div></label>

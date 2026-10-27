@@ -5,6 +5,7 @@ import { useGetSessionToken, useEndSession } from '@workspace/api-client-react';
 import { Room, RoomEvent, Track, type Participant, type RemoteParticipant } from 'livekit-client';
 import { ChevronLeft, CircleAlert, LoaderCircle, LogOut, Mic, MicOff, Monitor, Power, RefreshCw, Video, VideoOff, Headphones, ShieldCheck } from 'lucide-react';
 import { getAccessToken } from '../../auth-token';
+import { SCHOOL_NAME } from '@/lib/branding';
 import { useBoard, type Cfg } from './use-board';
 import { BoardCanvas } from './board-canvas';
 import { AttendancePanel } from './attendance-panel';
@@ -131,7 +132,7 @@ function Room_({ info, sessionId }: { info: Info; sessionId: string }) {
   return <div className="space-y-3">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="flex min-w-0 items-center gap-3"><Link href="/live/sessions" aria-label="Back to live classes" className="grid h-10 w-10 place-items-center rounded-lg border border-[hsl(var(--classroom-border))] hover:bg-white/5"><ChevronLeft size={18}/></Link>
-        <div className="min-w-0"><div className="text-[10px] font-bold uppercase tracking-[.17em] text-[hsl(var(--classroom-ready))]">Campus Live classroom - {info.role}</div><h1 className="display m-0 truncate text-xl font-extrabold">{info.session.title}</h1></div></div>
+        <div className="min-w-0"><div className="text-[10px] font-bold uppercase tracking-[.17em] text-[hsl(var(--classroom-ready))]">{SCHOOL_NAME} · classroom · {info.role}</div><h1 className="display m-0 truncate text-xl font-extrabold">{info.session.title}</h1></div></div>
       <div className="flex flex-wrap items-center gap-2 text-[11px]" role="status">
         <span className="flex items-center gap-2 rounded-full border border-[hsl(var(--classroom-border))] px-3 py-1.5"><span className={`h-2 w-2 rounded-full ${board.status === 'live' ? 'bg-[hsl(var(--status-good))]' : 'bg-[hsl(var(--classroom-warn))]'}`}/>Board {board.status}</span>
         <span className="flex items-center gap-2 rounded-full border border-[hsl(var(--classroom-border))] px-3 py-1.5"><span className={`h-2 w-2 rounded-full ${connected ? 'bg-[hsl(var(--status-good))]' : 'bg-[hsl(var(--classroom-warn))]'}`}/>Media {media.state}</span>

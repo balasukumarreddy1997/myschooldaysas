@@ -4,6 +4,7 @@ import { type FormEvent, useState } from "react";
 import { useCreatePublicAdmissionEnquiry } from "@workspace/api-client-react";
 import type { PublicAdmissionEnquiryInput } from "@workspace/api-client-react";
 import { ArrowRight, Check, GraduationCap, ShieldCheck } from "lucide-react";
+import { SCHOOL_NAME } from "@/lib/branding";
 
 const message = (error: unknown) =>
   error instanceof Error ? error.message : "Your enquiry could not be sent. Please try again.";
@@ -58,7 +59,7 @@ export function PublicAdmissionForm() {
         <aside className="relative flex min-h-[250px] flex-col justify-between overflow-hidden bg-[hsl(var(--brand-forest))] p-7 text-[hsl(var(--brand-inverse))] sm:p-10 md:min-h-[740px]">
           <div aria-hidden="true" className="absolute -right-20 top-28 h-72 w-72 rounded-full border border-white/10" />
           <div aria-hidden="true" className="absolute -right-4 top-44 h-48 w-48 rounded-full border border-white/10" />
-          <div className="relative flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--brand-accent))] text-[hsl(var(--brand-ink))]"><GraduationCap size={22} /></div><span className="display text-lg font-extrabold">Campus Live</span></div>
+          <div className="relative flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--brand-accent))] text-[hsl(var(--brand-ink))]"><GraduationCap size={22} /></div><span className="display text-base font-extrabold leading-tight">{SCHOOL_NAME}</span></div>
           <div className="relative my-10 max-w-md">
             <p className="mb-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.2em] text-[hsl(var(--classroom-ready))]"><span className="h-px w-7 bg-[hsl(var(--brand-accent))]" />Admissions enquiry</p>
             <h1 className="display text-[38px] font-extrabold leading-[1.05] tracking-[-.045em] sm:text-5xl">A good start<br />begins with a<br /><span className="text-[hsl(var(--brand-accent))]">conversation.</span></h1>
