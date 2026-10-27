@@ -12,6 +12,7 @@ import academicTimetableRouter from "./academic-timetable";
 import schoolRouter from "./school";
 import reportCardsRouter from "./report-cards";
 import feesRouter from "./fees";
+import admissionsRouter from "./admissions";
 
 const routes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(healthRouter);
@@ -27,6 +28,7 @@ const routes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(learningRouter);
   await fastify.register(reportCardsRouter);
   await fastify.register(feesRouter);
+  await fastify.register(admissionsRouter);
 };
 
 export default routes;

@@ -14,7 +14,7 @@ import {
 } from '@workspace/api-client-react';
 import type { BoardConfig, BoardTemplate, BoardTemplateInput, LiveSession, LiveSessionInput, SectionSummary } from '@workspace/api-client-react';
 import {
-  Activity, ArrowDown, ArrowRight, ArrowUpRight, BookOpen, Check, ChevronDown,
+  Activity, ArrowDown, ArrowRight, ArrowUpRight, BookOpen, Check, ChevronDown, ClipboardList,
   ChevronLeft, ChevronRight, CircleAlert, Clock3, DoorOpen, GraduationCap, LayoutDashboard,
   Library, LoaderCircle, LogOut, Menu, Moon, Plus, Radio, Search, Settings2, ShieldCheck,
   Sun, Users, Video, X, CalendarCheck,
@@ -36,6 +36,7 @@ import { ClassPromotionWizard } from '@/components/academic/class-promotion-wiza
 import { GuardianAccessPage } from '@/components/academic/guardian-access-page';
 import { FeeReceiptPage, FeesPage } from '@/components/fees/fees-page';
 import { EnrollmentLifecycle } from '@/components/academic/enrollment-lifecycle';
+import { AdmissionsInbox, PublicAdmissionForm } from '@/components/admissions';
 
 const queryClient = new QueryClient();
 const fmtDate = (iso?: string) => iso ? `${iso.slice(0, 10)} · ${iso.slice(11, 16)}` : 'Time not set';
@@ -54,6 +55,7 @@ const initialBoardConfig: BoardConfig = {
 function App() {
   return <QueryClientProvider client={queryClient}><Switch>
     <Route path="/login" component={LoginPage} />
+    <Route path="/apply" component={PublicAdmissionForm} />
     <Route><ProtectedApp /></Route>
   </Switch></QueryClientProvider>;
 }
@@ -85,6 +87,7 @@ function ProtectedApp() {
         <Route path="/dashboard" component={() => <DashboardPage />} />
         <Route path="/admin/classes" component={() => <ClassesPage roles={user.roles} />} />
         <Route path="/admin/students" component={() => <StudentsPage roles={user.roles} />} />
+        <Route path="/admin/admissions" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <AdmissionsInbox/> : <NotFound/>} />
         <Route path="/admin/guardians" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <GuardianAccessPage/> : <NotFound/>} />
         <Route path="/live/sessions" component={() => <SessionsPage userRoles={user.roles} />} />
         <Route path="/boards/templates" component={() => <TemplatesPage roles={user.roles} />} />
@@ -116,6 +119,7 @@ function AppShell({ user, path, onLogout, children }: { user: { name: string; em
     { label: 'Timetable', href: '/timetable', icon: CalendarCheck },
   ];
   if (user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role))) {
+    nav.push({ label: 'Admissions', href: '/admin/admissions', icon: ClipboardList });
     nav.push({ label: 'Family access', href: '/admin/guardians', icon: ShieldCheck });
     nav.push({ label: 'Fees', href: '/fees', icon: CreditCard });
   }

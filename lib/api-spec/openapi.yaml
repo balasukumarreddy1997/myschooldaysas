@@ -15,6 +15,7 @@ tags:
   - name: live
   - name: board
   - name: learning
+  - name: registry
 paths:
   /academic/subjects:
     get:
@@ -1617,6 +1618,82 @@ paths:
               schema: { $ref: "#/components/schemas/FeeReceipt" }
         "403": { description: Receipt access is restricted to school administrators and linked parents }
         "404": { description: Receipt not found }
+  /registry/public/enquiry:
+    post:
+      operationId: createPublicAdmissionEnquiry
+      tags: [registry]
+      summary: Submit a public admissions enquiry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PublicAdmissionEnquiryInput" }
+      responses:
+        "201":
+          description: Enquiry received
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicAdmissionEnquiryResult" }
+        "400": { description: Invalid enquiry details }
+        "404": { description: Organization not found }
+        "429": { description: Public enquiry rate limit reached }
+  /registry/enquiries:
+    get:
+      operationId: getAdmissionEnquiries
+      tags: [registry]
+      summary: List admissions enquiries
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: status
+          required: false
+          schema: { $ref: "#/components/schemas/AdmissionEnquiryStatus" }
+        - in: query
+          name: search
+          required: false
+          schema: { type: string, maxLength: 120 }
+        - in: query
+          name: limit
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - in: query
+          name: offset
+          required: false
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        "200":
+          description: Admissions enquiry page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdmissionEnquiryPage" }
+        "401": { description: Sign-in required }
+        "403": { description: Administrator role required }
+  /registry/enquiries/{enquiryId}:
+    patch:
+      operationId: updateAdmissionEnquiry
+      tags: [registry]
+      summary: Update enquiry status and follow-up details
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: enquiryId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdmissionEnquiryUpdateInput" }
+      responses:
+        "200":
+          description: Updated enquiry
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdmissionEnquiry" }
+        "400": { description: Invalid update details }
+        "401": { description: Sign-in required }
+        "403": { description: Administrator role required }
+        "404": { description: Enquiry not found }
 components:
   securitySchemes:
     bearerAuth:
@@ -2720,4 +2797,82 @@ components:
         amountPaise: { type: integer, minimum: 1 }
         paidAt: { type: string, format: date-time }
         paymentMethod: { type: string, enum: [mock, razorpay, manual] }
+    AdmissionEnquiryStatus:
+      type: string
+      enum: [new, contacted, visit_scheduled, application_issued, closed, lost]
+    AdmissionEnquirySource:
+      type: string
+      enum: [walk-in, web, referral, campaign, other]
+    AdmissionEnquiryActivity:
+      type: object
+      required: [id, action, note, previousStatus, nextStatus, previousFollowUpOn, nextFollowUpOn, actorName, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        action: { type: string, enum: [submitted, status_changed, follow_up_changed, note_added] }
+        note: { type: string, nullable: true }
+        previousStatus:
+          anyOf:
+            - { $ref: "#/components/schemas/AdmissionEnquiryStatus" }
+            - { type: "null" }
+        nextStatus:
+          anyOf:
+            - { $ref: "#/components/schemas/AdmissionEnquiryStatus" }
+            - { type: "null" }
+        previousFollowUpOn: { type: string, format: date, nullable: true }
+        nextFollowUpOn: { type: string, format: date, nullable: true }
+        actorName: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+    AdmissionEnquiry:
+      type: object
+      required: [id, childName, dateOfBirth, classApplying, guardianName, guardianPhone, guardianEmail, source, notes, status, followUpOn, createdAt, updatedAt, activity]
+      properties:
+        id: { type: string, format: uuid }
+        childName: { type: string }
+        dateOfBirth: { type: string, format: date, nullable: true }
+        classApplying: { type: string }
+        guardianName: { type: string }
+        guardianPhone: { type: string }
+        guardianEmail: { type: string, format: email, nullable: true }
+        source: { $ref: "#/components/schemas/AdmissionEnquirySource" }
+        notes: { type: string, nullable: true }
+        status: { $ref: "#/components/schemas/AdmissionEnquiryStatus" }
+        followUpOn: { type: string, format: date, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        activity:
+          type: array
+          items: { $ref: "#/components/schemas/AdmissionEnquiryActivity" }
+    AdmissionEnquiryPage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdmissionEnquiry" }
+        total: { type: integer }
+    PublicAdmissionEnquiryInput:
+      type: object
+      required: [orgSlug, childName, classApplying, guardianName, guardianPhone]
+      properties:
+        orgSlug: { type: string, minLength: 1, maxLength: 80 }
+        childName: { type: string, minLength: 2, maxLength: 120 }
+        dateOfBirth: { type: string, format: date }
+        classApplying: { type: string, minLength: 1, maxLength: 80 }
+        guardianName: { type: string, minLength: 2, maxLength: 120 }
+        guardianPhone: { type: string, minLength: 7, maxLength: 32 }
+        guardianEmail: { type: string, format: email, maxLength: 254 }
+        notes: { type: string, maxLength: 1000 }
+    PublicAdmissionEnquiryResult:
+      type: object
+      required: [id, status]
+      properties:
+        id: { type: string, format: uuid }
+        status: { $ref: "#/components/schemas/AdmissionEnquiryStatus" }
+    AdmissionEnquiryUpdateInput:
+      type: object
+      required: [status]
+      properties:
+        status: { $ref: "#/components/schemas/AdmissionEnquiryStatus" }
+        followUpOn: { type: string, format: date, nullable: true }
+        note: { type: string, maxLength: 1000 }
 

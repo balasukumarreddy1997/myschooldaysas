@@ -3,7 +3,7 @@ import { Pool } from "pg";
 import { extraTenantCases } from "./rls-write-fixtures.mjs";
 
 const expectedDatabase = "campus_rls_test";
-const expectedTenantTableCount = 36;
+const expectedTenantTableCount = 38;
 const localHosts = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
 const organizationIds = { a: randomUUID(), b: randomUUID() };
 const auxiliaryIds = {
@@ -700,7 +700,7 @@ async function main() {
       return;
     }
 
-    console.log(`PASS: all ${tableCases.length} tenant tables across identity, academic, board, learning, live, and school.`);
+    console.log(`PASS: all ${tableCases.length} tenant tables across identity, academic, board, learning, live, registry, and school.`);
     console.log(
       "For both org contexts, cross-org SELECT returned 0 rows, UPDATE/DELETE changed 0 rows, and INSERT plus org reassignment were rejected by RLS.",
     );

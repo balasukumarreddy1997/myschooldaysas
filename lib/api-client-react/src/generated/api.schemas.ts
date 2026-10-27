@@ -1471,6 +1471,127 @@ export interface FeeReceipt {
   paymentMethod: FeeReceiptPaymentMethod;
 }
 
+export type AdmissionEnquiryStatus = typeof AdmissionEnquiryStatus[keyof typeof AdmissionEnquiryStatus];
+
+
+export const AdmissionEnquiryStatus = {
+  new: 'new',
+  contacted: 'contacted',
+  visit_scheduled: 'visit_scheduled',
+  application_issued: 'application_issued',
+  closed: 'closed',
+  lost: 'lost',
+} as const;
+
+export type AdmissionEnquirySource = typeof AdmissionEnquirySource[keyof typeof AdmissionEnquirySource];
+
+
+export const AdmissionEnquirySource = {
+  'walk-in': 'walk-in',
+  web: 'web',
+  referral: 'referral',
+  campaign: 'campaign',
+  other: 'other',
+} as const;
+
+export type AdmissionEnquiryActivityAction = typeof AdmissionEnquiryActivityAction[keyof typeof AdmissionEnquiryActivityAction];
+
+
+export const AdmissionEnquiryActivityAction = {
+  submitted: 'submitted',
+  status_changed: 'status_changed',
+  follow_up_changed: 'follow_up_changed',
+  note_added: 'note_added',
+} as const;
+
+export interface AdmissionEnquiryActivity {
+  id: string;
+  action: AdmissionEnquiryActivityAction;
+  /** @nullable */
+  note: string | null;
+  previousStatus: AdmissionEnquiryStatus | null;
+  nextStatus: AdmissionEnquiryStatus | null;
+  /** @nullable */
+  previousFollowUpOn: string | null;
+  /** @nullable */
+  nextFollowUpOn: string | null;
+  /** @nullable */
+  actorName: string | null;
+  createdAt: string;
+}
+
+export interface AdmissionEnquiry {
+  id: string;
+  childName: string;
+  /** @nullable */
+  dateOfBirth: string | null;
+  classApplying: string;
+  guardianName: string;
+  guardianPhone: string;
+  /** @nullable */
+  guardianEmail: string | null;
+  source: AdmissionEnquirySource;
+  /** @nullable */
+  notes: string | null;
+  status: AdmissionEnquiryStatus;
+  /** @nullable */
+  followUpOn: string | null;
+  createdAt: string;
+  updatedAt: string;
+  activity: AdmissionEnquiryActivity[];
+}
+
+export interface AdmissionEnquiryPage {
+  items: AdmissionEnquiry[];
+  total: number;
+}
+
+export interface PublicAdmissionEnquiryInput {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  orgSlug: string;
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  childName: string;
+  dateOfBirth?: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  classApplying: string;
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  guardianName: string;
+  /**
+     * @minLength 7
+     * @maxLength 32
+     */
+  guardianPhone: string;
+  /** @maxLength 254 */
+  guardianEmail?: string;
+  /** @maxLength 1000 */
+  notes?: string;
+}
+
+export interface PublicAdmissionEnquiryResult {
+  id: string;
+  status: AdmissionEnquiryStatus;
+}
+
+export interface AdmissionEnquiryUpdateInput {
+  status: AdmissionEnquiryStatus;
+  /** @nullable */
+  followUpOn?: string | null;
+  /** @maxLength 1000 */
+  note?: string;
+}
+
 export type GetAcademicTeacherAssignmentsParams = {
 sectionId?: string;
 };
@@ -1596,6 +1717,23 @@ termId?: string;
 };
 
 export type GetFeeInvoicesParams = {
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+
+export type GetAdmissionEnquiriesParams = {
+status?: AdmissionEnquiryStatus;
+/**
+ * @maxLength 120
+ */
+search?: string;
 /**
  * @minimum 1
  * @maximum 100

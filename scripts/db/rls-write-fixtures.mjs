@@ -214,4 +214,15 @@ export const extraTenantCases = [
     keySql: "org_id = $1 AND event_id = $2",
     keyValues: (context) => [context.orgId, context.id],
   }),
+  idCase("registry.admission_enquiries", "child_name, class_applying, guardian_name, guardian_phone", (context) => [
+    `RLS enquiry child ${context.side} ${context.id.slice(0, 8)}`,
+    "Grade 1",
+    `RLS guardian ${context.side}`,
+    "0000000000",
+  ]),
+  idCase("registry.admission_activity", "enquiry_id, action, actor_id", (context) => [
+    context.ids["registry.admission_enquiries"][context.side],
+    "status_changed",
+    userId(context),
+  ]),
 ];

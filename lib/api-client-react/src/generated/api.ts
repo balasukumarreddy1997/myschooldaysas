@@ -34,6 +34,9 @@ import type {
   AcademicTeacherAssignmentPage,
   AcademicTeacherPage,
   AdmissionBatchInput,
+  AdmissionEnquiry,
+  AdmissionEnquiryPage,
+  AdmissionEnquiryUpdateInput,
   AdmissionPreview,
   AuthSession,
   AvailableStudentPage,
@@ -60,6 +63,7 @@ import type {
   FeePaymentResult,
   FeeReceipt,
   GetAcademicTeacherAssignmentsParams,
+  GetAdmissionEnquiriesParams,
   GetAvailableStudentsParams,
   GetBoardTemplates200,
   GetClasses200,
@@ -111,6 +115,8 @@ import type {
   LoginInput,
   PromoteStudentsInput,
   PromotionResult,
+  PublicAdmissionEnquiryInput,
+  PublicAdmissionEnquiryResult,
   RevokeConsent200,
   SchoolAttendanceInput,
   SchoolAttendancePage,
@@ -7669,4 +7675,289 @@ export function useGetFeeReceipt<TData = Awaited<ReturnType<typeof getFeeReceipt
 
 
 
+
+export const getCreatePublicAdmissionEnquiryUrl = () => {
+
+
+
+
+  return `/api/registry/public/enquiry`
+}
+
+/**
+ * @summary Submit a public admissions enquiry
+ */
+export const createPublicAdmissionEnquiry = async (publicAdmissionEnquiryInput: PublicAdmissionEnquiryInput, options?: Parameters<typeof customFetch>[1]): Promise<PublicAdmissionEnquiryResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PublicAdmissionEnquiryResult>(getCreatePublicAdmissionEnquiryUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(publicAdmissionEnquiryInput)
+  }
+);}
+
+
+
+
+
+export const getCreatePublicAdmissionEnquiryMutationKey = () => ['createPublicAdmissionEnquiry'] as const;
+
+export const getCreatePublicAdmissionEnquiryMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPublicAdmissionEnquiry>>, TError,CreatePublicAdmissionEnquiryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPublicAdmissionEnquiry>>, TError,CreatePublicAdmissionEnquiryMutationVariables, TContext> => {
+
+const mutationKey = getCreatePublicAdmissionEnquiryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPublicAdmissionEnquiry>>, CreatePublicAdmissionEnquiryMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createPublicAdmissionEnquiry(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePublicAdmissionEnquiryMutationResult = NonNullable<Awaited<ReturnType<typeof createPublicAdmissionEnquiry>>>
+    export type CreatePublicAdmissionEnquiryMutationBody = BodyType<PublicAdmissionEnquiryInput>
+    export type CreatePublicAdmissionEnquiryMutationError = ErrorType<void>
+    export type CreatePublicAdmissionEnquiryMutationVariables = {data: BodyType<PublicAdmissionEnquiryInput>}
+
+    /**
+ * @summary Submit a public admissions enquiry
+ */
+export const useCreatePublicAdmissionEnquiry = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPublicAdmissionEnquiry>>, TError,CreatePublicAdmissionEnquiryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createPublicAdmissionEnquiry>>,
+        TError,
+        CreatePublicAdmissionEnquiryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreatePublicAdmissionEnquiryMutationOptions(options), queryClient);
+    }
+
+export const getGetAdmissionEnquiriesUrl = (params?: GetAdmissionEnquiriesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/registry/enquiries?${stringifiedParams}` : `/api/registry/enquiries`
+}
+
+/**
+ * @summary List admissions enquiries
+ */
+export const getAdmissionEnquiries = async (params?: GetAdmissionEnquiriesParams, options?: Parameters<typeof customFetch>[1]): Promise<AdmissionEnquiryPage> => {
+
+  return customFetch<AdmissionEnquiryPage>(getGetAdmissionEnquiriesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdmissionEnquiriesQueryKey = (params?: GetAdmissionEnquiriesParams,) => {
+    return [
+    `/api/registry/enquiries`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAdmissionEnquiriesQueryOptions = <TData = Awaited<ReturnType<typeof getAdmissionEnquiries>>, TError = ErrorType<void>>(params?: GetAdmissionEnquiriesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdmissionEnquiries>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdmissionEnquiriesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdmissionEnquiries>>> = ({ signal }) => getAdmissionEnquiries(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdmissionEnquiries>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAdmissionEnquiriesQueryResult = NonNullable<Awaited<ReturnType<typeof getAdmissionEnquiries>>>
+export type GetAdmissionEnquiriesQueryError = ErrorType<void>
+
+
+export function useGetAdmissionEnquiries<TData = Awaited<ReturnType<typeof getAdmissionEnquiries>>, TError = ErrorType<void>>(
+ params: undefined |  GetAdmissionEnquiriesParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdmissionEnquiries>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdmissionEnquiries>>,
+          TError,
+          Awaited<ReturnType<typeof getAdmissionEnquiries>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdmissionEnquiries<TData = Awaited<ReturnType<typeof getAdmissionEnquiries>>, TError = ErrorType<void>>(
+ params?: GetAdmissionEnquiriesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdmissionEnquiries>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdmissionEnquiries>>,
+          TError,
+          Awaited<ReturnType<typeof getAdmissionEnquiries>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdmissionEnquiries<TData = Awaited<ReturnType<typeof getAdmissionEnquiries>>, TError = ErrorType<void>>(
+ params?: GetAdmissionEnquiriesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdmissionEnquiries>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List admissions enquiries
+ */
+
+export function useGetAdmissionEnquiries<TData = Awaited<ReturnType<typeof getAdmissionEnquiries>>, TError = ErrorType<void>>(
+ params?: GetAdmissionEnquiriesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdmissionEnquiries>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAdmissionEnquiriesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateAdmissionEnquiryUrl = (enquiryId: string,) => {
+
+
+
+
+  return `/api/registry/enquiries/${enquiryId}`
+}
+
+/**
+ * @summary Update enquiry status and follow-up details
+ */
+export const updateAdmissionEnquiry = async (enquiryId: string,
+    admissionEnquiryUpdateInput: AdmissionEnquiryUpdateInput, options?: Parameters<typeof customFetch>[1]): Promise<AdmissionEnquiry> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdmissionEnquiry>(getUpdateAdmissionEnquiryUrl(enquiryId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(admissionEnquiryUpdateInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdmissionEnquiryMutationKey = () => ['updateAdmissionEnquiry'] as const;
+
+export const getUpdateAdmissionEnquiryMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdmissionEnquiry>>, TError,UpdateAdmissionEnquiryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdmissionEnquiry>>, TError,UpdateAdmissionEnquiryMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdmissionEnquiryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdmissionEnquiry>>, UpdateAdmissionEnquiryMutationVariables> = (props) => {
+          const {enquiryId,data} = props ?? {};
+
+          return  updateAdmissionEnquiry(enquiryId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdmissionEnquiryMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdmissionEnquiry>>>
+    export type UpdateAdmissionEnquiryMutationBody = BodyType<AdmissionEnquiryUpdateInput>
+    export type UpdateAdmissionEnquiryMutationError = ErrorType<void>
+    export type UpdateAdmissionEnquiryMutationVariables = {enquiryId: string;data: BodyType<AdmissionEnquiryUpdateInput>}
+
+    /**
+ * @summary Update enquiry status and follow-up details
+ */
+export const useUpdateAdmissionEnquiry = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdmissionEnquiry>>, TError,UpdateAdmissionEnquiryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdmissionEnquiry>>,
+        TError,
+        UpdateAdmissionEnquiryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdmissionEnquiryMutationOptions(options), queryClient);
+    }
 

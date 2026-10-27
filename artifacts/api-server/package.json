@@ -13,6 +13,7 @@
     "test:integration:classroom": "node --test ../../scripts/tests/classroom.integration.mjs",
     "test:integration:academic": "node --test ../../scripts/tests/academic-scheduling.integration.mjs",
     "test:integration:fees": "test -f ../../.env || { echo 'Missing root .env; gated fee integration needs the local campus_app connection.' >&2; exit 2; }; set -a; . ../../.env; set +a; DATABASE_URL=\"${DATABASE_URL:?DATABASE_URL is required}\" NODE_ENV=test RUN_FEES_INTEGRATION=1 node --experimental-strip-types --test ../../scripts/tests/fees.integration.mjs",
+    "test:integration:admissions": "test -f ../../.env || { echo 'Missing root .env; gated admissions integration needs the local campus_app connection.' >&2; exit 2; }; set -a; . ../../.env; set +a; DATABASE_URL=\"${DATABASE_URL:?DATABASE_URL is required}\" NODE_ENV=test RUN_ADMISSIONS_INTEGRATION=1 node --experimental-strip-types --test ../../scripts/tests/admissions.integration.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

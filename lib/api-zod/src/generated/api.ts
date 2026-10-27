@@ -2684,3 +2684,138 @@ export const GetFeeReceiptResponse = zod.object({
 })
 
 
+/**
+ * @summary Submit a public admissions enquiry
+ */
+export const createPublicAdmissionEnquiryBodyOrgSlugMax = 80;
+
+export const createPublicAdmissionEnquiryBodyChildNameMin = 2;
+export const createPublicAdmissionEnquiryBodyChildNameMax = 120;
+
+export const createPublicAdmissionEnquiryBodyClassApplyingMax = 80;
+
+export const createPublicAdmissionEnquiryBodyGuardianNameMin = 2;
+export const createPublicAdmissionEnquiryBodyGuardianNameMax = 120;
+
+export const createPublicAdmissionEnquiryBodyGuardianPhoneMin = 7;
+export const createPublicAdmissionEnquiryBodyGuardianPhoneMax = 32;
+
+export const createPublicAdmissionEnquiryBodyGuardianEmailMax = 254;
+
+export const createPublicAdmissionEnquiryBodyNotesMax = 1000;
+
+
+
+export const CreatePublicAdmissionEnquiryBody = zod.object({
+  "orgSlug": zod.string().min(1).max(createPublicAdmissionEnquiryBodyOrgSlugMax),
+  "childName": zod.string().min(createPublicAdmissionEnquiryBodyChildNameMin).max(createPublicAdmissionEnquiryBodyChildNameMax),
+  "dateOfBirth": zod.coerce.date().optional(),
+  "classApplying": zod.string().min(1).max(createPublicAdmissionEnquiryBodyClassApplyingMax),
+  "guardianName": zod.string().min(createPublicAdmissionEnquiryBodyGuardianNameMin).max(createPublicAdmissionEnquiryBodyGuardianNameMax),
+  "guardianPhone": zod.string().min(createPublicAdmissionEnquiryBodyGuardianPhoneMin).max(createPublicAdmissionEnquiryBodyGuardianPhoneMax),
+  "guardianEmail": zod.email().max(createPublicAdmissionEnquiryBodyGuardianEmailMax).optional(),
+  "notes": zod.string().max(createPublicAdmissionEnquiryBodyNotesMax).optional()
+})
+
+export const CreatePublicAdmissionEnquiryResponse = zod.object({
+  "id": zod.uuid(),
+  "status": zod.enum(['new', 'contacted', 'visit_scheduled', 'application_issued', 'closed', 'lost'])
+})
+
+
+/**
+ * @summary List admissions enquiries
+ */
+export const getAdmissionEnquiriesQuerySearchMax = 120;
+
+export const getAdmissionEnquiriesQueryLimitDefault = 50;
+export const getAdmissionEnquiriesQueryLimitMax = 100;
+
+export const getAdmissionEnquiriesQueryOffsetDefault = 0;
+export const getAdmissionEnquiriesQueryOffsetMin = 0;
+
+
+
+export const GetAdmissionEnquiriesQueryParams = zod.object({
+  "status": zod.enum(['new', 'contacted', 'visit_scheduled', 'application_issued', 'closed', 'lost']).optional(),
+  "search": zod.string().max(getAdmissionEnquiriesQuerySearchMax).optional(),
+  "limit": zod.coerce.number().int().min(1).max(getAdmissionEnquiriesQueryLimitMax).default(getAdmissionEnquiriesQueryLimitDefault),
+  "offset": zod.coerce.number().int().min(getAdmissionEnquiriesQueryOffsetMin).default(getAdmissionEnquiriesQueryOffsetDefault)
+})
+
+export const GetAdmissionEnquiriesResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "childName": zod.string(),
+  "dateOfBirth": zod.coerce.date().nullable(),
+  "classApplying": zod.string(),
+  "guardianName": zod.string(),
+  "guardianPhone": zod.string(),
+  "guardianEmail": zod.email().nullable(),
+  "source": zod.enum(['walk-in', 'web', 'referral', 'campaign', 'other']),
+  "notes": zod.string().nullable(),
+  "status": zod.enum(['new', 'contacted', 'visit_scheduled', 'application_issued', 'closed', 'lost']),
+  "followUpOn": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "activity": zod.array(zod.object({
+  "id": zod.uuid(),
+  "action": zod.enum(['submitted', 'status_changed', 'follow_up_changed', 'note_added']),
+  "note": zod.string().nullable(),
+  "previousStatus": zod.union([zod.enum(['new', 'contacted', 'visit_scheduled', 'application_issued', 'closed', 'lost']),zod.null()]),
+  "nextStatus": zod.union([zod.enum(['new', 'contacted', 'visit_scheduled', 'application_issued', 'closed', 'lost']),zod.null()]),
+  "previousFollowUpOn": zod.coerce.date().nullable(),
+  "nextFollowUpOn": zod.coerce.date().nullable(),
+  "actorName": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+}))
+})),
+  "total": zod.int()
+})
+
+
+/**
+ * @summary Update enquiry status and follow-up details
+ */
+export const UpdateAdmissionEnquiryParams = zod.object({
+  "enquiryId": zod.uuid()
+})
+
+export const updateAdmissionEnquiryBodyNoteMax = 1000;
+
+
+
+export const UpdateAdmissionEnquiryBody = zod.object({
+  "status": zod.enum(['new', 'contacted', 'visit_scheduled', 'application_issued', 'closed', 'lost']),
+  "followUpOn": zod.coerce.date().nullish(),
+  "note": zod.string().max(updateAdmissionEnquiryBodyNoteMax).optional()
+})
+
+export const UpdateAdmissionEnquiryResponse = zod.object({
+  "id": zod.uuid(),
+  "childName": zod.string(),
+  "dateOfBirth": zod.coerce.date().nullable(),
+  "classApplying": zod.string(),
+  "guardianName": zod.string(),
+  "guardianPhone": zod.string(),
+  "guardianEmail": zod.email().nullable(),
+  "source": zod.enum(['walk-in', 'web', 'referral', 'campaign', 'other']),
+  "notes": zod.string().nullable(),
+  "status": zod.enum(['new', 'contacted', 'visit_scheduled', 'application_issued', 'closed', 'lost']),
+  "followUpOn": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "activity": zod.array(zod.object({
+  "id": zod.uuid(),
+  "action": zod.enum(['submitted', 'status_changed', 'follow_up_changed', 'note_added']),
+  "note": zod.string().nullable(),
+  "previousStatus": zod.union([zod.enum(['new', 'contacted', 'visit_scheduled', 'application_issued', 'closed', 'lost']),zod.null()]),
+  "nextStatus": zod.union([zod.enum(['new', 'contacted', 'visit_scheduled', 'application_issued', 'closed', 'lost']),zod.null()]),
+  "previousFollowUpOn": zod.coerce.date().nullable(),
+  "nextFollowUpOn": zod.coerce.date().nullable(),
+  "actorName": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
