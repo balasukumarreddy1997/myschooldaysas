@@ -1,0 +1,152 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
+
+:root {
+  color-scheme: light;
+  --background: 42 34% 96%;
+  --foreground: 218 28% 19%;
+  --card: 0 0% 100%;
+  --card-foreground: 218 28% 19%;
+  --border: 38 20% 87%;
+  --input: 38 20% 82%;
+  --primary: 167 56% 30%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 42 30% 91%;
+  --secondary-foreground: 218 27% 24%;
+  --muted: 40 25% 92%;
+  --muted-foreground: 218 12% 48%;
+  --accent: 30 83% 58%;
+  --accent-foreground: 218 28% 19%;
+  --destructive: 0 64% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --ring: 167 56% 30%;
+  --popover: 0 0% 100%;
+  --sidebar: 218 32% 18%;
+  --sidebar-foreground: 42 30% 93%;
+  --brand-forest: 157 45% 20%;
+  --brand-ink: 158 38% 15%;
+  --brand-inverse: 42 34% 96%;
+  --brand-accent: 30 72% 63%;
+  --brand-mint: 153 38% 88%;
+  --brand-mint-ink: 157 49% 27%;
+  --status-good: 154 51% 42%;
+  --status-good-bg: 148 47% 93%;
+  --classroom-bg: 203 24% 9%;
+  --classroom-panel: 202 24% 13%;
+  --classroom-grid: 155 24% 62%;
+  --classroom-text: 135 18% 94%;
+  --classroom-muted: 155 14% 65%;
+  --classroom-border: 160 16% 25%;
+  --classroom-ready: 153 54% 68%;
+  --classroom-warn: 31 57% 70%;
+  --classroom-danger-bg: 4 40% 27%;
+  --classroom-danger: 5 100% 88%;
+  --paper: 48 50% 98%;
+  --board-green: 151 21% 37%;
+  --board-art-1: 141 24% 92%;
+  --board-art-2: 39 34% 91%;
+  --board-art-3: 210 30% 92%;
+  --app-font-sans: 'DM Sans', sans-serif;
+  --app-font-display: 'Manrope', sans-serif;
+  --radius: 0.85rem;
+}
+
+.dark {
+  color-scheme: dark;
+  --background: 219 29% 11%;
+  --foreground: 40 27% 92%;
+  --card: 219 25% 15%;
+  --card-foreground: 40 27% 92%;
+  --border: 218 18% 26%;
+  --input: 218 18% 31%;
+  --primary: 163 48% 48%;
+  --primary-foreground: 219 29% 11%;
+  --secondary: 219 20% 21%;
+  --secondary-foreground: 40 27% 92%;
+  --muted: 219 20% 19%;
+  --muted-foreground: 218 13% 65%;
+  --accent: 31 80% 61%;
+  --accent-foreground: 219 29% 11%;
+  --destructive: 0 60% 58%;
+  --destructive-foreground: 0 0% 100%;
+  --ring: 163 48% 48%;
+  --popover: 219 25% 15%;
+  --sidebar: 220 34% 9%;
+  --sidebar-foreground: 40 27% 92%;
+  --brand-forest: 157 42% 19%;
+  --brand-ink: 158 38% 15%;
+  --brand-inverse: 42 34% 96%;
+  --brand-accent: 30 72% 63%;
+  --brand-mint: 153 32% 27%;
+  --brand-mint-ink: 153 58% 87%;
+  --status-good: 154 51% 58%;
+  --status-good-bg: 153 44% 18%;
+  --classroom-bg: 203 24% 9%;
+  --classroom-panel: 202 24% 13%;
+  --classroom-grid: 155 24% 62%;
+  --classroom-text: 135 18% 94%;
+  --classroom-muted: 155 14% 65%;
+  --classroom-border: 160 16% 25%;
+  --classroom-ready: 153 54% 68%;
+  --classroom-warn: 31 57% 70%;
+  --classroom-danger-bg: 4 40% 27%;
+  --classroom-danger: 5 100% 88%;
+  --paper: 48 50% 98%;
+  --board-green: 151 21% 37%;
+  --board-art-1: 141 24% 22%;
+  --board-art-2: 39 25% 23%;
+  --board-art-3: 210 25% 23%;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--app-font-sans); background: hsl(var(--background)); color: hsl(var(--foreground)); }
+button, input { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+.display { font-family: var(--app-font-display); }
+.shell { min-height: 100dvh; }
+.grain::after {
+  content: '';
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  opacity: .025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.36'/%3E%3C/svg%3E");
+}
+.field {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid hsl(var(--input));
+  border-radius: 10px;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  padding: 10px 12px;
+  outline: none;
+}
+.field:focus { border-color: hsl(var(--primary)); box-shadow: 0 0 0 3px hsl(var(--primary) / .12); }
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  border: 0;
+  border-radius: 10px;
+  padding: 0 15px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: transform .18s, opacity .18s, background .18s;
+}
+.btn:hover { transform: translateY(-1px); }
+.btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+.btn-primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+.tag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 9px;
+  background: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
