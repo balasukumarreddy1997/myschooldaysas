@@ -298,7 +298,7 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
     assert.equal(singlePreview.body.items[0].guardianName, "Integration Guardian");
     const invalidGuardianPreview = await api("/academic/admissions/preview", admin, "POST", {
       ...singleAdmission,
-      rows: [{ ...singleAdmission.rows[0], guardianName: "", guardianEmail: "", guardianPhone: "", guardianRelationship: "Mother" }],
+      rows: [{ ...singleAdmission.rows[0], guardianName: "", guardianEmail: undefined, guardianPhone: undefined, guardianRelationship: "Mother" }],
     });
     assert.equal(invalidGuardianPreview.status, 200, JSON.stringify(invalidGuardianPreview.body));
     assert.equal(invalidGuardianPreview.body.valid, false);
