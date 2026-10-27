@@ -3,3 +3,4 @@
 - [Campus Live classroom scope](campus-live-classroom-scope.md) — preserve the existing classroom while building other product areas.
 - [Local container health checks](local-container-healthchecks.md) — an OCI health-check exec failure can mark reachable Postgres/Redis containers unhealthy; confirm with host probes before restarting.
 - [PostgreSQL policy role arrays](postgres-policy-role-arrays.md) — cast `pg_policies.roles` to `text[]`; node-postgres may otherwise return `"{public}"` as a plain string.
+- [Enrollment transition migrations](enrollment-transition-migrations.md) — active-only unique indexes require matching seed upsert predicates and reliable migration-version recording.

@@ -492,6 +492,14 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
     assert.ok(promotedHistory.body.items.some((item) => item.endedReason === "promoted"));
     assert.equal(promotedHistory.body.items.length, 2);
 
+    const restoreSourceFullCapacity = await api(
+      `/academic/sections/${section.id}`,
+      admin,
+      "PATCH",
+      { capacity: section.studentCount },
+    );
+    assert.equal(restoreSourceFullCapacity.status, 200, JSON.stringify(restoreSourceFullCapacity.body));
+
     const remainingStudent = await api(
       `/academic/students/available?academicYear=${encodeURIComponent(admissionsBatchYear)}&limit=1&offset=0`,
       admin,
