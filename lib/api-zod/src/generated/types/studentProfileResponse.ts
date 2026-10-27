@@ -5,6 +5,7 @@
  * Campus Live API contract
  * OpenAPI spec version: 0.1.0
  */
+import type { EnrollmentHistoryItem } from './enrollmentHistoryItem';
 import type { StudentCurrentEnrollment } from './studentCurrentEnrollment';
 import type { StudentProfileFields } from './studentProfileFields';
 import type { StudentProfileResponseStatus } from './studentProfileResponseStatus';
@@ -15,5 +16,6 @@ export interface StudentProfileResponse {
   email: string;
   status: StudentProfileResponseStatus;
   currentEnrollment: StudentCurrentEnrollment | null;
+  enrollmentHistory: EnrollmentHistoryItem[];
   profile: StudentProfileFields;
 }

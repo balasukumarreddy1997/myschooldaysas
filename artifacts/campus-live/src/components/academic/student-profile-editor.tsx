@@ -94,6 +94,20 @@ export function StudentProfileEditor({
         <button type="button" className="btn btn-muted min-h-9 px-3" onClick={onClose} aria-label="Close student profile"><X size={16}/><span className="ml-1">Close</span></button>
       </div>
 
+      <div className="mt-4 border-b border-[hsl(var(--border))] pb-4">
+        <h3 className="m-0 text-xs font-bold">Enrollment history</h3>
+        {data.enrollmentHistory.length ? (
+          <ul className="mb-0 mt-2 grid gap-2 sm:grid-cols-2">
+            {data.enrollmentHistory.map((enrollment) => (
+              <li key={enrollment.enrollmentId} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[hsl(var(--background))] px-3 py-2 text-xs">
+                <span className="font-semibold">{enrollment.className} · {enrollment.sectionName} · {enrollment.academicYear}</span>
+                <span className="text-[hsl(var(--muted-foreground))]">{enrollment.admissionNo} · {enrollment.status}</span>
+              </li>
+            ))}
+          </ul>
+        ) : <p className="mb-0 mt-2 text-xs text-[hsl(var(--muted-foreground))]">No enrollment history.</p>}
+      </div>
+
       <form onSubmit={submit} className="mt-4 grid gap-3 md:grid-cols-2">
         <h3 className="m-0 text-xs font-bold md:col-span-2">Student details</h3>
         <label className="text-xs font-semibold">Date of birth

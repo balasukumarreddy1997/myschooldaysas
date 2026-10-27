@@ -49,6 +49,10 @@ import type {
   CreateTimetableSlotInput,
   CreatedAdmissions,
   DashboardOverview,
+  EnrollmentMovePreview,
+  EnrollmentMoveResult,
+  EnrollmentPromotionInput,
+  EnrollmentTransferInput,
   EnrollmentYearUpdateInput,
   FeeInvoiceGenerateInput,
   FeeInvoiceGenerateResult,
@@ -2780,6 +2784,358 @@ export const usePromoteStudents = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getPromoteStudentsMutationOptions(options), queryClient);
+    }
+
+export const getPreviewEnrollmentTransferUrl = () => {
+
+
+
+
+  return `/api/academic/enrollments/transfer/preview`
+}
+
+/**
+ * @summary Preview moving one student to another section
+ */
+export const previewEnrollmentTransfer = async (enrollmentTransferInput: EnrollmentTransferInput, options?: Parameters<typeof customFetch>[1]): Promise<EnrollmentMovePreview> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<EnrollmentMovePreview>(getPreviewEnrollmentTransferUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(enrollmentTransferInput)
+  }
+);}
+
+
+
+
+
+export const getPreviewEnrollmentTransferMutationKey = () => ['previewEnrollmentTransfer'] as const;
+
+export const getPreviewEnrollmentTransferMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewEnrollmentTransfer>>, TError,PreviewEnrollmentTransferMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewEnrollmentTransfer>>, TError,PreviewEnrollmentTransferMutationVariables, TContext> => {
+
+const mutationKey = getPreviewEnrollmentTransferMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewEnrollmentTransfer>>, PreviewEnrollmentTransferMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  previewEnrollmentTransfer(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewEnrollmentTransferMutationResult = NonNullable<Awaited<ReturnType<typeof previewEnrollmentTransfer>>>
+    export type PreviewEnrollmentTransferMutationBody = BodyType<EnrollmentTransferInput>
+    export type PreviewEnrollmentTransferMutationError = ErrorType<void>
+    export type PreviewEnrollmentTransferMutationVariables = {data: BodyType<EnrollmentTransferInput>}
+
+    /**
+ * @summary Preview moving one student to another section
+ */
+export const usePreviewEnrollmentTransfer = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewEnrollmentTransfer>>, TError,PreviewEnrollmentTransferMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof previewEnrollmentTransfer>>,
+        TError,
+        PreviewEnrollmentTransferMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPreviewEnrollmentTransferMutationOptions(options), queryClient);
+    }
+
+export const getCommitEnrollmentTransferUrl = () => {
+
+
+
+
+  return `/api/academic/enrollments/transfer/commit`
+}
+
+/**
+ * @summary Transfer one student and retain the previous enrollment
+ */
+export const commitEnrollmentTransfer = async (enrollmentTransferInput: EnrollmentTransferInput, options?: Parameters<typeof customFetch>[1]): Promise<EnrollmentMoveResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<EnrollmentMoveResult>(getCommitEnrollmentTransferUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(enrollmentTransferInput)
+  }
+);}
+
+
+
+
+
+export const getCommitEnrollmentTransferMutationKey = () => ['commitEnrollmentTransfer'] as const;
+
+export const getCommitEnrollmentTransferMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof commitEnrollmentTransfer>>, TError,CommitEnrollmentTransferMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof commitEnrollmentTransfer>>, TError,CommitEnrollmentTransferMutationVariables, TContext> => {
+
+const mutationKey = getCommitEnrollmentTransferMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof commitEnrollmentTransfer>>, CommitEnrollmentTransferMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  commitEnrollmentTransfer(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CommitEnrollmentTransferMutationResult = NonNullable<Awaited<ReturnType<typeof commitEnrollmentTransfer>>>
+    export type CommitEnrollmentTransferMutationBody = BodyType<EnrollmentTransferInput>
+    export type CommitEnrollmentTransferMutationError = ErrorType<void>
+    export type CommitEnrollmentTransferMutationVariables = {data: BodyType<EnrollmentTransferInput>}
+
+    /**
+ * @summary Transfer one student and retain the previous enrollment
+ */
+export const useCommitEnrollmentTransfer = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof commitEnrollmentTransfer>>, TError,CommitEnrollmentTransferMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof commitEnrollmentTransfer>>,
+        TError,
+        CommitEnrollmentTransferMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCommitEnrollmentTransferMutationOptions(options), queryClient);
+    }
+
+export const getPreviewEnrollmentPromotionUrl = () => {
+
+
+
+
+  return `/api/academic/enrollments/promote/preview`
+}
+
+/**
+ * @summary Preview promoting a class cohort into mapped sections
+ */
+export const previewEnrollmentPromotion = async (enrollmentPromotionInput: EnrollmentPromotionInput, options?: Parameters<typeof customFetch>[1]): Promise<EnrollmentMovePreview> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<EnrollmentMovePreview>(getPreviewEnrollmentPromotionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(enrollmentPromotionInput)
+  }
+);}
+
+
+
+
+
+export const getPreviewEnrollmentPromotionMutationKey = () => ['previewEnrollmentPromotion'] as const;
+
+export const getPreviewEnrollmentPromotionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewEnrollmentPromotion>>, TError,PreviewEnrollmentPromotionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewEnrollmentPromotion>>, TError,PreviewEnrollmentPromotionMutationVariables, TContext> => {
+
+const mutationKey = getPreviewEnrollmentPromotionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewEnrollmentPromotion>>, PreviewEnrollmentPromotionMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  previewEnrollmentPromotion(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewEnrollmentPromotionMutationResult = NonNullable<Awaited<ReturnType<typeof previewEnrollmentPromotion>>>
+    export type PreviewEnrollmentPromotionMutationBody = BodyType<EnrollmentPromotionInput>
+    export type PreviewEnrollmentPromotionMutationError = ErrorType<void>
+    export type PreviewEnrollmentPromotionMutationVariables = {data: BodyType<EnrollmentPromotionInput>}
+
+    /**
+ * @summary Preview promoting a class cohort into mapped sections
+ */
+export const usePreviewEnrollmentPromotion = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewEnrollmentPromotion>>, TError,PreviewEnrollmentPromotionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof previewEnrollmentPromotion>>,
+        TError,
+        PreviewEnrollmentPromotionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPreviewEnrollmentPromotionMutationOptions(options), queryClient);
+    }
+
+export const getCommitEnrollmentPromotionUrl = () => {
+
+
+
+
+  return `/api/academic/enrollments/promote/commit`
+}
+
+/**
+ * @summary Promote a class cohort and retain previous enrollments
+ */
+export const commitEnrollmentPromotion = async (enrollmentPromotionInput: EnrollmentPromotionInput, options?: Parameters<typeof customFetch>[1]): Promise<EnrollmentMoveResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<EnrollmentMoveResult>(getCommitEnrollmentPromotionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(enrollmentPromotionInput)
+  }
+);}
+
+
+
+
+
+export const getCommitEnrollmentPromotionMutationKey = () => ['commitEnrollmentPromotion'] as const;
+
+export const getCommitEnrollmentPromotionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof commitEnrollmentPromotion>>, TError,CommitEnrollmentPromotionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof commitEnrollmentPromotion>>, TError,CommitEnrollmentPromotionMutationVariables, TContext> => {
+
+const mutationKey = getCommitEnrollmentPromotionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof commitEnrollmentPromotion>>, CommitEnrollmentPromotionMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  commitEnrollmentPromotion(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CommitEnrollmentPromotionMutationResult = NonNullable<Awaited<ReturnType<typeof commitEnrollmentPromotion>>>
+    export type CommitEnrollmentPromotionMutationBody = BodyType<EnrollmentPromotionInput>
+    export type CommitEnrollmentPromotionMutationError = ErrorType<void>
+    export type CommitEnrollmentPromotionMutationVariables = {data: BodyType<EnrollmentPromotionInput>}
+
+    /**
+ * @summary Promote a class cohort and retain previous enrollments
+ */
+export const useCommitEnrollmentPromotion = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof commitEnrollmentPromotion>>, TError,CommitEnrollmentPromotionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof commitEnrollmentPromotion>>,
+        TError,
+        CommitEnrollmentPromotionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCommitEnrollmentPromotionMutationOptions(options), queryClient);
     }
 
 export const getPreviewStudentAdmissionsUrl = () => {

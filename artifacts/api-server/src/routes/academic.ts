@@ -22,6 +22,10 @@ import {
   PreviewStudentAdmissionsBody,
   PromoteStudentsBody,
   TransferStudentEnrollmentBody,
+  PreviewEnrollmentTransferBody,
+  CommitEnrollmentTransferBody,
+  PreviewEnrollmentPromotionBody,
+  CommitEnrollmentPromotionBody,
 } from "@workspace/api-zod";
 import { withOrg } from "@workspace/db";
 import { createRouteRegistrar } from "../lib/fastify-routes";
@@ -192,6 +196,214 @@ const unavailableConsentPurposes = new Set<ConsentPurpose>(["recording", "photo"
 
 function errorBody(code: string, message: string) {
   return { error: { code, message } };
+}
+
+type EnrollmentMoveInput =
+  | { kind: "transfer"; studentId: string; sourceAcademicYear: string; targetSectionId: string; targetAcademicYear: string }
+  | { kind: "promotion"; sourceClassId: string; sourceAcademicYear: string; targetAcademicYear: string; sectionMap: { sourceSectionId: string; targetSectionId: string }[] };
+
+type EnrollmentMoveItem = {
+  enrollmentId: string;
+  studentId: string;
+  studentName: string;
+  admissionNo: string;
+  sourceSectionId: string;
+  sourceSectionName: string;
+  targetSectionId: string;
+  targetSectionName: string;
+  sourceAcademicYear: string;
+  targetAcademicYear: string;
+  eligible: boolean;
+  conflicts: string[];
+};
+
+async function inspectEnrollmentMove(client: PoolClient, orgId: string, input: EnrollmentMoveInput, lock = false) {
+  let sourceClassId: string | null = null;
+  let sourceGrade: number | null = null;
+  if (input.kind === "promotion") {
+    const source = await client.query<{ id: string; grade_level: number }>(
+      `SELECT id, grade_level FROM academic.classes WHERE org_id = $1 AND id = $2`,
+      [orgId, input.sourceClassId],
+    );
+    if (!source.rows[0]) return { kind: "source_not_found" as const };
+    sourceClassId = source.rows[0].id;
+    sourceGrade = source.rows[0].grade_level;
+  }
+
+  const candidatesResult = input.kind === "transfer"
+    ? await client.query<{
+      enrollment_id: string; student_id: string; student_name: string; admission_no: string;
+      source_section_id: string; source_section_name: string;
+    }>(
+      `SELECT e.id AS enrollment_id, u.id AS student_id, u.name AS student_name, e.admission_no,
+              s.id AS source_section_id, s.name AS source_section_name
+         FROM academic.enrollments e
+         JOIN academic.sections s ON s.org_id = e.org_id AND s.id = e.section_id
+         JOIN identity.users u ON u.org_id = e.org_id AND u.id = e.student_user_id
+        WHERE e.org_id = $1 AND e.student_user_id = $2 AND e.academic_year = $3
+          AND e.status = 'active'
+        ${lock ? "FOR UPDATE OF e" : ""}`,
+      [orgId, input.studentId, input.sourceAcademicYear],
+    )
+    : await client.query<{
+      enrollment_id: string; student_id: string; student_name: string; admission_no: string;
+      source_section_id: string; source_section_name: string;
+    }>(
+      `SELECT e.id AS enrollment_id, u.id AS student_id, u.name AS student_name, e.admission_no,
+              s.id AS source_section_id, s.name AS source_section_name
+         FROM academic.enrollments e
+         JOIN academic.sections s ON s.org_id = e.org_id AND s.id = e.section_id
+         JOIN identity.users u ON u.org_id = e.org_id AND u.id = e.student_user_id
+        WHERE e.org_id = $1 AND s.class_id = $2 AND e.academic_year = $3
+          AND e.status = 'active'
+        ORDER BY s.name, u.name
+        ${lock ? "FOR UPDATE OF e" : ""}`,
+      [orgId, sourceClassId, input.sourceAcademicYear],
+    );
+
+  if (input.kind === "transfer" && !candidatesResult.rows.length) return { kind: "student_not_found" as const };
+  if (input.kind === "promotion" && input.targetAcademicYear === input.sourceAcademicYear) {
+    return { kind: "invalid_year" as const };
+  }
+  const sourceSectionIds = [...new Set(candidatesResult.rows.map((candidate) => candidate.source_section_id))];
+  const mapping = input.kind === "transfer"
+    ? new Map([[sourceSectionIds[0] ?? "", input.targetSectionId]])
+    : new Map(input.sectionMap.map((entry) => [entry.sourceSectionId, entry.targetSectionId]));
+  const targetIds = [...new Set(mapping.values())];
+  const targets = targetIds.length
+    ? await client.query<{ id: string; name: string; class_id: string; capacity: number | null; grade_level: number }>(
+      `SELECT s.id, s.name, s.class_id, s.capacity, c.grade_level
+         FROM academic.sections s
+         JOIN academic.classes c ON c.org_id = s.org_id AND c.id = s.class_id
+        WHERE s.org_id = $1 AND s.id = ANY($2::uuid[])
+        ORDER BY s.id${lock ? " FOR UPDATE OF s" : ""}`,
+      [orgId, targetIds],
+    )
+    : { rows: [] as { id: string; name: string; class_id: string; capacity: number | null; grade_level: number }[] };
+  if (targets.rows.length !== targetIds.length) return { kind: "target_not_found" as const };
+  const targetById = new Map(targets.rows.map((target) => [target.id, target]));
+  const counts = new Map<string, number>();
+  for (const targetId of targetIds) {
+    const occupancy = await client.query<{ count: number }>(
+      `SELECT COUNT(*)::int AS count FROM academic.enrollments
+        WHERE org_id = $1 AND section_id = $2 AND status = 'active'`,
+      [orgId, targetId],
+    );
+    counts.set(targetId, occupancy.rows[0]?.count ?? 0);
+  }
+
+  const items: EnrollmentMoveItem[] = [];
+  for (const candidate of candidatesResult.rows) {
+    const targetSectionId = mapping.get(candidate.source_section_id) ?? "";
+    const target = targetById.get(targetSectionId);
+    const conflicts: string[] = [];
+    if (!target) conflicts.push("Choose a valid destination section for this student.");
+    if (target && input.kind === "promotion" && target.grade_level <= (sourceGrade ?? target.grade_level)) {
+      conflicts.push("Promotion destination must be a higher grade.");
+    }
+    if (target && target.id === candidate.source_section_id && input.targetAcademicYear === input.sourceAcademicYear) {
+      conflicts.push("Student is already enrolled in this section for this year.");
+    }
+    if (target) {
+      const duplicate = await client.query(
+        `SELECT 1 FROM academic.enrollments
+          WHERE org_id = $1 AND student_user_id = $2 AND academic_year = $3 AND status = 'active'
+            AND id <> $4
+          LIMIT 1`,
+        [orgId, candidate.student_id, input.targetAcademicYear, candidate.enrollment_id],
+      );
+      if (duplicate.rowCount) conflicts.push("Student already has an active enrollment for the destination year.");
+      const duplicateAdmission = await client.query(
+        `SELECT 1 FROM academic.enrollments
+          WHERE org_id = $1 AND admission_no = $2 AND academic_year = $3 AND status = 'active'
+            AND id <> $4
+          LIMIT 1`,
+        [orgId, candidate.admission_no, input.targetAcademicYear, candidate.enrollment_id],
+      );
+      if (duplicateAdmission.rowCount) conflicts.push("Admission number is already active for the destination year.");
+      const used = counts.get(target.id) ?? 0;
+      if (target.capacity != null && used >= target.capacity) {
+        conflicts.push(`Destination section capacity (${target.capacity}) would be exceeded.`);
+      }
+      if (!conflicts.length) counts.set(target.id, used + 1);
+    }
+    items.push({
+      enrollmentId: candidate.enrollment_id,
+      studentId: candidate.student_id,
+      studentName: candidate.student_name,
+      admissionNo: candidate.admission_no,
+      sourceSectionId: candidate.source_section_id,
+      sourceSectionName: candidate.source_section_name,
+      targetSectionId,
+      targetSectionName: target?.name ?? "Unavailable section",
+      sourceAcademicYear: input.sourceAcademicYear,
+      targetAcademicYear: input.targetAcademicYear,
+      eligible: conflicts.length === 0,
+      conflicts,
+    });
+  }
+  return { kind: "ok" as const, items };
+}
+
+function movePreview(items: EnrollmentMoveItem[]) {
+  return {
+    total: items.length,
+    eligibleCount: items.filter((item) => item.eligible).length,
+    conflictCount: items.filter((item) => !item.eligible).length,
+    items: items.map(({ enrollmentId: _enrollmentId, ...item }) => item),
+  };
+}
+
+async function executeEnrollmentMove(client: PoolClient, orgId: string, input: EnrollmentMoveInput) {
+  const inspection = await inspectEnrollmentMove(client, orgId, input, true);
+  if (inspection.kind !== "ok") return inspection;
+  const items: { studentId: string; studentName: string; succeeded: boolean; message: string; enrollmentId?: string }[] = [];
+  for (const [index, item] of inspection.items.entries()) {
+    if (!item.eligible) {
+      items.push({ studentId: item.studentId, studentName: item.studentName, succeeded: false, message: item.conflicts.join(" ") });
+      continue;
+    }
+    const savepoint = `move_student_${index}`;
+    await client.query(`SAVEPOINT ${savepoint}`);
+    try {
+      await client.query(
+        `UPDATE academic.enrollments
+            SET status = 'disabled', ended_at = now(), ended_reason = $3
+          WHERE org_id = $1 AND id = $2 AND status = 'active'`,
+        [orgId, item.enrollmentId, input.kind === "transfer" ? "transferred" : "promoted"],
+      );
+      const created = await client.query<{ id: string }>(
+        `INSERT INTO academic.enrollments (org_id, student_user_id, section_id, admission_no, academic_year)
+         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+        [orgId, item.studentId, item.targetSectionId, item.admissionNo, item.targetAcademicYear],
+      );
+      await client.query(`RELEASE SAVEPOINT ${savepoint}`);
+      items.push({
+        studentId: item.studentId,
+        studentName: item.studentName,
+        succeeded: true,
+        message: "Enrollment moved successfully.",
+        enrollmentId: created.rows[0]!.id,
+      });
+    } catch (error: any) {
+      await client.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+      await client.query(`RELEASE SAVEPOINT ${savepoint}`);
+      items.push({
+        studentId: item.studentId,
+        studentName: item.studentName,
+        succeeded: false,
+        message: error?.code === "23505"
+          ? "An active enrollment or admission number now conflicts. Review the student and try again."
+          : "This enrollment could not be moved. Review the student and retry.",
+      });
+    }
+  }
+  return {
+    kind: "ok" as const,
+    succeeded: items.filter((item) => item.succeeded).length,
+    failed: items.filter((item) => !item.succeeded).length,
+    items,
+  };
 }
 
 function roleFlags(roles: CampusRole[]) {
@@ -1045,6 +1257,114 @@ router.post("/academic/enrollments/promote", requireAuth, async (req, res, next)
   }
 });
 
+router.post("/academic/enrollments/transfer/preview", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!canManageAcademicSetup(user.roles)) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only administrators can transfer students."));
+  }
+  const parsed = PreviewEnrollmentTransferBody.safeParse(req.body);
+  if (!parsed.success || parsed.data.sourceAcademicYear.trim().length < 4 || parsed.data.targetAcademicYear.trim().length < 4) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a student, source year, destination section, and destination year."));
+  }
+  const input: EnrollmentMoveInput = {
+    kind: "transfer",
+    ...parsed.data,
+    sourceAcademicYear: parsed.data.sourceAcademicYear.trim(),
+    targetAcademicYear: parsed.data.targetAcademicYear.trim(),
+  };
+  try {
+    const result = await withOrg(user.orgId, (client) => inspectEnrollmentMove(client, user.orgId, input));
+    if (result.kind === "student_not_found") return void res.status(404).json(errorBody("NOT_FOUND", "Active source enrollment not found."));
+    if (result.kind !== "ok") return void res.status(404).json(errorBody("NOT_FOUND", "Student or destination section not found."));
+    res.json(movePreview(result.items));
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/academic/enrollments/transfer/commit", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!canManageAcademicSetup(user.roles)) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only administrators can transfer students."));
+  }
+  const parsed = CommitEnrollmentTransferBody.safeParse(req.body);
+  if (!parsed.success || parsed.data.sourceAcademicYear.trim().length < 4 || parsed.data.targetAcademicYear.trim().length < 4) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a student, source year, destination section, and destination year."));
+  }
+  const input: EnrollmentMoveInput = {
+    kind: "transfer",
+    ...parsed.data,
+    sourceAcademicYear: parsed.data.sourceAcademicYear.trim(),
+    targetAcademicYear: parsed.data.targetAcademicYear.trim(),
+  };
+  try {
+    const result = await withOrg(user.orgId, (client) => executeEnrollmentMove(client, user.orgId, input));
+    if (result.kind === "student_not_found") return void res.status(404).json(errorBody("NOT_FOUND", "Active source enrollment not found."));
+    if (result.kind !== "ok") return void res.status(404).json(errorBody("NOT_FOUND", "Student or destination section not found."));
+    res.json({ succeeded: result.succeeded, failed: result.failed, items: result.items });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/academic/enrollments/promote/preview", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!canManageAcademicSetup(user.roles)) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only administrators can promote a class cohort."));
+  }
+  const parsed = PreviewEnrollmentPromotionBody.safeParse(req.body);
+  if (!parsed.success || parsed.data.sourceAcademicYear.trim().length < 4 || parsed.data.targetAcademicYear.trim().length < 4 || parsed.data.sectionMap.some((entry, index, entries) =>
+    entries.findIndex((candidate) => candidate.sourceSectionId === entry.sourceSectionId) !== index)) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a source class, academic years, and one destination mapping per section."));
+  }
+  const input: EnrollmentMoveInput = {
+    kind: "promotion",
+    ...parsed.data,
+    sourceAcademicYear: parsed.data.sourceAcademicYear.trim(),
+    targetAcademicYear: parsed.data.targetAcademicYear.trim(),
+  };
+  try {
+    const result = await withOrg(user.orgId, (client) => inspectEnrollmentMove(client, user.orgId, input));
+    if (result.kind === "source_not_found") return void res.status(404).json(errorBody("NOT_FOUND", "Source class not found."));
+    if (result.kind === "invalid_year") return void res.status(400).json(errorBody("INVALID_REQUEST", "Promotion must use a different academic year."));
+    if (result.kind !== "ok") return void res.status(404).json(errorBody("NOT_FOUND", "Source class or mapped section not found."));
+    res.json(movePreview(result.items));
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/academic/enrollments/promote/commit", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!canManageAcademicSetup(user.roles)) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only administrators can promote a class cohort."));
+  }
+  const parsed = CommitEnrollmentPromotionBody.safeParse(req.body);
+  if (!parsed.success || parsed.data.sourceAcademicYear.trim().length < 4 || parsed.data.targetAcademicYear.trim().length < 4 || parsed.data.sectionMap.some((entry, index, entries) =>
+    entries.findIndex((candidate) => candidate.sourceSectionId === entry.sourceSectionId) !== index)) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a source class, academic years, and one destination mapping per section."));
+  }
+  const input: EnrollmentMoveInput = {
+    kind: "promotion",
+    ...parsed.data,
+    sourceAcademicYear: parsed.data.sourceAcademicYear.trim(),
+    targetAcademicYear: parsed.data.targetAcademicYear.trim(),
+  };
+  try {
+    const result = await withOrg(user.orgId, (client) => executeEnrollmentMove(client, user.orgId, input));
+    if (result.kind === "source_not_found") return void res.status(404).json(errorBody("NOT_FOUND", "Source class not found."));
+    if (result.kind === "invalid_year") return void res.status(400).json(errorBody("INVALID_REQUEST", "Promotion must use a different academic year."));
+    if (result.kind !== "ok") return void res.status(404).json(errorBody("NOT_FOUND", "Source class or mapped section not found."));
+    res.json({ succeeded: result.succeeded, failed: result.failed, items: result.items });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get("/academic/students", requireAuth, async (req, res, next) => {
   const user = req.campusUser;
   if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
@@ -1224,6 +1544,23 @@ async function readStudentProfile(client: PoolClient, orgId: string, studentId: 
   );
   const row = result.rows[0];
   if (!row) return null;
+  const historyResult = await client.query<{
+    enrollment_id: string;
+    admission_no: string;
+    academic_year: string;
+    class_name: string;
+    section_name: string;
+    status: "active" | "disabled";
+  }>(
+    `SELECT e.id AS enrollment_id, e.admission_no, e.academic_year,
+            c.name AS class_name, s.name AS section_name, e.status
+       FROM academic.enrollments e
+       JOIN academic.sections s ON s.org_id = e.org_id AND s.id = e.section_id
+       JOIN academic.classes c ON c.org_id = s.org_id AND c.id = s.class_id
+      WHERE e.org_id = $1 AND e.student_user_id = $2
+      ORDER BY e.academic_year DESC, e.created_at DESC, e.id`,
+    [orgId, studentId],
+  );
   return {
     id: row.id,
     name: row.name,
@@ -1238,6 +1575,14 @@ async function readStudentProfile(client: PoolClient, orgId: string, studentId: 
       gradeLevel: row.grade_level!,
       sectionName: row.section_name!,
     },
+    enrollmentHistory: historyResult.rows.map((enrollment) => ({
+      enrollmentId: enrollment.enrollment_id,
+      admissionNo: enrollment.admission_no,
+      academicYear: enrollment.academic_year,
+      className: enrollment.class_name,
+      sectionName: enrollment.section_name,
+      status: enrollment.status,
+    })),
     profile: {
       dateOfBirth: row.date_of_birth,
       gender: row.gender,

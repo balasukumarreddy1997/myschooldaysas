@@ -35,6 +35,7 @@ import { StudentProfileEditor } from '@/components/academic/student-profile-edit
 import { ClassPromotionWizard } from '@/components/academic/class-promotion-wizard';
 import { GuardianAccessPage } from '@/components/academic/guardian-access-page';
 import { FeeReceiptPage, FeesPage } from '@/components/fees/fees-page';
+import { EnrollmentLifecycle } from '@/components/academic/enrollment-lifecycle';
 
 const queryClient = new QueryClient();
 const fmtDate = (iso?: string) => iso ? `${iso.slice(0, 10)} · ${iso.slice(11, 16)}` : 'Time not set';
@@ -364,6 +365,7 @@ function StudentsPage({ roles }: { roles: string[] }) {
     {canManage && sections.data && <>
       <AdmissionIntake sections={sections.data.items}/>
       <EnrollmentForm sections={sections.data.items}/>
+      {students.data && classes.data && <EnrollmentLifecycle sections={sections.data.items} classes={classes.data.items} students={students.data.items}/>}
     </>}
      {filtersLoading ? <div className="skeleton h-48"/> : filterError ? <QueryState loading={false} error={filterError} empty={false} retry={() => { sections.refetch(); if (canManage) classes.refetch(); }}><></></QueryState> :
        !canManage && !effectiveSection ? <InlineEmpty text="No sections are available to display students."/> :

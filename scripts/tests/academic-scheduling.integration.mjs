@@ -54,6 +54,8 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
   let restoreEnrollment;
   let restoreConsentReview;
   let restoreGuardianFlags;
+  let restoreDestinationCapacity;
+  let restorePromotionCapacity;
   let cleanupOrgId;
   const createdEnrollmentIds = [];
   const createdIdentityUserIds = [];
@@ -514,6 +516,100 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
     assert.equal(loadedProfile.body.profile.guardianName, "Integration Guardian");
     assert.equal(loadedProfile.body.currentEnrollment.admissionNo, singleAdmission.rows[0].admissionNo.toUpperCase());
     assert.equal((await api(profilePath, teacher)).status, 403);
+    const destinationSection = sectionList.body.items.find((item) =>
+      item.classId === section.classId && item.id !== section.id
+        && Number(item.className.match(/\d+/)?.[0] ?? 12) < 12,
+    );
+    assert.ok(destinationSection, "A second occupied section is required for transfer checks.");
+    restoreDestinationCapacity = {
+      sectionId: destinationSection.id,
+      capacity: destinationSection.capacity,
+      user: admin,
+    };
+    const reviewTransferBody = {
+      studentId: singleStudentId,
+      sourceAcademicYear: admissionsBatchYear,
+      targetSectionId: destinationSection.id,
+      targetAcademicYear: admissionsBatchYear,
+    };
+    const deniedTransferPreview = await api("/academic/enrollments/transfer/preview", teacher, "POST", reviewTransferBody);
+    assert.equal(deniedTransferPreview.status, 403);
+    const deniedPromotionPreview = await api("/academic/enrollments/promote/preview", teacher, "POST", {
+      sourceClassId: section.classId,
+      sourceAcademicYear: "2026-27",
+      targetAcademicYear: "2027-28",
+      sectionMap: [{ sourceSectionId: section.id, targetSectionId: destinationSection.id }],
+    });
+    assert.equal(deniedPromotionPreview.status, 403);
+    const fullCapacity = await api(
+      `/academic/sections/${destinationSection.id}`,
+      admin,
+      "PATCH",
+      { capacity: destinationSection.studentCount },
+    );
+    assert.equal(fullCapacity.status, 200, JSON.stringify(fullCapacity.body));
+    const transferPreview = await api("/academic/enrollments/transfer/preview", admin, "POST", reviewTransferBody);
+    assert.equal(transferPreview.status, 200, JSON.stringify(transferPreview.body));
+    assert.equal(transferPreview.body.eligibleCount, 0);
+    assert.match(transferPreview.body.items[0].conflicts.join(" "), /capacity/i);
+    const rejectedTransfer = await api("/academic/enrollments/transfer/commit", admin, "POST", reviewTransferBody);
+    assert.equal(rejectedTransfer.status, 200, JSON.stringify(rejectedTransfer.body));
+    assert.equal(rejectedTransfer.body.succeeded, 0);
+    assert.equal(rejectedTransfer.body.failed, 1);
+    const availableCapacity = await api(
+      `/academic/sections/${destinationSection.id}`,
+      admin,
+      "PATCH",
+      { capacity: destinationSection.studentCount + 1 },
+    );
+    assert.equal(availableCapacity.status, 200, JSON.stringify(availableCapacity.body));
+    const completedTransfer = await api("/academic/enrollments/transfer/commit", admin, "POST", reviewTransferBody);
+    assert.equal(completedTransfer.status, 200, JSON.stringify(completedTransfer.body));
+    assert.equal(completedTransfer.body.succeeded, 1);
+    assert.equal(completedTransfer.body.failed, 0);
+    const transferHistory = await api(profilePath, admin);
+    assert.equal(transferHistory.body.enrollmentHistory.length, 2);
+    assert.equal(transferHistory.body.enrollmentHistory.filter((item) => item.status === "disabled").length, 1);
+    assert.equal(transferHistory.body.currentEnrollment.sectionName, destinationSection.name);
+    const sourceGrade = Number(destinationSection.className.match(/\d+/)?.[0]);
+    const nextGradeSection = sectionList.body.items.find((item) => item.className === `Grade ${sourceGrade + 1}`);
+    assert.ok(nextGradeSection, "A next-grade section is required for the cohort promotion check.");
+    restorePromotionCapacity = {
+      sectionId: nextGradeSection.id,
+      capacity: nextGradeSection.capacity,
+      user: admin,
+    };
+    const cohortCapacity = await api(
+      `/academic/sections/${nextGradeSection.id}`,
+      admin,
+      "PATCH",
+      { capacity: nextGradeSection.studentCount + 1 },
+    );
+    assert.equal(cohortCapacity.status, 200, JSON.stringify(cohortCapacity.body));
+    const reviewPromotionBody = {
+      sourceClassId: destinationSection.classId,
+      sourceAcademicYear: admissionsBatchYear,
+      targetAcademicYear: `${admissionsBatchYear}-NEXT`,
+      sectionMap: [
+        { sourceSectionId: section.id, targetSectionId: nextGradeSection.id },
+        { sourceSectionId: destinationSection.id, targetSectionId: nextGradeSection.id },
+      ],
+    };
+    const promotionPreview = await api("/academic/enrollments/promote/preview", admin, "POST", reviewPromotionBody);
+    assert.equal(promotionPreview.status, 200, JSON.stringify(promotionPreview.body));
+    assert.equal(promotionPreview.body.total, 3);
+    assert.equal(promotionPreview.body.eligibleCount, 1);
+    assert.equal(promotionPreview.body.conflictCount, 2);
+    const promotionResult = await api("/academic/enrollments/promote/commit", admin, "POST", reviewPromotionBody);
+    assert.equal(promotionResult.status, 200, JSON.stringify(promotionResult.body));
+    assert.equal(promotionResult.body.succeeded, 1);
+    assert.equal(promotionResult.body.failed, 2);
+    const reviewedPromotedStudentId = promotionResult.body.items.find((item) => item.succeeded)?.studentId;
+    assert.ok(reviewedPromotedStudentId, "At least one student must be promoted.");
+    const reviewedPromotedProfile = await api(`/academic/students/${reviewedPromotedStudentId}/profile`, admin);
+    assert.ok(reviewedPromotedProfile.body.enrollmentHistory.some((item) =>
+      item.academicYear === reviewPromotionBody.targetAcademicYear && item.status === "active",
+    ));
 
     const profileUpdate = {
       dateOfBirth: "2015-04-12",
@@ -542,7 +638,12 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
     assert.equal(reloadedProfile.status, 200);
     assert.equal(reloadedProfile.body.profile.address, "13 Updated Example Road");
     assert.equal(reloadedProfile.body.profile.phone, null);
-    const guardianSearchUrl = `/academic/students?sectionId=${section.id}&q=${encodeURIComponent(profileUpdate.guardianEmail)}`;
+    const searchableEnrollment = reloadedProfile.body.currentEnrollment;
+    const registrySection = sectionList.body.items.find((item) =>
+      item.className === searchableEnrollment.className && item.name === searchableEnrollment.sectionName,
+    );
+    assert.ok(registrySection, "The student's current section must appear in the section directory.");
+    const guardianSearchUrl = `/academic/students?sectionId=${registrySection.id}&q=${encodeURIComponent(profileUpdate.guardianEmail)}`;
     const adminRegistrySearch = await api(guardianSearchUrl, admin);
     assert.equal(adminRegistrySearch.status, 200, JSON.stringify(adminRegistrySearch.body));
     assert.ok(adminRegistrySearch.body.items.some((student) => student.id === singleStudentId));
@@ -637,6 +738,35 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
     );
     assert.equal(remainingStudent.status, 200, JSON.stringify(remainingStudent.body));
     assert.ok(remainingStudent.body.items.length > 0);
+    const duplicateYear = `2096-${randomUUID().slice(0, 8)}`;
+    const duplicateEnrollment = await api("/academic/enrollments", admin, "POST", {
+      studentId: enrollment.id,
+      sectionId: section.id,
+      admissionNo: `INT-DUP-${randomUUID().replaceAll("-", "").slice(0, 12)}`,
+      academicYear: duplicateYear,
+    });
+    assert.equal(duplicateEnrollment.status, 201, JSON.stringify(duplicateEnrollment.body));
+    createdEnrollmentIds.push(duplicateEnrollment.body.enrollmentId);
+    const duplicateTransferPreview = await api("/academic/enrollments/transfer/preview", admin, "POST", {
+      studentId: enrollment.id,
+      sourceAcademicYear: enrollment.academicYear,
+      targetSectionId: destinationSection.id,
+      targetAcademicYear: duplicateYear,
+    });
+    assert.equal(duplicateTransferPreview.status, 200, JSON.stringify(duplicateTransferPreview.body));
+    assert.equal(duplicateTransferPreview.body.eligibleCount, 0);
+    assert.ok(duplicateTransferPreview.body.items[0].conflicts.some((conflict) => /active enrollment/i.test(conflict)));
+    const updatedSections = await api("/academic/sections", admin);
+    assert.equal(updatedSections.status, 200, JSON.stringify(updatedSections.body));
+    const currentSourceSection = updatedSections.body.items.find((item) => item.id === section.id);
+    assert.ok(currentSourceSection && currentSourceSection.studentCount > 0);
+    const closeRemainingCapacity = await api(
+      `/academic/sections/${section.id}`,
+      admin,
+      "PATCH",
+      { capacity: currentSourceSection.studentCount },
+    );
+    assert.equal(closeRemainingCapacity.status, 200, JSON.stringify(closeRemainingCapacity.body));
     const rejectedOverCapacity = await api("/academic/enrollments", admin, "POST", {
       studentId: remainingStudent.body.items[0].id,
       sectionId: section.id,
@@ -722,7 +852,7 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
     assert.equal(deleted.status, 204);
     createdSlotId = undefined;
 
-    console.log("Verified admissions, profile privacy, capacity-checked transfers, promotions, Grade 12 graduation history, consent review, and timetable behavior.");
+    console.log("Verified admissions, profile privacy, reviewed transfers and promotions, enrollment history, Grade 12 graduation, authorization, capacity and duplicate conflicts, consent review, and timetable behavior.");
   } finally {
     if (createdSlotId) await api(`/academic/timetable/${createdSlotId}`, restoreCapacity?.user, "DELETE").catch(() => {});
     if (restoreEnrollment) {
@@ -733,6 +863,16 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
     if (restoreCapacity) {
       await api(`/academic/sections/${restoreCapacity.sectionId}`, restoreCapacity.user, "PATCH", {
         capacity: restoreCapacity.capacity,
+      }).catch(() => {});
+    }
+    if (restoreDestinationCapacity) {
+      await api(`/academic/sections/${restoreDestinationCapacity.sectionId}`, restoreDestinationCapacity.user, "PATCH", {
+        capacity: restoreDestinationCapacity.capacity,
+      }).catch(() => {});
+    }
+    if (restorePromotionCapacity) {
+      await api(`/academic/sections/${restorePromotionCapacity.sectionId}`, restorePromotionCapacity.user, "PATCH", {
+        capacity: restorePromotionCapacity.capacity,
       }).catch(() => {});
     }
     if (restoreGuardianFlags) {

@@ -574,6 +574,90 @@ paths:
         "403": { description: Administrator role required }
         "404": { description: Source or target class not found }
         "409": { description: "No eligible students, capacity exceeded, or enrollment conflict" }
+  /academic/enrollments/transfer/preview:
+    post:
+      operationId: previewEnrollmentTransfer
+      tags: [academic]
+      summary: Preview moving one student to another section
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EnrollmentTransferInput" }
+      responses:
+        "200":
+          description: Transfer review with conflicts and destination capacity
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnrollmentMovePreview" }
+        "400": { description: Invalid request }
+        "403": { description: Administrator role required }
+        "404": { description: Student or destination section not found }
+  /academic/enrollments/transfer/commit:
+    post:
+      operationId: commitEnrollmentTransfer
+      tags: [academic]
+      summary: Transfer one student and retain the previous enrollment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EnrollmentTransferInput" }
+      responses:
+        "200":
+          description: Per-student transfer outcomes
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnrollmentMoveResult" }
+        "400": { description: Invalid request }
+        "403": { description: Administrator role required }
+        "404": { description: Student or destination section not found }
+  /academic/enrollments/promote/preview:
+    post:
+      operationId: previewEnrollmentPromotion
+      tags: [academic]
+      summary: Preview promoting a class cohort into mapped sections
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EnrollmentPromotionInput" }
+      responses:
+        "200":
+          description: Cohort review with conflicts and destination capacity
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnrollmentMovePreview" }
+        "400": { description: Invalid request }
+        "403": { description: Administrator role required }
+        "404": { description: Source class or mapped section not found }
+  /academic/enrollments/promote/commit:
+    post:
+      operationId: commitEnrollmentPromotion
+      tags: [academic]
+      summary: Promote a class cohort and retain previous enrollments
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EnrollmentPromotionInput" }
+      responses:
+        "200":
+          description: Per-student promotion outcomes
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnrollmentMoveResult" }
+        "400": { description: Invalid request }
+        "403": { description: Administrator role required }
+        "404": { description: Source class or mapped section not found }
   /academic/admissions/preview:
     post:
       operationId: previewStudentAdmissions
@@ -1743,7 +1827,7 @@ components:
           items: { $ref: "#/components/schemas/StudentSummary" }
     StudentProfileResponse:
       type: object
-      required: [id, name, email, status, currentEnrollment, profile]
+      required: [id, name, email, status, currentEnrollment, enrollmentHistory, profile]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
@@ -1753,7 +1837,20 @@ components:
           oneOf:
             - { $ref: "#/components/schemas/StudentCurrentEnrollment" }
             - { type: "null" }
+        enrollmentHistory:
+          type: array
+          items: { $ref: "#/components/schemas/EnrollmentHistoryItem" }
         profile: { $ref: "#/components/schemas/StudentProfileFields" }
+    EnrollmentHistoryItem:
+      type: object
+      required: [enrollmentId, admissionNo, academicYear, className, sectionName, status]
+      properties:
+        enrollmentId: { type: string, format: uuid }
+        admissionNo: { type: string }
+        academicYear: { type: string }
+        className: { type: string }
+        sectionName: { type: string }
+        status: { type: string, enum: [active, disabled] }
     StudentProfileUpdateInput:
       $ref: "#/components/schemas/StudentProfileFields"
     StudentPage:
@@ -1791,6 +1888,75 @@ components:
         sectionId: { type: string, format: uuid }
         admissionNo: { type: string, minLength: 1, maxLength: 40 }
         academicYear: { type: string, minLength: 4, maxLength: 24 }
+    EnrollmentTransferInput:
+      type: object
+      required: [studentId, sourceAcademicYear, targetSectionId, targetAcademicYear]
+      properties:
+        studentId: { type: string, format: uuid }
+        sourceAcademicYear: { type: string, minLength: 4, maxLength: 24 }
+        targetSectionId: { type: string, format: uuid }
+        targetAcademicYear: { type: string, minLength: 4, maxLength: 24 }
+    EnrollmentPromotionInput:
+      type: object
+      required: [sourceClassId, sourceAcademicYear, targetAcademicYear, sectionMap]
+      properties:
+        sourceClassId: { type: string, format: uuid }
+        sourceAcademicYear: { type: string, minLength: 4, maxLength: 24 }
+        targetAcademicYear: { type: string, minLength: 4, maxLength: 24 }
+        sectionMap:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            type: object
+            required: [sourceSectionId, targetSectionId]
+            properties:
+              sourceSectionId: { type: string, format: uuid }
+              targetSectionId: { type: string, format: uuid }
+    EnrollmentMovePreview:
+      type: object
+      required: [total, eligibleCount, conflictCount, items]
+      properties:
+        total: { type: integer }
+        eligibleCount: { type: integer }
+        conflictCount: { type: integer }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/EnrollmentMovePreviewItem" }
+    EnrollmentMovePreviewItem:
+      type: object
+      required: [studentId, studentName, admissionNo, sourceSectionId, sourceSectionName, targetSectionId, targetSectionName, sourceAcademicYear, targetAcademicYear, eligible, conflicts]
+      properties:
+        studentId: { type: string, format: uuid }
+        studentName: { type: string }
+        admissionNo: { type: string }
+        sourceSectionId: { type: string, format: uuid }
+        sourceSectionName: { type: string }
+        targetSectionId: { type: string, format: uuid }
+        targetSectionName: { type: string }
+        sourceAcademicYear: { type: string }
+        targetAcademicYear: { type: string }
+        eligible: { type: boolean }
+        conflicts:
+          type: array
+          items: { type: string }
+    EnrollmentMoveResult:
+      type: object
+      required: [succeeded, failed, items]
+      properties:
+        succeeded: { type: integer }
+        failed: { type: integer }
+        items:
+          type: array
+          items:
+            type: object
+            required: [studentId, studentName, succeeded, message]
+            properties:
+              studentId: { type: string, format: uuid }
+              studentName: { type: string }
+              succeeded: { type: boolean }
+              message: { type: string }
+              enrollmentId: { type: string, format: uuid }
     AdmissionBatchInput:
       type: object
       required: [sectionId, academicYear, rows]

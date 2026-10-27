@@ -342,12 +342,30 @@ export const StudentProfileResponseStatus = {
   disabled: 'disabled',
 } as const;
 
+export type EnrollmentHistoryItemStatus = typeof EnrollmentHistoryItemStatus[keyof typeof EnrollmentHistoryItemStatus];
+
+
+export const EnrollmentHistoryItemStatus = {
+  active: 'active',
+  disabled: 'disabled',
+} as const;
+
+export interface EnrollmentHistoryItem {
+  enrollmentId: string;
+  admissionNo: string;
+  academicYear: string;
+  className: string;
+  sectionName: string;
+  status: EnrollmentHistoryItemStatus;
+}
+
 export interface StudentProfileResponse {
   id: string;
   name: string;
   email: string;
   status: StudentProfileResponseStatus;
   currentEnrollment: StudentCurrentEnrollment | null;
+  enrollmentHistory: EnrollmentHistoryItem[];
   profile: StudentProfileFields;
 }
 
@@ -386,6 +404,80 @@ export interface CreateEnrollmentInput {
      * @maxLength 24
      */
   academicYear: string;
+}
+
+export interface EnrollmentTransferInput {
+  studentId: string;
+  /**
+     * @minLength 4
+     * @maxLength 24
+     */
+  sourceAcademicYear: string;
+  targetSectionId: string;
+  /**
+     * @minLength 4
+     * @maxLength 24
+     */
+  targetAcademicYear: string;
+}
+
+export type EnrollmentPromotionInputSectionMapItem = {
+  sourceSectionId: string;
+  targetSectionId: string;
+};
+
+export interface EnrollmentPromotionInput {
+  sourceClassId: string;
+  /**
+     * @minLength 4
+     * @maxLength 24
+     */
+  sourceAcademicYear: string;
+  /**
+     * @minLength 4
+     * @maxLength 24
+     */
+  targetAcademicYear: string;
+  /**
+     * @minItems 1
+     * @maxItems 100
+     */
+  sectionMap: EnrollmentPromotionInputSectionMapItem[];
+}
+
+export interface EnrollmentMovePreviewItem {
+  studentId: string;
+  studentName: string;
+  admissionNo: string;
+  sourceSectionId: string;
+  sourceSectionName: string;
+  targetSectionId: string;
+  targetSectionName: string;
+  sourceAcademicYear: string;
+  targetAcademicYear: string;
+  eligible: boolean;
+  conflicts: string[];
+}
+
+export interface EnrollmentMovePreview {
+  total: number;
+  eligibleCount: number;
+  conflictCount: number;
+  items: EnrollmentMovePreviewItem[];
+}
+
+export type EnrollmentMoveResultItemsItem = {
+  studentId: string;
+  studentName: string;
+  succeeded: boolean;
+  message: string;
+  enrollmentId?: string;
+};
+
+export interface EnrollmentMoveResult {
+  succeeded: number;
+  failed: number;
+  items: EnrollmentMoveResultItemsItem[];
 }
 
 export type AdmissionBatchInputRowsItem = {

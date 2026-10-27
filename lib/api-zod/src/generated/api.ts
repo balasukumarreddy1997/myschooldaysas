@@ -521,6 +521,14 @@ export const GetStudentProfileResponse = zod.object({
   "gradeLevel": zod.int().min(1).max(getStudentProfileResponseCurrentEnrollmentOneGradeLevelMax),
   "sectionName": zod.string()
 }),zod.null()]),
+  "enrollmentHistory": zod.array(zod.object({
+  "enrollmentId": zod.uuid(),
+  "admissionNo": zod.string(),
+  "academicYear": zod.string(),
+  "className": zod.string(),
+  "sectionName": zod.string(),
+  "status": zod.enum(['active', 'disabled'])
+})),
   "profile": zod.object({
   "dateOfBirth": zod.string().regex(getStudentProfileResponseProfileDateOfBirthRegExp).nullable(),
   "gender": zod.string().max(getStudentProfileResponseProfileGenderMax).nullable(),
@@ -608,6 +616,14 @@ export const UpdateStudentProfileResponse = zod.object({
   "gradeLevel": zod.int().min(1).max(updateStudentProfileResponseCurrentEnrollmentOneGradeLevelMax),
   "sectionName": zod.string()
 }),zod.null()]),
+  "enrollmentHistory": zod.array(zod.object({
+  "enrollmentId": zod.uuid(),
+  "admissionNo": zod.string(),
+  "academicYear": zod.string(),
+  "className": zod.string(),
+  "sectionName": zod.string(),
+  "status": zod.enum(['active', 'disabled'])
+})),
   "profile": zod.object({
   "dateOfBirth": zod.string().regex(updateStudentProfileResponseProfileDateOfBirthRegExp).nullable(),
   "gender": zod.string().max(updateStudentProfileResponseProfileGenderMax).nullable(),
@@ -765,6 +781,154 @@ export const PromoteStudentsResponse = zod.object({
   "className": zod.string().optional(),
   "status": zod.enum(['active', 'disabled']),
   "academicYear": zod.string().min(promoteStudentsResponseItemsItemAcademicYearMin).max(promoteStudentsResponseItemsItemAcademicYearMax)
+}))
+})
+
+
+/**
+ * @summary Preview moving one student to another section
+ */
+export const previewEnrollmentTransferBodySourceAcademicYearMin = 4;
+export const previewEnrollmentTransferBodySourceAcademicYearMax = 24;
+
+export const previewEnrollmentTransferBodyTargetAcademicYearMin = 4;
+export const previewEnrollmentTransferBodyTargetAcademicYearMax = 24;
+
+
+
+export const PreviewEnrollmentTransferBody = zod.object({
+  "studentId": zod.uuid(),
+  "sourceAcademicYear": zod.string().min(previewEnrollmentTransferBodySourceAcademicYearMin).max(previewEnrollmentTransferBodySourceAcademicYearMax),
+  "targetSectionId": zod.uuid(),
+  "targetAcademicYear": zod.string().min(previewEnrollmentTransferBodyTargetAcademicYearMin).max(previewEnrollmentTransferBodyTargetAcademicYearMax)
+})
+
+export const PreviewEnrollmentTransferResponse = zod.object({
+  "total": zod.int(),
+  "eligibleCount": zod.int(),
+  "conflictCount": zod.int(),
+  "items": zod.array(zod.object({
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "sourceSectionId": zod.uuid(),
+  "sourceSectionName": zod.string(),
+  "targetSectionId": zod.uuid(),
+  "targetSectionName": zod.string(),
+  "sourceAcademicYear": zod.string(),
+  "targetAcademicYear": zod.string(),
+  "eligible": zod.boolean(),
+  "conflicts": zod.array(zod.string())
+}))
+})
+
+
+/**
+ * @summary Transfer one student and retain the previous enrollment
+ */
+export const commitEnrollmentTransferBodySourceAcademicYearMin = 4;
+export const commitEnrollmentTransferBodySourceAcademicYearMax = 24;
+
+export const commitEnrollmentTransferBodyTargetAcademicYearMin = 4;
+export const commitEnrollmentTransferBodyTargetAcademicYearMax = 24;
+
+
+
+export const CommitEnrollmentTransferBody = zod.object({
+  "studentId": zod.uuid(),
+  "sourceAcademicYear": zod.string().min(commitEnrollmentTransferBodySourceAcademicYearMin).max(commitEnrollmentTransferBodySourceAcademicYearMax),
+  "targetSectionId": zod.uuid(),
+  "targetAcademicYear": zod.string().min(commitEnrollmentTransferBodyTargetAcademicYearMin).max(commitEnrollmentTransferBodyTargetAcademicYearMax)
+})
+
+export const CommitEnrollmentTransferResponse = zod.object({
+  "succeeded": zod.int(),
+  "failed": zod.int(),
+  "items": zod.array(zod.object({
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "succeeded": zod.boolean(),
+  "message": zod.string(),
+  "enrollmentId": zod.uuid().optional()
+}))
+})
+
+
+/**
+ * @summary Preview promoting a class cohort into mapped sections
+ */
+export const previewEnrollmentPromotionBodySourceAcademicYearMin = 4;
+export const previewEnrollmentPromotionBodySourceAcademicYearMax = 24;
+
+export const previewEnrollmentPromotionBodyTargetAcademicYearMin = 4;
+export const previewEnrollmentPromotionBodyTargetAcademicYearMax = 24;
+
+export const previewEnrollmentPromotionBodySectionMapMax = 100;
+
+
+
+export const PreviewEnrollmentPromotionBody = zod.object({
+  "sourceClassId": zod.uuid(),
+  "sourceAcademicYear": zod.string().min(previewEnrollmentPromotionBodySourceAcademicYearMin).max(previewEnrollmentPromotionBodySourceAcademicYearMax),
+  "targetAcademicYear": zod.string().min(previewEnrollmentPromotionBodyTargetAcademicYearMin).max(previewEnrollmentPromotionBodyTargetAcademicYearMax),
+  "sectionMap": zod.array(zod.object({
+  "sourceSectionId": zod.uuid(),
+  "targetSectionId": zod.uuid()
+})).min(1).max(previewEnrollmentPromotionBodySectionMapMax)
+})
+
+export const PreviewEnrollmentPromotionResponse = zod.object({
+  "total": zod.int(),
+  "eligibleCount": zod.int(),
+  "conflictCount": zod.int(),
+  "items": zod.array(zod.object({
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "sourceSectionId": zod.uuid(),
+  "sourceSectionName": zod.string(),
+  "targetSectionId": zod.uuid(),
+  "targetSectionName": zod.string(),
+  "sourceAcademicYear": zod.string(),
+  "targetAcademicYear": zod.string(),
+  "eligible": zod.boolean(),
+  "conflicts": zod.array(zod.string())
+}))
+})
+
+
+/**
+ * @summary Promote a class cohort and retain previous enrollments
+ */
+export const commitEnrollmentPromotionBodySourceAcademicYearMin = 4;
+export const commitEnrollmentPromotionBodySourceAcademicYearMax = 24;
+
+export const commitEnrollmentPromotionBodyTargetAcademicYearMin = 4;
+export const commitEnrollmentPromotionBodyTargetAcademicYearMax = 24;
+
+export const commitEnrollmentPromotionBodySectionMapMax = 100;
+
+
+
+export const CommitEnrollmentPromotionBody = zod.object({
+  "sourceClassId": zod.uuid(),
+  "sourceAcademicYear": zod.string().min(commitEnrollmentPromotionBodySourceAcademicYearMin).max(commitEnrollmentPromotionBodySourceAcademicYearMax),
+  "targetAcademicYear": zod.string().min(commitEnrollmentPromotionBodyTargetAcademicYearMin).max(commitEnrollmentPromotionBodyTargetAcademicYearMax),
+  "sectionMap": zod.array(zod.object({
+  "sourceSectionId": zod.uuid(),
+  "targetSectionId": zod.uuid()
+})).min(1).max(commitEnrollmentPromotionBodySectionMapMax)
+})
+
+export const CommitEnrollmentPromotionResponse = zod.object({
+  "succeeded": zod.int(),
+  "failed": zod.int(),
+  "items": zod.array(zod.object({
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "succeeded": zod.boolean(),
+  "message": zod.string(),
+  "enrollmentId": zod.uuid().optional()
 }))
 })
 
