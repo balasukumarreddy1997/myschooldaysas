@@ -208,6 +208,98 @@ export const MarkSchoolAttendanceResponse = zod.object({
 
 
 /**
+ * @summary List announcements visible to the signed-in user
+ */
+export const getAnnouncementsQueryUnreadDefault = false;
+
+export const GetAnnouncementsQueryParams = zod.object({
+  "unread": zod.coerce.boolean().default(getAnnouncementsQueryUnreadDefault)
+})
+
+export const GetAnnouncementsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "audience": zod.enum(['school', 'class', 'section', 'role']),
+  "audienceId": zod.uuid().nullable(),
+  "audienceName": zod.string().nullable(),
+  "roles": zod.array(zod.enum(['super_admin', 'org_admin', 'campus_admin', 'hod', 'teacher', 'class_teacher', 'student', 'parent'])),
+  "priority": zod.enum(['normal', 'urgent']),
+  "publishedAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date().nullable(),
+  "createdBy": zod.uuid(),
+  "authorName": zod.string(),
+  "readAt": zod.coerce.date().nullable()
+})),
+  "total": zod.int()
+})
+
+
+/**
+ * @summary Publish an announcement
+ */
+export const createAnnouncementBodyTitleMin = 3;
+export const createAnnouncementBodyTitleMax = 160;
+
+export const createAnnouncementBodyBodyMax = 10000;
+
+export const createAnnouncementBodyRolesMax = 8;
+
+export const createAnnouncementBodyPriorityDefault = `normal`;
+
+export const CreateAnnouncementBody = zod.object({
+  "title": zod.string().min(createAnnouncementBodyTitleMin).max(createAnnouncementBodyTitleMax),
+  "body": zod.string().min(1).max(createAnnouncementBodyBodyMax),
+  "audience": zod.enum(['school', 'class', 'section', 'role']),
+  "audienceId": zod.uuid().optional(),
+  "roles": zod.array(zod.enum(['super_admin', 'org_admin', 'campus_admin', 'hod', 'teacher', 'class_teacher', 'student', 'parent'])).max(createAnnouncementBodyRolesMax).optional(),
+  "priority": zod.enum(['normal', 'urgent']).default(createAnnouncementBodyPriorityDefault),
+  "expiresAt": zod.coerce.date().optional()
+})
+
+export const CreateAnnouncementResponse = zod.object({
+  "id": zod.uuid(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "audience": zod.enum(['school', 'class', 'section', 'role']),
+  "audienceId": zod.uuid().nullable(),
+  "audienceName": zod.string().nullable(),
+  "roles": zod.array(zod.enum(['super_admin', 'org_admin', 'campus_admin', 'hod', 'teacher', 'class_teacher', 'student', 'parent'])),
+  "priority": zod.enum(['normal', 'urgent']),
+  "publishedAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date().nullable(),
+  "createdBy": zod.uuid(),
+  "authorName": zod.string(),
+  "readAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Mark a visible announcement as read
+ */
+export const MarkAnnouncementReadParams = zod.object({
+  "announcementId": zod.uuid()
+})
+
+export const MarkAnnouncementReadResponse = zod.object({
+  "readAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get read count for a staff announcement
+ */
+export const GetAnnouncementStatsParams = zod.object({
+  "announcementId": zod.uuid()
+})
+
+export const GetAnnouncementStatsResponse = zod.object({
+  "total": zod.int()
+})
+
+
+/**
  * Returns server health status
  * @summary Health check
  */

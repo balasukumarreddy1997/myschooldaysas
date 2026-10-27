@@ -37,6 +37,7 @@ import { GuardianAccessPage } from '@/components/academic/guardian-access-page';
 import { FeeReceiptPage, FeesPage } from '@/components/fees/fees-page';
 import { EnrollmentLifecycle } from '@/components/academic/enrollment-lifecycle';
 import { AdmissionsInbox, PublicAdmissionForm } from '@/components/admissions';
+import { AnnouncementsPage } from '@/components/announcements/announcements-page';
 
 const queryClient = new QueryClient();
 const fmtDate = (iso?: string) => iso ? `${iso.slice(0, 10)} · ${iso.slice(11, 16)}` : 'Time not set';
@@ -92,6 +93,7 @@ function ProtectedApp() {
         <Route path="/live/sessions" component={() => <SessionsPage userRoles={user.roles} />} />
         <Route path="/boards/templates" component={() => <TemplatesPage roles={user.roles} />} />
         <Route path="/learning" component={() => <LearningPage roles={user.roles} />} />
+        <Route path="/announcements" component={() => <AnnouncementsPage roles={user.roles} userId={user.id} />} />
         <Route path="/attendance" component={() => <AttendancePage roles={user.roles} />} />
         <Route path="/timetable" component={() => <TimetablePage canManage={user.roles.some(role => ['super_admin', 'org_admin', 'campus_admin'].includes(role))} />} />
         <Route path="/family/consents" component={() => user.roles.includes('parent') ? <ConsentsPage/> : <NotFound/>} />
@@ -115,6 +117,7 @@ function AppShell({ user, path, onLogout, children }: { user: { name: string; em
     { label: 'Live classes', href: '/live/sessions', icon: Video },
     { label: 'Smartboards', href: '/boards/templates', icon: Library },
     { label: 'Learning', href: '/learning', icon: GraduationCap },
+    { label: 'Announcements', href: '/announcements', icon: Radio },
     { label: 'Attendance', href: '/attendance', icon: CalendarCheck },
     { label: 'Timetable', href: '/timetable', icon: CalendarCheck },
   ];

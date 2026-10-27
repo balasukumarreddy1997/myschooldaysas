@@ -193,6 +193,19 @@ export const extraTenantCases = [
     attendanceSessionId(context),
     "rls.test",
   ]),
+  idCase("school.announcements", "title, body, audience, audience_ids, roles, priority, created_by", (context) => [
+    `RLS notice ${context.side} ${context.id.slice(0, 8)}`,
+    "RLS fixture announcement",
+    "section",
+    [sectionId(context)],
+    [],
+    "normal",
+    userId(context),
+  ]),
+  idCase("school.announcement_reads", "announcement_id, user_id", (context) => [
+    context.ids["school.announcements"][context.side],
+    context.isFixture ? alternateUserId(context) : userId(context),
+  ]),
   idCase("live.session_sections", "session_id, section_id", (context) => [
     context.isFixture ? sessionId(context) : alternateSessionId(context),
     sectionId(context),

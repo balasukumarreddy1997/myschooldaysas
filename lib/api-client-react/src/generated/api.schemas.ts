@@ -1592,6 +1592,98 @@ export interface AdmissionEnquiryUpdateInput {
   note?: string;
 }
 
+export type AnnouncementAudience = typeof AnnouncementAudience[keyof typeof AnnouncementAudience];
+
+
+export const AnnouncementAudience = {
+  school: 'school',
+  class: 'class',
+  section: 'section',
+  role: 'role',
+} as const;
+
+export type AnnouncementRole = typeof AnnouncementRole[keyof typeof AnnouncementRole];
+
+
+export const AnnouncementRole = {
+  super_admin: 'super_admin',
+  org_admin: 'org_admin',
+  campus_admin: 'campus_admin',
+  hod: 'hod',
+  teacher: 'teacher',
+  class_teacher: 'class_teacher',
+  student: 'student',
+  parent: 'parent',
+} as const;
+
+export type AnnouncementPriority = typeof AnnouncementPriority[keyof typeof AnnouncementPriority];
+
+
+export const AnnouncementPriority = {
+  normal: 'normal',
+  urgent: 'urgent',
+} as const;
+
+export interface Announcement {
+  id: string;
+  title: string;
+  body: string;
+  audience: AnnouncementAudience;
+  /** @nullable */
+  audienceId: string | null;
+  /** @nullable */
+  audienceName: string | null;
+  roles: AnnouncementRole[];
+  priority: AnnouncementPriority;
+  publishedAt: string;
+  /** @nullable */
+  expiresAt: string | null;
+  createdBy: string;
+  authorName: string;
+  /** @nullable */
+  readAt: string | null;
+}
+
+export interface AnnouncementPage {
+  items: Announcement[];
+  total: number;
+}
+
+export type AnnouncementInputPriority = typeof AnnouncementInputPriority[keyof typeof AnnouncementInputPriority];
+
+
+export const AnnouncementInputPriority = {
+  normal: 'normal',
+  urgent: 'urgent',
+} as const;
+
+export interface AnnouncementInput {
+  /**
+     * @minLength 3
+     * @maxLength 160
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 10000
+     */
+  body: string;
+  audience: AnnouncementAudience;
+  audienceId?: string;
+  /** @maxItems 8 */
+  roles?: AnnouncementRole[];
+  priority?: AnnouncementInputPriority;
+  expiresAt?: string;
+}
+
+export interface AnnouncementReadReceipt {
+  readAt: string;
+}
+
+export interface AnnouncementStats {
+  total: number;
+}
+
 export type GetAcademicTeacherAssignmentsParams = {
 sectionId?: string;
 };
@@ -1599,6 +1691,10 @@ sectionId?: string;
 export type GetSchoolAttendanceParams = {
 sectionId: string;
 date: string;
+};
+
+export type GetAnnouncementsParams = {
+unread?: boolean;
 };
 
 export type GetClasses200 = {

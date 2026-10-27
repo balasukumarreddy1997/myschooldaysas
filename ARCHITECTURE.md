@@ -4,13 +4,13 @@
 
 ## Current build
 
-This build covers sign-in, a role-scoped dashboard, class/section directories, a paginated student roster with admin profile management, live-session scheduling and state changes, board-template configuration, a learning and assessment workspace, and the live classroom described below.
+This build covers sign-in, a role-scoped dashboard, class/section directories, a paginated student roster with admin profile management, announcements, live-session scheduling and state changes, board-template configuration, a learning and assessment workspace, and the live classroom described below.
 
 | Area | Current implementation | Target in `MASTER_SPEC.md` |
 |---|---|---|
 | Web | Next.js 16 App Router + React 19 artifact at `/` | Next.js 16 App Router |
-| API | One Fastify 5 API process at `/api`, with identity, academic, live, board, learning, and dashboard route modules | Fastify 5 gateway plus independently deployed services |
-| Data | PostgreSQL 16; `identity`, `academic`, `live`, `board`, and learning migrations | Those schemas plus notify, school, fees, and registry |
+| API | One Fastify 5 API process at `/api`, with identity, academic, school, live, board, learning, fees, registry, and dashboard route modules | Fastify 5 gateway plus independently deployed services |
+| Data | PostgreSQL 16; `identity`, `academic`, `school`, `live`, `board`, learning, fees, and registry migrations | Those schemas plus notify |
 | Tenant access | `campus_app` is a non-superuser without `BYPASSRLS`; tenant tables use forced RLS and transaction-local `app.org_id` | Same principle, shared helpers and per-service enforcement |
 | Migrations | A separate local `campus_migrator` role applies numbered migrations before the API starts | Release migration job, checksums, lock/statement limits |
 | Redis | Readiness check only | Redis Streams event bus and service consumers |
@@ -69,6 +69,13 @@ The separate `snyk test` command was attempted but Snyk is not installed in this
 - The follow-on slice adds an admin-managed subject catalog and teacher assignments, a daily attendance register, and term report cards with published subject marks, percentages, grade, section rank, recorded attendance percentage, remarks, family read-only publication, and printable A4 HTML. Report-card APIs have been exercised against local PostgreSQL; attendance capture within the report-card term and the signed-in UI remain unverified. No production-readiness gate is claimed closed.
 - Verification update (2026-10-27, G-04/G-08): section capacity, enrollment year, timetable room, persisted parent consent review, guardian live-view/payment controls, existing-account enrollment, up to 20 new student accounts, admin profile management, history-preserving transfer/promotion, school-wide student registry, and Grade 12 graduation are implemented. The new account, student role, and enrollment are one transaction; random temporary credentials require a password change and expire after seven days. Capacity checks lock the section row. Academic migration 006 adds enrollment end metadata and active-only uniqueness; migration 007 permits the `graduated` reason. Local integration verifies admin-only transitions, grade-12 eligibility, graduation history, capacity rejection, school-wide and class-filtered registry results, and teacher scope. The migration runner now records versions after successful application. The earlier `rls:check` and temporary-cluster `rls:write-check` passed for 33 tenant tables. Signed-in browser UI, admission audit entries, fee enforcement, legal consent decisions, HTTP-wide authorization, CI and production gates remain open.
 - Still outside this slice: calendar/non-working-day rules, attendance imports/history, diary, resources, progress, and learning analytics. No production-readiness gate is claimed closed.
+
+## Announcements MVP implementation (2026-10-27)
+
+- `/announcements` is the user-facing name for the feature. Staff can publish school-, class-, section-, or role-targeted updates immediately, with urgent priority and optional expiry. Teachers and HODs are limited to assigned sections.
+- Students and parents only receive announcements matching their active section/class enrollment or role. Parents inherit class/section visibility only through linked students. Read receipts are idempotent; read counts are limited to administrators and the announcement author.
+- `school.announcements` and `school.announcement_reads` use forced organization-scoped RLS and indexes. The generated API contract exposes `GET/POST /announcements`, `POST /announcements/:announcementId/read`, and staff-only read statistics.
+- Local API/PostgreSQL integration passed publication, teacher restrictions, school/role/section audience visibility, unread filtering, repeat-read behavior, and stats authorization. `npm run rls:check` and the isolated `npm run rls:write-check` passed for all 40 tenant tables. All-workspace typecheck passed. The signed-in page was not browser-verified; delivery logs, attachments, and external notification providers remain open.
 
 ## Live classroom implementation and evidence (2026-10-26)
 

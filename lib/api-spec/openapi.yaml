@@ -16,6 +16,7 @@ tags:
   - name: board
   - name: learning
   - name: registry
+  - name: school
 paths:
   /academic/subjects:
     get:
@@ -166,6 +167,67 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/SchoolAttendancePage" }
+  /announcements:
+    get:
+      operationId: getAnnouncements
+      tags: [school]
+      summary: List announcements visible to the signed-in user
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: query, name: unread, schema: { type: boolean, default: false } }
+      responses:
+        "200":
+          description: Visible announcements
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AnnouncementPage" }
+    post:
+      operationId: createAnnouncement
+      tags: [school]
+      summary: Publish an announcement
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AnnouncementInput" }
+      responses:
+        "201":
+          description: Published announcement
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Announcement" }
+        "403": { description: User cannot publish to the selected audience }
+  /announcements/{announcementId}/read:
+    post:
+      operationId: markAnnouncementRead
+      tags: [school]
+      summary: Mark a visible announcement as read
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: announcementId, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Read receipt
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AnnouncementReadReceipt" }
+        "404": { description: Announcement not found or not visible }
+  /announcements/{announcementId}/stats:
+    get:
+      operationId: getAnnouncementStats
+      tags: [school]
+      summary: Get read count for a staff announcement
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: announcementId, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Read receipt count
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AnnouncementStats" }
+        "403": { description: User cannot view this announcement's statistics }
   /healthz:
     get:
       operationId: healthCheck
@@ -2875,4 +2937,62 @@ components:
         status: { $ref: "#/components/schemas/AdmissionEnquiryStatus" }
         followUpOn: { type: string, format: date, nullable: true }
         note: { type: string, maxLength: 1000 }
+    AnnouncementAudience:
+      type: string
+      enum: [school, class, section, role]
+    AnnouncementRole:
+      type: string
+      enum: [super_admin, org_admin, campus_admin, hod, teacher, class_teacher, student, parent]
+    Announcement:
+      type: object
+      required: [id, title, body, audience, audienceId, audienceName, roles, priority, publishedAt, expiresAt, createdBy, authorName, readAt]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        body: { type: string }
+        audience: { $ref: "#/components/schemas/AnnouncementAudience" }
+        audienceId: { type: string, format: uuid, nullable: true }
+        audienceName: { type: string, nullable: true }
+        roles:
+          type: array
+          items: { $ref: "#/components/schemas/AnnouncementRole" }
+        priority: { type: string, enum: [normal, urgent] }
+        publishedAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time, nullable: true }
+        createdBy: { type: string, format: uuid }
+        authorName: { type: string }
+        readAt: { type: string, format: date-time, nullable: true }
+    AnnouncementPage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Announcement" }
+        total: { type: integer }
+    AnnouncementInput:
+      type: object
+      required: [title, body, audience]
+      properties:
+        title: { type: string, minLength: 3, maxLength: 160 }
+        body: { type: string, minLength: 1, maxLength: 10000 }
+        audience: { $ref: "#/components/schemas/AnnouncementAudience" }
+        audienceId: { type: string, format: uuid }
+        roles:
+          type: array
+          maxItems: 8
+          uniqueItems: true
+          items: { $ref: "#/components/schemas/AnnouncementRole" }
+        priority: { type: string, enum: [normal, urgent], default: normal }
+        expiresAt: { type: string, format: date-time }
+    AnnouncementReadReceipt:
+      type: object
+      required: [readAt]
+      properties:
+        readAt: { type: string, format: date-time }
+    AnnouncementStats:
+      type: object
+      required: [total]
+      properties:
+        total: { type: integer }
 

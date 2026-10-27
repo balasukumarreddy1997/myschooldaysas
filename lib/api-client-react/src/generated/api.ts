@@ -38,6 +38,11 @@ import type {
   AdmissionEnquiryPage,
   AdmissionEnquiryUpdateInput,
   AdmissionPreview,
+  Announcement,
+  AnnouncementInput,
+  AnnouncementPage,
+  AnnouncementReadReceipt,
+  AnnouncementStats,
   AuthSession,
   AvailableStudentPage,
   BoardTemplate,
@@ -64,6 +69,7 @@ import type {
   FeeReceipt,
   GetAcademicTeacherAssignmentsParams,
   GetAdmissionEnquiriesParams,
+  GetAnnouncementsParams,
   GetAvailableStudentsParams,
   GetBoardTemplates200,
   GetClasses200,
@@ -1079,6 +1085,377 @@ export const useMarkSchoolAttendance = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getMarkSchoolAttendanceMutationOptions(options), queryClient);
     }
+
+export const getGetAnnouncementsUrl = (params?: GetAnnouncementsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/announcements?${stringifiedParams}` : `/api/announcements`
+}
+
+/**
+ * @summary List announcements visible to the signed-in user
+ */
+export const getAnnouncements = async (params?: GetAnnouncementsParams, options?: Parameters<typeof customFetch>[1]): Promise<AnnouncementPage> => {
+
+  return customFetch<AnnouncementPage>(getGetAnnouncementsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAnnouncementsQueryKey = (params?: GetAnnouncementsParams,) => {
+    return [
+    `/api/announcements`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAnnouncementsQueryOptions = <TData = Awaited<ReturnType<typeof getAnnouncements>>, TError = ErrorType<unknown>>(params?: GetAnnouncementsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnnouncements>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAnnouncementsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAnnouncements>>> = ({ signal }) => getAnnouncements(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAnnouncements>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAnnouncementsQueryResult = NonNullable<Awaited<ReturnType<typeof getAnnouncements>>>
+export type GetAnnouncementsQueryError = ErrorType<unknown>
+
+
+export function useGetAnnouncements<TData = Awaited<ReturnType<typeof getAnnouncements>>, TError = ErrorType<unknown>>(
+ params: undefined |  GetAnnouncementsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnnouncements>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAnnouncements>>,
+          TError,
+          Awaited<ReturnType<typeof getAnnouncements>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAnnouncements<TData = Awaited<ReturnType<typeof getAnnouncements>>, TError = ErrorType<unknown>>(
+ params?: GetAnnouncementsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnnouncements>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAnnouncements>>,
+          TError,
+          Awaited<ReturnType<typeof getAnnouncements>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAnnouncements<TData = Awaited<ReturnType<typeof getAnnouncements>>, TError = ErrorType<unknown>>(
+ params?: GetAnnouncementsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnnouncements>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List announcements visible to the signed-in user
+ */
+
+export function useGetAnnouncements<TData = Awaited<ReturnType<typeof getAnnouncements>>, TError = ErrorType<unknown>>(
+ params?: GetAnnouncementsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnnouncements>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAnnouncementsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAnnouncementUrl = () => {
+
+
+
+
+  return `/api/announcements`
+}
+
+/**
+ * @summary Publish an announcement
+ */
+export const createAnnouncement = async (announcementInput: AnnouncementInput, options?: Parameters<typeof customFetch>[1]): Promise<Announcement> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Announcement>(getCreateAnnouncementUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(announcementInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAnnouncementMutationKey = () => ['createAnnouncement'] as const;
+
+export const getCreateAnnouncementMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAnnouncement>>, TError,CreateAnnouncementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAnnouncement>>, TError,CreateAnnouncementMutationVariables, TContext> => {
+
+const mutationKey = getCreateAnnouncementMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAnnouncement>>, CreateAnnouncementMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAnnouncement(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAnnouncementMutationResult = NonNullable<Awaited<ReturnType<typeof createAnnouncement>>>
+    export type CreateAnnouncementMutationBody = BodyType<AnnouncementInput>
+    export type CreateAnnouncementMutationError = ErrorType<void>
+    export type CreateAnnouncementMutationVariables = {data: BodyType<AnnouncementInput>}
+
+    /**
+ * @summary Publish an announcement
+ */
+export const useCreateAnnouncement = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAnnouncement>>, TError,CreateAnnouncementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createAnnouncement>>,
+        TError,
+        CreateAnnouncementMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAnnouncementMutationOptions(options), queryClient);
+    }
+
+export const getMarkAnnouncementReadUrl = (announcementId: string,) => {
+
+
+
+
+  return `/api/announcements/${announcementId}/read`
+}
+
+/**
+ * @summary Mark a visible announcement as read
+ */
+export const markAnnouncementRead = async (announcementId: string, options?: Parameters<typeof customFetch>[1]): Promise<AnnouncementReadReceipt> => {
+
+  return customFetch<AnnouncementReadReceipt>(getMarkAnnouncementReadUrl(announcementId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getMarkAnnouncementReadMutationKey = () => ['markAnnouncementRead'] as const;
+
+export const getMarkAnnouncementReadMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markAnnouncementRead>>, TError,MarkAnnouncementReadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markAnnouncementRead>>, TError,MarkAnnouncementReadMutationVariables, TContext> => {
+
+const mutationKey = getMarkAnnouncementReadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markAnnouncementRead>>, MarkAnnouncementReadMutationVariables> = (props) => {
+          const {announcementId} = props ?? {};
+
+          return  markAnnouncementRead(announcementId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkAnnouncementReadMutationResult = NonNullable<Awaited<ReturnType<typeof markAnnouncementRead>>>
+
+    export type MarkAnnouncementReadMutationError = ErrorType<void>
+    export type MarkAnnouncementReadMutationVariables = {announcementId: string}
+
+    /**
+ * @summary Mark a visible announcement as read
+ */
+export const useMarkAnnouncementRead = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markAnnouncementRead>>, TError,MarkAnnouncementReadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof markAnnouncementRead>>,
+        TError,
+        MarkAnnouncementReadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getMarkAnnouncementReadMutationOptions(options), queryClient);
+    }
+
+export const getGetAnnouncementStatsUrl = (announcementId: string,) => {
+
+
+
+
+  return `/api/announcements/${announcementId}/stats`
+}
+
+/**
+ * @summary Get read count for a staff announcement
+ */
+export const getAnnouncementStats = async (announcementId: string, options?: Parameters<typeof customFetch>[1]): Promise<AnnouncementStats> => {
+
+  return customFetch<AnnouncementStats>(getGetAnnouncementStatsUrl(announcementId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAnnouncementStatsQueryKey = (announcementId: string,) => {
+    return [
+    `/api/announcements/${announcementId}/stats`
+    ] as const;
+    }
+
+
+export const getGetAnnouncementStatsQueryOptions = <TData = Awaited<ReturnType<typeof getAnnouncementStats>>, TError = ErrorType<void>>(announcementId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnnouncementStats>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAnnouncementStatsQueryKey(announcementId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAnnouncementStats>>> = ({ signal }) => getAnnouncementStats(announcementId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: announcementId !== null && announcementId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAnnouncementStats>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAnnouncementStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getAnnouncementStats>>>
+export type GetAnnouncementStatsQueryError = ErrorType<void>
+
+
+export function useGetAnnouncementStats<TData = Awaited<ReturnType<typeof getAnnouncementStats>>, TError = ErrorType<void>>(
+ announcementId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnnouncementStats>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAnnouncementStats>>,
+          TError,
+          Awaited<ReturnType<typeof getAnnouncementStats>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAnnouncementStats<TData = Awaited<ReturnType<typeof getAnnouncementStats>>, TError = ErrorType<void>>(
+ announcementId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnnouncementStats>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAnnouncementStats>>,
+          TError,
+          Awaited<ReturnType<typeof getAnnouncementStats>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAnnouncementStats<TData = Awaited<ReturnType<typeof getAnnouncementStats>>, TError = ErrorType<void>>(
+ announcementId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnnouncementStats>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get read count for a staff announcement
+ */
+
+export function useGetAnnouncementStats<TData = Awaited<ReturnType<typeof getAnnouncementStats>>, TError = ErrorType<void>>(
+ announcementId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnnouncementStats>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAnnouncementStatsQueryOptions(announcementId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getHealthCheckUrl = () => {
 
