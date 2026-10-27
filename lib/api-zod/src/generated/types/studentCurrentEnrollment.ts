@@ -12,5 +12,10 @@ export interface StudentCurrentEnrollment {
   admissionNo: string;
   academicYear: string;
   className: string;
+  /**
+     * @minimum 1
+     * @maximum 12
+     */
+  gradeLevel: number;
   sectionName: string;
 }

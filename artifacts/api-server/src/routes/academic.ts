@@ -8,6 +8,7 @@ import {
   GetStudentEnrollmentHistoryParams,
   GetStudentProfileParams,
   GetStudentsQueryParams,
+  GraduateStudentEnrollmentBody,
   GrantConsentBody,
   RevokeConsentParams,
   UpdateGuardianLinkFlagsBody,
@@ -797,6 +798,81 @@ router.post("/academic/enrollments/transfer", requireAuth, async (req, res, next
   }
 });
 
+router.post("/academic/enrollments/graduate", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!canManageAcademicSetup(user.roles)) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only administrators can graduate students."));
+  }
+  const body = GraduateStudentEnrollmentBody.safeParse(req.body);
+  if (!body.success) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide an active enrollment to graduate."));
+  }
+
+  try {
+    const result = await withOrg(user.orgId, async (client) => {
+      const enrollmentResult = await client.query<{
+        id: string;
+        student_user_id: string;
+        academic_year: string;
+        class_name: string;
+        grade_level: number;
+      }>(
+        `SELECT e.id, e.student_user_id, e.academic_year,
+                c.name AS class_name, c.grade_level
+           FROM academic.enrollments e
+           JOIN academic.sections s ON s.org_id = e.org_id AND s.id = e.section_id
+           JOIN academic.classes c ON c.org_id = s.org_id AND c.id = s.class_id
+          WHERE e.org_id = $1 AND e.id = $2 AND e.status = 'active'
+          FOR UPDATE OF e`,
+        [user.orgId, body.data.enrollmentId],
+      );
+      const enrollment = enrollmentResult.rows[0];
+      if (!enrollment) return { kind: "enrollment_not_found" as const };
+      if (enrollment.grade_level !== 12) {
+        return { kind: "not_final_grade" as const, gradeLevel: enrollment.grade_level };
+      }
+
+      const ended = await client.query<{ ended_at: Date }>(
+        `UPDATE academic.enrollments
+            SET status = 'disabled', ended_at = now(), ended_reason = 'graduated'
+          WHERE org_id = $1 AND id = $2 AND status = 'active'
+          RETURNING ended_at`,
+        [user.orgId, enrollment.id],
+      );
+      if (ended.rowCount !== 1) return { kind: "enrollment_not_found" as const };
+
+      return {
+        kind: "graduated" as const,
+        studentId: enrollment.student_user_id,
+        enrollmentId: enrollment.id,
+        academicYear: enrollment.academic_year,
+        className: enrollment.class_name,
+        gradeLevel: enrollment.grade_level,
+        endedAt: ended.rows[0]!.ended_at,
+      };
+    });
+
+    if (result.kind === "enrollment_not_found") {
+      return void res.status(404).json(errorBody("NOT_FOUND", "Active enrollment not found."));
+    }
+    if (result.kind === "not_final_grade") {
+      return void res.status(409).json(errorBody("CONFLICT", "Students can only graduate from Grade 12."));
+    }
+    res.json({
+      studentId: result.studentId,
+      enrollmentId: result.enrollmentId,
+      academicYear: result.academicYear,
+      className: result.className,
+      gradeLevel: result.gradeLevel,
+      endedAt: result.endedAt,
+      endedReason: "graduated",
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.post("/academic/enrollments/promote", requireAuth, async (req, res, next) => {
   const user = req.campusUser;
   if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
@@ -1107,6 +1183,7 @@ async function readStudentProfile(client: PoolClient, orgId: string, studentId: 
     admission_no: string | null;
     academic_year: string | null;
     class_name: string | null;
+    grade_level: number | null;
     section_name: string | null;
     enrollment_id: string | null;
     section_id: string | null;
@@ -1123,14 +1200,14 @@ async function readStudentProfile(client: PoolClient, orgId: string, studentId: 
     `SELECT u.id, u.name, u.email, u.status,
             enrollment.id AS enrollment_id, enrollment.section_id,
             enrollment.admission_no, enrollment.academic_year,
-            enrollment.class_name, enrollment.section_name,
+            enrollment.class_name, enrollment.grade_level, enrollment.section_name,
             p.date_of_birth::text AS date_of_birth, p.gender, p.phone, p.address, p.blood_group,
             p.guardian_name, p.guardian_email, p.guardian_phone, p.guardian_relationship
        FROM identity.users u
        LEFT JOIN identity.profiles p ON p.org_id = u.org_id AND p.user_id = u.id
        LEFT JOIN LATERAL (
           SELECT e.id, e.section_id, e.admission_no, e.academic_year,
-                 c.name AS class_name, s.name AS section_name
+                  c.name AS class_name, c.grade_level, s.name AS section_name
            FROM academic.enrollments e
            JOIN academic.sections s ON s.org_id = e.org_id AND s.id = e.section_id
            JOIN academic.classes c ON c.org_id = s.org_id AND c.id = s.class_id
@@ -1158,6 +1235,7 @@ async function readStudentProfile(client: PoolClient, orgId: string, studentId: 
       admissionNo: row.admission_no,
       academicYear: row.academic_year!,
       className: row.class_name!,
+      gradeLevel: row.grade_level!,
       sectionName: row.section_name!,
     },
     profile: {

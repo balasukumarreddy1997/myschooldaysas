@@ -194,6 +194,16 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
     assert.ok(section, "The teacher assignment section must be visible to the administrator.");
     const targetSection = sectionList.body.items.find((item) => item.classId !== section.classId);
     assert.ok(targetSection, "A section in another class is required for transfer and promotion checks.");
+    const classList = await api("/academic/classes", admin);
+    assert.equal(classList.status, 200, JSON.stringify(classList.body));
+    const finalGradeClass = classList.body.items.find((item) => item.gradeLevel === 12);
+    const firstGradeClass = classList.body.items.find((item) => item.gradeLevel === 1);
+    assert.ok(finalGradeClass && firstGradeClass, "Grade 1 and Grade 12 must be configured.");
+    const finalGradeSections = sectionList.body.items.filter((item) => item.classId === finalGradeClass.id);
+    const firstGradeSections = sectionList.body.items.filter((item) => item.classId === firstGradeClass.id);
+    const finalGradeSection = finalGradeSections.find((item) => item.id !== section.id) ?? finalGradeSections[0];
+    const firstGradeSection = firstGradeSections.find((item) => item.id !== section.id) ?? firstGradeSections[0];
+    assert.ok(finalGradeSection && firstGradeSection, "Grade 1 and Grade 12 need a section.");
     const schoolRegistry = await api("/academic/students?limit=100&offset=0", admin);
     assert.equal(schoolRegistry.status, 200, JSON.stringify(schoolRegistry.body));
     assert.ok(schoolRegistry.body.items.length > 0);
@@ -365,6 +375,92 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
     assert.ok(createdAdmissions.body.items.every((created) => created.temporaryPassword.length >= 12));
     assert.equal(new Set(createdAdmissions.body.items.map((created) => created.temporaryPassword)).size, 2);
 
+    const graduationAcademicYear = `2101-${randomUUID().slice(0, 8)}`;
+    const graduationAdmission = await api("/academic/admissions", admin, "POST", {
+      sectionId: finalGradeSection.id,
+      academicYear: graduationAcademicYear,
+      rows: [{
+        name: "Integration Graduate",
+        email: `graduate-${randomUUID().slice(0, 8)}@example.test`,
+        admissionNo: `GRAD-${randomUUID().slice(0, 8)}`,
+      }],
+    });
+    assert.equal(graduationAdmission.status, 201, JSON.stringify(graduationAdmission.body));
+    createdIdentityUserIds.push(...graduationAdmission.body.items.map((item) => item.id));
+    const lowerGradeAcademicYear = `2102-${randomUUID().slice(0, 8)}`;
+    const lowerGradeAdmission = await api("/academic/admissions", admin, "POST", {
+      sectionId: firstGradeSection.id,
+      academicYear: lowerGradeAcademicYear,
+      rows: [{
+        name: "Integration Non-Graduate",
+        email: `not-graduate-${randomUUID().slice(0, 8)}@example.test`,
+        admissionNo: `NOGRAD-${randomUUID().slice(0, 8)}`,
+      }],
+    });
+    assert.equal(lowerGradeAdmission.status, 201, JSON.stringify(lowerGradeAdmission.body));
+    createdIdentityUserIds.push(...lowerGradeAdmission.body.items.map((item) => item.id));
+
+    const finalEnrollment = graduationAdmission.body.items[0];
+    const lowerEnrollment = lowerGradeAdmission.body.items[0];
+    assert.ok(finalEnrollment?.id && lowerEnrollment?.id);
+    const finalGradeProfile = await api(`/academic/students/${finalEnrollment.id}/profile`, admin);
+    const lowerGradeProfile = await api(`/academic/students/${lowerEnrollment.id}/profile`, admin);
+    assert.equal(finalGradeProfile.status, 200, JSON.stringify(finalGradeProfile.body));
+    assert.equal(lowerGradeProfile.status, 200, JSON.stringify(lowerGradeProfile.body));
+    const finalEnrollmentId = finalGradeProfile.body.currentEnrollment?.enrollmentId;
+    const lowerEnrollmentId = lowerGradeProfile.body.currentEnrollment?.enrollmentId;
+    assert.ok(finalEnrollmentId && lowerEnrollmentId);
+    const deniedGraduationForFinalGradeStudent = await api(
+      "/academic/enrollments/graduate",
+      teacher,
+      "POST",
+      { enrollmentId: finalEnrollmentId },
+    );
+    assert.equal(deniedGraduationForFinalGradeStudent.status, 403);
+    const rejectedLowerGradeGraduation = await api(
+      "/academic/enrollments/graduate",
+      admin,
+      "POST",
+      { enrollmentId: lowerEnrollmentId },
+    );
+    assert.equal(rejectedLowerGradeGraduation.status, 409);
+    const unchangedLowerGradeProfile = await api(
+      `/academic/students/${lowerEnrollment.id}/profile`,
+      admin,
+    );
+    assert.equal(unchangedLowerGradeProfile.status, 200);
+    assert.equal(unchangedLowerGradeProfile.body.currentEnrollment.gradeLevel, 1);
+
+    assert.equal(finalGradeProfile.body.currentEnrollment.gradeLevel, 12);
+    const graduation = await api(
+      "/academic/enrollments/graduate",
+      admin,
+      "POST",
+      { enrollmentId: finalEnrollmentId },
+    );
+    assert.equal(graduation.status, 200, JSON.stringify(graduation.body));
+    assert.equal(graduation.body.endedReason, "graduated");
+    assert.ok(graduation.body.endedAt);
+    const graduatedProfile = await api(`/academic/students/${finalEnrollment.id}/profile`, admin);
+    assert.equal(graduatedProfile.status, 200);
+    assert.equal(graduatedProfile.body.currentEnrollment, null);
+    const graduationHistory = await api(
+      `/academic/students/${finalEnrollment.id}/enrollments`,
+      admin,
+    );
+    assert.equal(graduationHistory.status, 200, JSON.stringify(graduationHistory.body));
+    assert.equal(graduationHistory.body.items.length, 1);
+    assert.equal(graduationHistory.body.items[0].status, "disabled");
+    assert.equal(graduationHistory.body.items[0].endedReason, "graduated");
+    assert.ok(graduationHistory.body.items[0].endedAt);
+    const repeatedGraduation = await api(
+      "/academic/enrollments/graduate",
+      admin,
+      "POST",
+      { enrollmentId: finalEnrollmentId },
+    );
+    assert.equal(repeatedGraduation.status, 404);
+
     const verificationClient = await pool.connect();
     let createdAccountRows;
     try {
@@ -480,6 +576,13 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
       (await api(`/academic/students/${singleStudentId}/enrollments`, teacher)).status,
       403,
     );
+    const deniedGraduationForExistingStudent = await api(
+      "/academic/enrollments/graduate",
+      teacher,
+      "POST",
+      { enrollmentId: loadedProfile.body.currentEnrollment.enrollmentId },
+    );
+    assert.equal(deniedGraduationForExistingStudent.status, 403);
 
     const sourceSections = sectionList.body.items.filter((item) => item.classId === section.classId);
     const sectionMap = Object.fromEntries(sourceSections.map((item) => [item.id, targetSection.id]));
@@ -619,7 +722,7 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
     assert.equal(deleted.status, 204);
     createdSlotId = undefined;
 
-    console.log("Verified admissions, profile privacy, capacity-checked transfers and promotions with enrollment history, consent review, and timetable behavior.");
+    console.log("Verified admissions, profile privacy, capacity-checked transfers, promotions, Grade 12 graduation history, consent review, and timetable behavior.");
   } finally {
     if (createdSlotId) await api(`/academic/timetable/${createdSlotId}`, restoreCapacity?.user, "DELETE").catch(() => {});
     if (restoreEnrollment) {

@@ -530,6 +530,28 @@ paths:
         "403": { description: Administrator role required }
         "404": { description: Active enrollment or target section not found }
         "409": { description: Target is full or transfer conflicts with enrollment state }
+  /academic/enrollments/graduate:
+    post:
+      operationId: graduateStudentEnrollment
+      tags: [academic]
+      summary: Graduate a Grade 12 student and preserve enrollment history
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GraduateEnrollmentInput" }
+      responses:
+        "200":
+          description: Student graduated from the final grade
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GraduationResult" }
+        "400": { description: Invalid enrollment ID }
+        "403": { description: Administrator role required }
+        "404": { description: Active enrollment not found }
+        "409": { description: Student is not in the final grade }
   /academic/enrollments/promote:
     post:
       operationId: promoteStudents
@@ -1549,13 +1571,14 @@ components:
         guardianRelationship: { type: [string, "null"], maxLength: 40 }
     StudentCurrentEnrollment:
       type: object
-      required: [enrollmentId, sectionId, admissionNo, academicYear, className, sectionName]
+      required: [enrollmentId, sectionId, admissionNo, academicYear, className, gradeLevel, sectionName]
       properties:
         enrollmentId: { type: string, format: uuid }
         sectionId: { type: string, format: uuid }
         admissionNo: { type: string }
         academicYear: { type: string }
         className: { type: string }
+        gradeLevel: { type: integer, minimum: 1, maximum: 12 }
         sectionName: { type: string }
     StudentEnrollmentHistoryItem:
       type: object
@@ -1569,7 +1592,7 @@ components:
         status: { type: string, enum: [active, disabled] }
         createdAt: { type: string, format: date-time }
         endedAt: { type: [string, "null"], format: date-time }
-        endedReason: { type: [string, "null"], enum: [transferred, promoted, null] }
+        endedReason: { type: [string, "null"], enum: [transferred, promoted, graduated, null] }
     StudentEnrollmentHistoryPage:
       type: object
       required: [items, total]
@@ -1585,6 +1608,23 @@ components:
       properties:
         enrollmentId: { type: string, format: uuid }
         targetSectionId: { type: string, format: uuid }
+    GraduateEnrollmentInput:
+      type: object
+      additionalProperties: false
+      required: [enrollmentId]
+      properties:
+        enrollmentId: { type: string, format: uuid }
+    GraduationResult:
+      type: object
+      required: [studentId, enrollmentId, academicYear, className, gradeLevel, endedAt, endedReason]
+      properties:
+        studentId: { type: string, format: uuid }
+        enrollmentId: { type: string, format: uuid }
+        academicYear: { type: string }
+        className: { type: string }
+        gradeLevel: { type: integer, enum: [12] }
+        endedAt: { type: string, format: date-time }
+        endedReason: { type: string, enum: [graduated] }
     PromoteStudentsInput:
       type: object
       additionalProperties: false

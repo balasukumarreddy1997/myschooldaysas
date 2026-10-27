@@ -230,6 +230,11 @@ export interface StudentCurrentEnrollment {
   admissionNo: string;
   academicYear: string;
   className: string;
+  /**
+     * @minimum 1
+     * @maximum 12
+     */
+  gradeLevel: number;
   sectionName: string;
 }
 
@@ -250,6 +255,7 @@ export type StudentEnrollmentHistoryItemEndedReason = typeof StudentEnrollmentHi
 export const StudentEnrollmentHistoryItemEndedReason = {
   transferred: 'transferred',
   promoted: 'promoted',
+  graduated: 'graduated',
 } as const;
 
 export interface StudentEnrollmentHistoryItem {
@@ -274,6 +280,34 @@ export interface StudentEnrollmentHistoryPage {
 export interface TransferEnrollmentInput {
   enrollmentId: string;
   targetSectionId: string;
+}
+
+export interface GraduateEnrollmentInput {
+  enrollmentId: string;
+}
+
+export type GraduationResultGradeLevel = typeof GraduationResultGradeLevel[keyof typeof GraduationResultGradeLevel];
+
+
+export const GraduationResultGradeLevel = {
+  NUMBER_12: 12,
+} as const;
+
+export type GraduationResultEndedReason = typeof GraduationResultEndedReason[keyof typeof GraduationResultEndedReason];
+
+
+export const GraduationResultEndedReason = {
+  graduated: 'graduated',
+} as const;
+
+export interface GraduationResult {
+  studentId: string;
+  enrollmentId: string;
+  academicYear: string;
+  className: string;
+  gradeLevel: GraduationResultGradeLevel;
+  endedAt: string;
+  endedReason: GraduationResultEndedReason;
 }
 
 export type PromoteStudentsInputSectionMap = {[key: string]: string};

@@ -486,6 +486,8 @@ export const GetStudentProfileParams = zod.object({
   "studentId": zod.uuid()
 })
 
+export const getStudentProfileResponseCurrentEnrollmentOneGradeLevelMax = 12;
+
 export const getStudentProfileResponseProfileDateOfBirthRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 export const getStudentProfileResponseProfileGenderMax = 40;
 
@@ -516,6 +518,7 @@ export const GetStudentProfileResponse = zod.object({
   "admissionNo": zod.string(),
   "academicYear": zod.string(),
   "className": zod.string(),
+  "gradeLevel": zod.int().min(1).max(getStudentProfileResponseCurrentEnrollmentOneGradeLevelMax),
   "sectionName": zod.string()
 }),zod.null()]),
   "profile": zod.object({
@@ -570,6 +573,8 @@ export const UpdateStudentProfileBody = zod.object({
   "guardianRelationship": zod.string().max(updateStudentProfileBodyGuardianRelationshipMax).nullable()
 })
 
+export const updateStudentProfileResponseCurrentEnrollmentOneGradeLevelMax = 12;
+
 export const updateStudentProfileResponseProfileDateOfBirthRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 export const updateStudentProfileResponseProfileGenderMax = 40;
 
@@ -600,6 +605,7 @@ export const UpdateStudentProfileResponse = zod.object({
   "admissionNo": zod.string(),
   "academicYear": zod.string(),
   "className": zod.string(),
+  "gradeLevel": zod.int().min(1).max(updateStudentProfileResponseCurrentEnrollmentOneGradeLevelMax),
   "sectionName": zod.string()
 }),zod.null()]),
   "profile": zod.object({
@@ -633,7 +639,7 @@ export const GetStudentEnrollmentHistoryResponse = zod.object({
   "status": zod.enum(['active', 'disabled']),
   "createdAt": zod.coerce.date(),
   "endedAt": zod.coerce.date().nullable(),
-  "endedReason": zod.union([zod.literal('transferred'),zod.literal('promoted'),zod.literal(null)]).nullable()
+  "endedReason": zod.union([zod.literal('transferred'),zod.literal('promoted'),zod.literal('graduated'),zod.literal(null)]).nullable()
 })),
   "total": zod.int()
 })
@@ -699,6 +705,24 @@ export const TransferStudentEnrollmentResponse = zod.object({
   "className": zod.string().optional(),
   "status": zod.enum(['active', 'disabled']),
   "academicYear": zod.string().min(transferStudentEnrollmentResponseAcademicYearMin).max(transferStudentEnrollmentResponseAcademicYearMax)
+})
+
+
+/**
+ * @summary Graduate a Grade 12 student and preserve enrollment history
+ */
+export const GraduateStudentEnrollmentBody = zod.object({
+  "enrollmentId": zod.uuid()
+})
+
+export const GraduateStudentEnrollmentResponse = zod.object({
+  "studentId": zod.uuid(),
+  "enrollmentId": zod.uuid(),
+  "academicYear": zod.string(),
+  "className": zod.string(),
+  "gradeLevel": zod.literal(12),
+  "endedAt": zod.coerce.date(),
+  "endedReason": zod.enum(['graduated'])
 })
 
 

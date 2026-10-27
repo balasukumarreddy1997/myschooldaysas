@@ -15,4 +15,5 @@ export type StudentEnrollmentHistoryItemEndedReason = typeof StudentEnrollmentHi
 export const StudentEnrollmentHistoryItemEndedReason = {
   transferred: 'transferred',
   promoted: 'promoted',
+  graduated: 'graduated',
 } as const;

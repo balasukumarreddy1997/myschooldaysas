@@ -7,16 +7,18 @@ import {
   getGetStudentEnrollmentHistoryQueryKey,
   getGetStudentProfileQueryKey,
   getGetStudentsQueryKey,
+  useGraduateStudentEnrollment,
   useGetSections,
   useGetStudentEnrollmentHistory,
   useTransferStudentEnrollment,
 } from "@workspace/api-client-react";
-import { ArrowRightLeft } from "lucide-react";
+import { ArrowRightLeft, GraduationCap } from "lucide-react";
 
 type CurrentEnrollment = {
   enrollmentId: string;
   sectionId: string;
   className: string;
+  gradeLevel: number;
   sectionName: string;
   academicYear: string;
 };
@@ -35,6 +37,7 @@ export function StudentEnrollmentManager({
   const history = useGetStudentEnrollmentHistory(studentId);
   const [targetSectionId, setTargetSectionId] = useState("");
   const [confirmed, setConfirmed] = useState(false);
+  const [graduationConfirmed, setGraduationConfirmed] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
@@ -57,8 +60,22 @@ export function StudentEnrollmentManager({
     },
   });
 
+  const graduate = useGraduateStudentEnrollment({
+    mutation: {
+      onSuccess: (result) => {
+        setGraduationConfirmed(false);
+        setConfirmed(false);
+        setSuccessMessage(`${result.className} student graduated for ${result.academicYear}. Enrollment history is preserved.`);
+        queryClient.invalidateQueries({ queryKey: getGetStudentProfileQueryKey(studentId) });
+        queryClient.invalidateQueries({ queryKey: getGetStudentEnrollmentHistoryQueryKey(studentId) });
+        queryClient.invalidateQueries({ queryKey: getGetStudentsQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetSectionsQueryKey() });
+      },
+    },
+  });
+
   function submitTransfer() {
-    if (!currentEnrollment || !targetSectionId || !confirmed) return;
+    if (!currentEnrollment || !targetSectionId || !confirmed || graduate.isPending) return;
     setSuccessMessage("");
     transfer.mutate({
       data: {
@@ -66,6 +83,12 @@ export function StudentEnrollmentManager({
         targetSectionId,
       },
     });
+  }
+
+  function submitGraduation() {
+    if (!currentEnrollment || currentEnrollment.gradeLevel !== 12 || !graduationConfirmed || transfer.isPending) return;
+    setSuccessMessage("");
+    graduate.mutate({ data: { enrollmentId: currentEnrollment.enrollmentId } });
   }
 
   const selectedTarget = sections.data?.items.find((section) => section.id === targetSectionId);
@@ -79,7 +102,7 @@ export function StudentEnrollmentManager({
         <div className="min-w-0 flex-1">
           <h3 id="student-enrollment-history-heading" className="m-0 text-sm font-bold">Enrollment history</h3>
           <p className="mb-0 mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-            Previous class and section records stay available when a student moves.
+            Previous class and section records stay available after transfers, promotions, and graduation.
           </p>
         </div>
       </div>
@@ -95,7 +118,7 @@ export function StudentEnrollmentManager({
                 setConfirmed(false);
                 setSuccessMessage("");
               }}
-              disabled={sections.isLoading || (sections.data?.items.length ?? 0) < 2 || transfer.isPending}
+              disabled={sections.isLoading || (sections.data?.items.length ?? 0) < 2 || transfer.isPending || graduate.isPending}
             >
               <option value="">Select a destination</option>
               {sections.data?.items
@@ -112,7 +135,7 @@ export function StudentEnrollmentManager({
             type="button"
             className="btn btn-muted min-h-9 px-3 text-xs"
             onClick={submitTransfer}
-            disabled={!confirmed || !targetSectionId || transfer.isPending}
+            disabled={!confirmed || !targetSectionId || transfer.isPending || graduate.isPending}
           >
             {transfer.isPending ? "Moving…" : "Transfer student"}
           </button>
@@ -121,18 +144,54 @@ export function StudentEnrollmentManager({
               type="checkbox"
               checked={confirmed}
               onChange={(event) => setConfirmed(event.target.checked)}
-              disabled={transfer.isPending}
+              disabled={transfer.isPending || graduate.isPending}
             />
             <span>Confirm this move. The current enrollment will close and a new enrollment will be created.</span>
           </label>
         </div>
       )}
 
+      {currentEnrollment?.gradeLevel === 12 && (
+        <div className="mt-3 grid gap-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-3 md:grid-cols-[1fr_auto] md:items-center">
+          <div className="flex items-start gap-2">
+            <GraduationCap size={17} className="mt-0.5 shrink-0 text-[hsl(var(--primary))]" aria-hidden="true" />
+            <div>
+              <p className="m-0 text-xs font-bold">Graduate from Grade 12</p>
+              <p className="mb-0 mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+                This closes the current enrollment. The student account and academic history are kept.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-primary min-h-9 px-3 text-xs"
+            data-testid="graduate-student"
+            onClick={submitGraduation}
+            disabled={!graduationConfirmed || graduate.isPending || transfer.isPending}
+          >
+            {graduate.isPending ? "Graduating…" : "Graduate student"}
+          </button>
+          <label className="flex items-start gap-2 text-xs font-normal text-[hsl(var(--muted-foreground))] md:col-span-2">
+            <input
+              type="checkbox"
+              checked={graduationConfirmed}
+              onChange={(event) => {
+                setGraduationConfirmed(event.target.checked);
+                setSuccessMessage("");
+              }}
+              disabled={graduate.isPending || transfer.isPending}
+            />
+            <span>Confirm graduation. The student will no longer have an active enrollment.</span>
+          </label>
+        </div>
+      )}
+
       {sections.isError && <p role="alert" className="mt-2 text-xs text-[hsl(var(--destructive))]">{readableError(sections.error)}</p>}
       {transfer.isError && <p role="alert" className="mt-2 text-xs text-[hsl(var(--destructive))]">{readableError(transfer.error)}</p>}
+      {graduate.isError && <p role="alert" className="mt-2 text-xs text-[hsl(var(--destructive))]">{readableError(graduate.error)}</p>}
       {history.isError && <p role="alert" className="mt-2 text-xs text-[hsl(var(--destructive))]">{readableError(history.error)}</p>}
       {successMessage && <p role="status" className="mt-2 text-xs text-[hsl(var(--primary))]">{successMessage}</p>}
-      {!currentEnrollment && <p className="mt-3 text-xs text-[hsl(var(--muted-foreground))]">This student has no active enrollment to transfer.</p>}
+      {!currentEnrollment && <p className="mt-3 text-xs text-[hsl(var(--muted-foreground))]">This student has no active enrollment.</p>}
 
       {history.data && (
         <div className="mt-4 overflow-x-auto rounded-lg border border-[hsl(var(--border))]">
@@ -152,7 +211,13 @@ export function StudentEnrollmentManager({
                   <td className="px-3 py-2">{item.className} · {item.sectionName}</td>
                   <td className="px-3 py-2">{item.admissionNo}</td>
                   <td className="px-3 py-2">
-                    {item.endedReason ? item.endedReason === "transferred" ? "Transferred" : "Promoted" : item.status === "active" ? "Current" : "Inactive"}
+                     {item.endedReason === "transferred"
+                       ? "Transferred"
+                       : item.endedReason === "promoted"
+                         ? "Promoted"
+                         : item.endedReason === "graduated"
+                           ? "Graduated"
+                           : item.status === "active" ? "Current" : "Inactive"}
                   </td>
                 </tr>
               ))}

@@ -11,11 +11,12 @@ This is a convenience summary derived from `MASTER_SPEC.md`; these routes now re
 - `GET /api/academic/students/:studentId/enrollments` is admin-only and returns the student's current and ended enrollment records.
 - `POST /api/academic/enrollments/transfer` is admin-only. It moves one active enrollment to a different section in the same academic year, checks destination capacity, and retains the ended enrollment row with its end time and `transferred` reason.
 - `POST /api/academic/enrollments/promote` is admin-only. It promotes a source class/year into a target class/year using a source-to-target section map. The operation checks all destination capacities before changing records; it is atomic, and ended source rows are retained with their end time and `promoted` reason.
+- `POST /api/academic/enrollments/graduate` is admin-only and accepts an active enrollment ID. It only graduates Grade 12, closes that enrollment with a `graduated` reason, and preserves the row in history without disabling the student account.
 - Organization administrators can read the school roster; teachers are limited to assigned sections; students see only their own row; parents see linked students.
 
 ## Data and isolation
 
-The `academic` schema stores classes, sections, subjects, enrollments, teacher assignments, timetable slots, consent records, and consent-review status. `identity.guardian_links` stores guardian relationships and the `can_view_live` / `can_pay_fees` flags. Tenant tables use `org_id` and forced RLS; guardian links are joined under the same organization scope. Sections expose optional capacity; enrollment records expose academic year and transition end metadata. Active enrollments are unique per student/year and admission-number/year, while ended rows remain available as history. Timetable slots include an optional room.
+The `academic` schema stores classes, sections, subjects, enrollments, teacher assignments, timetable slots, consent records, and consent-review status. `identity.guardian_links` stores guardian relationships and the `can_view_live` / `can_pay_fees` flags. Tenant tables use `org_id` and forced RLS; guardian links are joined under the same organization scope. Sections expose optional capacity; enrollment records expose academic year and transition end metadata. Active enrollments are unique per student/year and admission-number/year, while ended rows remain available as history with transfer, promotion, or graduation reasons. Timetable slots include an optional room.
 
 ## Implemented in this checkout
 
@@ -25,7 +26,8 @@ The `academic` schema stores classes, sections, subjects, enrollments, teacher a
 - Admins can search the section roster using student and guardian contact details, then view and edit student profile fields and current enrollment. Profile updates preserve the student account and enrollment; guardian data stays contact-only.
 - Administrators can search current students across all classes and sections, filter by class or section, and review each student's class, section, and current academic year. The registry returns one current enrollment per student.
 - Admins can transfer a single student between sections without overwriting the old enrollment. A class-level promotion wizard maps every source section to a target section; the API rejects a capacity overflow without partially updating the cohort.
-- Student profile pages expose enrollment history, including whether a prior row ended through transfer or promotion.
+- Admins can graduate students from Grade 12. The current enrollment closes, the student account remains available, and the profile history records the graduation.
+- Student profile pages expose enrollment history, including whether a prior row ended through transfer, promotion, or graduation.
 - Timetable slots can be created and removed by admins, are visible according to the caller's section/teacher/guardian relationships, include room, and reject overlapping teacher or section slots.
 - Subject catalog, teacher assignments, student attendance, and term report cards are implemented in adjacent academic/learning screens.
 - Parent consent review status is persisted; the parent must explicitly review choices, and that action grants no permission.
@@ -44,4 +46,5 @@ Admission audit history is not implemented. Guardian account creation/linking is
 - Teacher access to an unassigned section is denied.
 - Student and parent roster results are restricted to their own record or linked child.
 - Transfer and promotion retain ended enrollment rows and enforce target-section capacity.
+- Only administrators can graduate students; Grade 1–11 graduation attempts are rejected, and a successful Grade 12 graduation remains visible in history.
 
