@@ -17,6 +17,7 @@ The `academic` schema stores classes, sections, subjects, enrollments, teacher a
 
 - Admins can manage section capacity and academic year through the academic API and class/roster screens.
 - Admins can enroll an existing active student account for an academic year from the student area. The API locks the section while checking active enrollment count, so concurrent requests cannot exceed its configured capacity.
+- Admins can preview and create one or up to 20 student accounts from the student area using single-entry fields or CSV. The account, student role, and enrollment are created in one transaction; each account receives a random temporary password that expires after seven days and must be changed at first sign-in.
 - Timetable slots can be created and removed by admins, are visible according to the caller's section/teacher/guardian relationships, include room, and reject overlapping teacher or section slots.
 - Subject catalog, teacher assignments, student attendance, and term report cards are implemented in adjacent academic/learning screens.
 - Parent consent review status is persisted; the parent must explicitly review choices, and that action grants no permission.
@@ -25,7 +26,7 @@ The `academic` schema stores classes, sections, subjects, enrollments, teacher a
 
 ## Remaining gaps
 
-The full registry/admissions intake, bulk enrollment, transfers, promotion, and new student account creation are not implemented; the new enrollment form works with existing active student accounts. No fee-payment feature exists to enforce `can_pay_fees`; audit entries for consent-review and guardian-flag changes, marketing/data-processing consent policy and enforcement remain open. Calendar rules and academic analytics are also not implemented.
+The full student registry, guardian/parent intake and linking, transfers, promotion, and admission audit history are not implemented. CSV admission currently targets one section and academic year per batch, with a 20-student limit. No fee-payment feature exists to enforce `can_pay_fees`; audit entries for consent-review and guardian-flag changes, marketing/data-processing consent policy and enforcement remain open. Calendar rules and academic analytics are also not implemented.
 
 ## Acceptance checks
 

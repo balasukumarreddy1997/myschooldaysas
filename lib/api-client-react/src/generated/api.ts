@@ -33,6 +33,8 @@ import type {
   AcademicTeacherAssignmentInput,
   AcademicTeacherAssignmentPage,
   AcademicTeacherPage,
+  AdmissionBatchInput,
+  AdmissionPreview,
   AuthSession,
   AvailableStudentPage,
   BoardTemplate,
@@ -45,6 +47,7 @@ import type {
   ConsentReviewStatus,
   CreateEnrollmentInput,
   CreateTimetableSlotInput,
+  CreatedAdmissions,
   DashboardOverview,
   EnrollmentYearUpdateInput,
   GetAcademicTeacherAssignmentsParams,
@@ -2207,6 +2210,182 @@ export const useCreateEnrollment = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getCreateEnrollmentMutationOptions(options), queryClient);
+    }
+
+export const getPreviewStudentAdmissionsUrl = () => {
+
+
+
+
+  return `/api/academic/admissions/preview`
+}
+
+/**
+ * @summary Validate one or more new student admissions without saving
+ */
+export const previewStudentAdmissions = async (admissionBatchInput: AdmissionBatchInput, options?: Parameters<typeof customFetch>[1]): Promise<AdmissionPreview> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdmissionPreview>(getPreviewStudentAdmissionsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(admissionBatchInput)
+  }
+);}
+
+
+
+
+
+export const getPreviewStudentAdmissionsMutationKey = () => ['previewStudentAdmissions'] as const;
+
+export const getPreviewStudentAdmissionsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewStudentAdmissions>>, TError,PreviewStudentAdmissionsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewStudentAdmissions>>, TError,PreviewStudentAdmissionsMutationVariables, TContext> => {
+
+const mutationKey = getPreviewStudentAdmissionsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewStudentAdmissions>>, PreviewStudentAdmissionsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  previewStudentAdmissions(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewStudentAdmissionsMutationResult = NonNullable<Awaited<ReturnType<typeof previewStudentAdmissions>>>
+    export type PreviewStudentAdmissionsMutationBody = BodyType<AdmissionBatchInput>
+    export type PreviewStudentAdmissionsMutationError = ErrorType<void>
+    export type PreviewStudentAdmissionsMutationVariables = {data: BodyType<AdmissionBatchInput>}
+
+    /**
+ * @summary Validate one or more new student admissions without saving
+ */
+export const usePreviewStudentAdmissions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewStudentAdmissions>>, TError,PreviewStudentAdmissionsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof previewStudentAdmissions>>,
+        TError,
+        PreviewStudentAdmissionsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPreviewStudentAdmissionsMutationOptions(options), queryClient);
+    }
+
+export const getCreateStudentAdmissionsUrl = () => {
+
+
+
+
+  return `/api/academic/admissions`
+}
+
+/**
+ * @summary Create student accounts and enroll them atomically
+ */
+export const createStudentAdmissions = async (admissionBatchInput: AdmissionBatchInput, options?: Parameters<typeof customFetch>[1]): Promise<CreatedAdmissions> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CreatedAdmissions>(getCreateStudentAdmissionsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(admissionBatchInput)
+  }
+);}
+
+
+
+
+
+export const getCreateStudentAdmissionsMutationKey = () => ['createStudentAdmissions'] as const;
+
+export const getCreateStudentAdmissionsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createStudentAdmissions>>, TError,CreateStudentAdmissionsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createStudentAdmissions>>, TError,CreateStudentAdmissionsMutationVariables, TContext> => {
+
+const mutationKey = getCreateStudentAdmissionsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createStudentAdmissions>>, CreateStudentAdmissionsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createStudentAdmissions(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateStudentAdmissionsMutationResult = NonNullable<Awaited<ReturnType<typeof createStudentAdmissions>>>
+    export type CreateStudentAdmissionsMutationBody = BodyType<AdmissionBatchInput>
+    export type CreateStudentAdmissionsMutationError = ErrorType<void>
+    export type CreateStudentAdmissionsMutationVariables = {data: BodyType<AdmissionBatchInput>}
+
+    /**
+ * @summary Create student accounts and enroll them atomically
+ */
+export const useCreateStudentAdmissions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createStudentAdmissions>>, TError,CreateStudentAdmissionsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createStudentAdmissions>>,
+        TError,
+        CreateStudentAdmissionsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateStudentAdmissionsMutationOptions(options), queryClient);
     }
 
 export const getUpdateEnrollmentYearUrl = (enrollmentId: string,) => {

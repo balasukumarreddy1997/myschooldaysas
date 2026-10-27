@@ -443,6 +443,49 @@ paths:
         "403": { description: Administrator role required }
         "404": { description: Student or section not found }
         "409": { description: Section is full or an enrollment already exists }
+  /academic/admissions/preview:
+    post:
+      operationId: previewStudentAdmissions
+      tags: [academic]
+      summary: Validate one or more new student admissions without saving
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdmissionBatchInput" }
+      responses:
+        "200":
+          description: Row validation and current section capacity preview
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdmissionPreview" }
+        "400": { description: Invalid request }
+        "403": { description: Administrator role required }
+        "404": { description: Section not found }
+  /academic/admissions:
+    post:
+      operationId: createStudentAdmissions
+      tags: [academic]
+      summary: Create student accounts and enroll them atomically
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdmissionBatchInput" }
+      responses:
+        "201":
+          description: Created student accounts and one-time temporary credentials
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CreatedAdmissions" }
+        "400": { description: Invalid request }
+        "403": { description: Administrator role required }
+        "404": { description: Section not found }
+        "409": { description: Duplicate student data or section capacity exceeded }
   /academic/enrollments/{enrollmentId}:
     patch:
       operationId: updateEnrollmentYear
@@ -1415,6 +1458,76 @@ components:
         sectionId: { type: string, format: uuid }
         admissionNo: { type: string, minLength: 1, maxLength: 40 }
         academicYear: { type: string, minLength: 4, maxLength: 24 }
+    AdmissionBatchInput:
+      type: object
+      required: [sectionId, academicYear, rows]
+      properties:
+        sectionId: { type: string, format: uuid }
+        academicYear: { type: string, minLength: 4, maxLength: 24 }
+        rows:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            type: object
+            required: [name, email, admissionNo]
+            properties:
+              name: { type: string, minLength: 1, maxLength: 120 }
+              email: { type: string, format: email, maxLength: 254 }
+              admissionNo: { type: string, minLength: 1, maxLength: 40 }
+    AdmissionPreviewRow:
+      type: object
+      required: [row, name, email, admissionNo]
+      properties:
+        row: { type: integer, minimum: 1 }
+        name: { type: string }
+        email: { type: string, format: email }
+        admissionNo: { type: string }
+    AdmissionRowError:
+      type: object
+      required: [row, field, message]
+      properties:
+        row: { type: integer, minimum: 1 }
+        field: { type: string }
+        message: { type: string }
+    AdmissionPreview:
+      type: object
+      required: [sectionId, sectionName, academicYear, capacity, activeEnrollmentCount, seatsAvailable, valid, items, errors]
+      properties:
+        sectionId: { type: string, format: uuid }
+        sectionName: { type: string }
+        academicYear: { type: string }
+        capacity: { type: [integer, "null"] }
+        activeEnrollmentCount: { type: integer }
+        seatsAvailable: { type: [integer, "null"] }
+        valid: { type: boolean }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdmissionPreviewRow" }
+        errors:
+          type: array
+          items: { $ref: "#/components/schemas/AdmissionRowError" }
+    CreatedAdmission:
+      type: object
+      required: [id, name, email, admissionNo, sectionId, sectionName, academicYear, temporaryPassword, temporaryPasswordExpiresAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        admissionNo: { type: string }
+        sectionId: { type: string, format: uuid }
+        sectionName: { type: string }
+        academicYear: { type: string }
+        temporaryPassword: { type: string }
+        temporaryPasswordExpiresAt: { type: string, format: date-time }
+    CreatedAdmissions:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/CreatedAdmission" }
+        total: { type: integer }
     SectionCapacityUpdateInput:
       type: object
       required: [capacity]

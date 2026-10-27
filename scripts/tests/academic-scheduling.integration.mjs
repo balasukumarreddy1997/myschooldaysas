@@ -55,6 +55,7 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
   let restoreGuardianFlags;
   let cleanupOrgId;
   const createdEnrollmentIds = [];
+  const createdIdentityUserIds = [];
 
   try {
     const identity = (await pool.query(`
@@ -255,6 +256,105 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
     });
     assert.equal(deniedEnrollment.status, 403);
 
+    const admissionsBatchYear = `2097-${randomUUID().slice(0, 8)}`;
+    const batchSuffix = randomUUID().replaceAll("-", "").slice(0, 10);
+    const admissionBatch = {
+      sectionId: section.id,
+      academicYear: admissionsBatchYear,
+      rows: [
+        { name: "Integration New Student One", email: `new-one-${batchSuffix}@example.test`, admissionNo: `ADM-BULK-${batchSuffix}-1` },
+        { name: "Integration New Student Two", email: `new-two-${batchSuffix}@example.test`, admissionNo: `ADM-BULK-${batchSuffix}-2` },
+      ],
+    };
+    const bulkCapacityUpdate = await api(
+      `/academic/sections/${section.id}`,
+      admin,
+      "PATCH",
+      { capacity: section.studentCount + 4 },
+    );
+    assert.equal(bulkCapacityUpdate.status, 200, JSON.stringify(bulkCapacityUpdate.body));
+
+    const singleAdmission = {
+      sectionId: section.id,
+      academicYear: admissionsBatchYear,
+      rows: [{ name: "Integration Single Admission", email: `single-${batchSuffix}@example.test`, admissionNo: `ADM-SINGLE-${batchSuffix}` }],
+    };
+    const singlePreview = await api("/academic/admissions/preview", admin, "POST", singleAdmission);
+    assert.equal(singlePreview.status, 200, JSON.stringify(singlePreview.body));
+    assert.equal(singlePreview.body.valid, true, JSON.stringify(singlePreview.body.errors));
+    const singleCreated = await api("/academic/admissions", admin, "POST", singleAdmission);
+    for (const created of singleCreated.body.items ?? []) {
+      if (created.id) createdIdentityUserIds.push(created.id);
+    }
+    assert.equal(singleCreated.status, 201, JSON.stringify(singleCreated.body));
+    assert.equal(singleCreated.body.total, 1);
+
+    const batchPreview = await api("/academic/admissions/preview", admin, "POST", admissionBatch);
+    assert.equal(batchPreview.status, 200, JSON.stringify(batchPreview.body));
+    assert.equal(batchPreview.body.valid, true, JSON.stringify(batchPreview.body.errors));
+    assert.equal(batchPreview.body.items.length, 2);
+    assert.equal(batchPreview.body.seatsAvailable, 2);
+    const deniedBatchPreview = await api("/academic/admissions/preview", teacher, "POST", admissionBatch);
+    assert.equal(deniedBatchPreview.status, 403);
+    const deniedBatchCreate = await api("/academic/admissions", teacher, "POST", admissionBatch);
+    assert.equal(deniedBatchCreate.status, 403);
+
+    const createdAdmissions = await api("/academic/admissions", admin, "POST", admissionBatch);
+    for (const created of createdAdmissions.body.items ?? []) {
+      if (created.id) createdIdentityUserIds.push(created.id);
+    }
+    assert.equal(createdAdmissions.status, 201, JSON.stringify(createdAdmissions.body));
+    assert.equal(createdAdmissions.body.total, 2);
+    assert.ok(createdAdmissions.body.items.every((created) => created.temporaryPassword.length >= 12));
+    assert.equal(new Set(createdAdmissions.body.items.map((created) => created.temporaryPassword)).size, 2);
+
+    const verificationClient = await pool.connect();
+    let createdAccountRows;
+    try {
+      await verificationClient.query("BEGIN READ ONLY");
+      await verificationClient.query("SELECT set_config('app.org_id', $1, true)", [orgId]);
+      createdAccountRows = (await verificationClient.query(
+        `SELECT u.id, u.must_change_password, u.temporary_password_expires_at,
+                array_agg(DISTINCT ur.role) AS roles, e.section_id, e.admission_no
+           FROM identity.users u
+           JOIN identity.user_roles ur ON ur.org_id = u.org_id AND ur.user_id = u.id
+           JOIN academic.enrollments e ON e.org_id = u.org_id AND e.student_user_id = u.id
+          WHERE u.org_id = $1 AND u.id = ANY($2::uuid[]) AND e.academic_year = $3
+          GROUP BY u.id, e.section_id, e.admission_no`,
+      [orgId, createdIdentityUserIds, admissionsBatchYear],
+      )).rows;
+      await verificationClient.query("COMMIT");
+    } catch (error) {
+      await verificationClient.query("ROLLBACK").catch(() => {});
+      throw error;
+    } finally {
+      verificationClient.release();
+    }
+    assert.equal(createdAccountRows.length, 3);
+    assert.ok(createdAccountRows.every((created) => created.must_change_password));
+    assert.ok(createdAccountRows.every((created) => created.temporary_password_expires_at));
+    assert.ok(createdAccountRows.every((created) => created.roles.includes("student")));
+
+    const remainingStudent = await api(
+      `/academic/students/available?academicYear=${encodeURIComponent(admissionsBatchYear)}&limit=1&offset=0`,
+      admin,
+    );
+    assert.equal(remainingStudent.status, 200, JSON.stringify(remainingStudent.body));
+    assert.ok(remainingStudent.body.items.length > 0);
+    const rejectedOverCapacity = await api("/academic/enrollments", admin, "POST", {
+      studentId: remainingStudent.body.items[0].id,
+      sectionId: section.id,
+      admissionNo: `ADM-OVER-${batchSuffix}`,
+      academicYear: admissionsBatchYear,
+    });
+    assert.equal(rejectedOverCapacity.status, 409);
+    const rejectedBulkOverCapacity = await api("/academic/admissions", admin, "POST", {
+      sectionId: section.id,
+      academicYear: admissionsBatchYear,
+      rows: [{ name: "Must Not Be Created", email: `full-${batchSuffix}@example.test`, admissionNo: `ADM-FULL-${batchSuffix}` }],
+    });
+    assert.equal(rejectedBulkOverCapacity.status, 409);
+
     const newAcademicYear = `2099-${randomUUID().slice(0, 8)}`;
     const yearUpdate = await api(
       `/academic/enrollments/${enrollment.enrollmentId}`,
@@ -326,7 +426,7 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
     assert.equal(deleted.status, 204);
     createdSlotId = undefined;
 
-    console.log("Verified consent review, guardian flags, atomic enrollment capacity enforcement, academic-year updates, and timetable room/role/conflict behavior.");
+    console.log("Verified consent review, guardian flags, single and bulk admissions with capacity enforcement, academic-year updates, and timetable room/role/conflict behavior.");
   } finally {
     if (createdSlotId) await api(`/academic/timetable/${createdSlotId}`, restoreCapacity?.user, "DELETE").catch(() => {});
     if (restoreEnrollment) {
@@ -359,6 +459,24 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
           `DELETE FROM academic.enrollments
             WHERE org_id = $1 AND id = ANY($2::uuid[])`,
           [cleanupOrgId, createdEnrollmentIds],
+        );
+        await client.query("COMMIT");
+      } catch (error) {
+        await client.query("ROLLBACK").catch(() => {});
+        throw error;
+      } finally {
+        client.release();
+      }
+    }
+    if (cleanupOrgId && createdIdentityUserIds.length) {
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+        await client.query("SELECT set_config('app.org_id', $1, true)", [cleanupOrgId]);
+        await client.query(
+          `DELETE FROM identity.users
+            WHERE org_id = $1 AND id = ANY($2::uuid[])`,
+          [cleanupOrgId, createdIdentityUserIds],
         );
         await client.query("COMMIT");
       } catch (error) {

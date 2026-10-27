@@ -1,5 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
+import type { PoolClient } from "pg";
 import {
+  CreateStudentAdmissionsBody,
   CreateEnrollmentBody,
   GetAvailableStudentsQueryParams,
   GetGuardianLinksQueryParams,
@@ -12,11 +14,13 @@ import {
   UpdateEnrollmentYearParams,
   UpdateSectionBody,
   UpdateSectionParams,
+  PreviewStudentAdmissionsBody,
 } from "@workspace/api-zod";
 import { withOrg } from "@workspace/db";
 import { createRouteRegistrar } from "../lib/fastify-routes";
-import { requireAuth, type CampusRole } from "../lib/auth";
+import { hashPassword, requireAuth, type CampusRole } from "../lib/auth";
 import { canManageAcademicSetup, sectionHasCapacity } from "../lib/academic-scheduling-policy";
+import { generateTemporaryPassword } from "../lib/identity-security";
 
 const routes: FastifyPluginAsync = async (fastify) => {
 const router = createRouteRegistrar(fastify);
@@ -24,6 +28,117 @@ const router = createRouteRegistrar(fastify);
 const adminRoles: CampusRole[] = ["super_admin", "org_admin", "campus_admin"];
 const teachingRoles: CampusRole[] = ["teacher", "class_teacher", "hod"];
 type ConsentPurpose = "live_view" | "recording" | "photo" | "data_processing";
+
+type AdmissionInputRow = { name: string; email: string; admissionNo: string };
+type AdmissionRowError = { row: number; field: string; message: string };
+
+async function inspectAdmissions(
+  client: PoolClient,
+  orgId: string,
+  sectionId: string,
+  academicYear: string,
+  rows: AdmissionInputRow[],
+  lockSection: boolean,
+) {
+  const sectionResult = await client.query<{ id: string; name: string; capacity: number | null }>(
+    `SELECT id, name, capacity
+       FROM academic.sections
+      WHERE org_id = $1 AND id = $2${lockSection ? " FOR UPDATE" : ""}`,
+    [orgId, sectionId],
+  );
+  const section = sectionResult.rows[0];
+  if (!section) return null;
+
+  const errors: AdmissionRowError[] = [];
+  const items = rows.map((row, index) => ({
+    row: index + 1,
+    name: row.name.trim(),
+    email: row.email.trim().toLowerCase(),
+    admissionNo: row.admissionNo.trim().toUpperCase(),
+  }));
+  const seenEmails = new Set<string>();
+  const seenAdmissionNumbers = new Set<string>();
+  for (const item of items) {
+    if (!item.name) errors.push({ row: item.row, field: "name", message: "Student name is required." });
+    if (!item.email) errors.push({ row: item.row, field: "email", message: "Email is required." });
+    if (!item.admissionNo) errors.push({ row: item.row, field: "admissionNo", message: "Admission number is required." });
+    if (seenEmails.has(item.email)) errors.push({ row: item.row, field: "email", message: "Email is repeated in this batch." });
+    if (seenAdmissionNumbers.has(item.admissionNo)) {
+      errors.push({ row: item.row, field: "admissionNo", message: "Admission number is repeated in this batch." });
+    }
+    seenEmails.add(item.email);
+    seenAdmissionNumbers.add(item.admissionNo);
+  }
+
+  const emails = [...new Set(items.map((item) => item.email).filter(Boolean))];
+  const admissionNumbers = [...new Set(items.map((item) => item.admissionNo).filter(Boolean))];
+  if (emails.length) {
+    const existingUsers = await client.query<{ email: string }>(
+      `SELECT lower(email) AS email
+         FROM identity.users
+        WHERE org_id = $1 AND lower(email) = ANY($2::text[])`,
+      [orgId, emails],
+    );
+    const existingEmails = new Set(existingUsers.rows.map((item) => item.email));
+    for (const item of items) {
+      if (existingEmails.has(item.email)) {
+        errors.push({ row: item.row, field: "email", message: "An account already uses this email." });
+      }
+    }
+  }
+  if (admissionNumbers.length) {
+    const existingAdmissions = await client.query<{ admission_no: string }>(
+      `SELECT upper(admission_no) AS admission_no
+         FROM academic.enrollments
+        WHERE org_id = $1 AND academic_year = $2
+          AND upper(admission_no) = ANY($3::text[])`,
+      [orgId, academicYear, admissionNumbers],
+    );
+    const existingNumbers = new Set(existingAdmissions.rows.map((item) => item.admission_no));
+    for (const item of items) {
+      if (existingNumbers.has(item.admissionNo)) {
+        errors.push({ row: item.row, field: "admissionNo", message: "This admission number is already used for the academic year." });
+      }
+    }
+  }
+
+  const occupancy = await client.query<{ count: number }>(
+    `SELECT COUNT(*)::int AS count
+       FROM academic.enrollments
+      WHERE org_id = $1 AND section_id = $2 AND status = 'active'`,
+    [orgId, section.id],
+  );
+  const activeEnrollmentCount = occupancy.rows[0]?.count ?? 0;
+  const seatsAvailable = section.capacity == null ? null : Math.max(0, section.capacity - activeEnrollmentCount);
+  if (seatsAvailable != null && items.length > seatsAvailable) {
+    for (const item of items.slice(seatsAvailable)) {
+      errors.push({ row: item.row, field: "sectionId", message: `Only ${seatsAvailable} seat(s) are currently available.` });
+    }
+  }
+
+  return {
+    section,
+    activeEnrollmentCount,
+    seatsAvailable,
+    items,
+    errors,
+    valid: errors.length === 0,
+  };
+}
+
+async function hashAdmissionPasswords(rows: AdmissionInputRow[]) {
+  const credentials = rows.map((row) => ({ ...row, temporaryPassword: generateTemporaryPassword() }));
+  const hashes = new Array<string>(credentials.length);
+  let nextIndex = 0;
+  await Promise.all(Array.from({ length: Math.min(2, credentials.length) }, async () => {
+    while (true) {
+      const index = nextIndex++;
+      if (index >= credentials.length) return;
+      hashes[index] = await hashPassword(credentials[index]!.temporaryPassword);
+    }
+  }));
+  return credentials.map((credential, index) => ({ ...credential, passwordHash: hashes[index]! }));
+}
 const unavailableConsentPurposes = new Set<ConsentPurpose>(["recording", "photo"]);
 
 function errorBody(code: string, message: string) {
@@ -577,6 +692,132 @@ router.get("/academic/students", requireAuth, async (req, res, next) => {
       offset,
     });
   } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/academic/admissions/preview", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!canManageAcademicSetup(user.roles)) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only administrators can admit students."));
+  }
+  const parsed = PreviewStudentAdmissionsBody.safeParse(req.body);
+  const academicYear = parsed.success ? parsed.data.academicYear.trim() : "";
+  if (!parsed.success || academicYear.length < 4 || academicYear.length > 24) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a valid section, academic year, and student list."));
+  }
+
+  try {
+    const inspection = await withOrg(user.orgId, (client) =>
+      inspectAdmissions(client, user.orgId, parsed.data.sectionId, academicYear, parsed.data.rows, false),
+    );
+    if (!inspection) return void res.status(404).json(errorBody("NOT_FOUND", "Section not found."));
+    res.json({
+      sectionId: inspection.section.id,
+      sectionName: inspection.section.name,
+      academicYear,
+      capacity: inspection.section.capacity,
+      activeEnrollmentCount: inspection.activeEnrollmentCount,
+      seatsAvailable: inspection.seatsAvailable,
+      valid: inspection.valid,
+      items: inspection.items,
+      errors: inspection.errors,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/academic/admissions", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!canManageAcademicSetup(user.roles)) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only administrators can admit students."));
+  }
+  const parsed = CreateStudentAdmissionsBody.safeParse(req.body);
+  const academicYear = parsed.success ? parsed.data.academicYear.trim() : "";
+  if (!parsed.success || academicYear.length < 4 || academicYear.length > 24) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a valid section, academic year, and student list."));
+  }
+
+  try {
+    const preliminary = await withOrg(user.orgId, (client) =>
+      inspectAdmissions(client, user.orgId, parsed.data.sectionId, academicYear, parsed.data.rows, false),
+    );
+    if (!preliminary) return void res.status(404).json(errorBody("NOT_FOUND", "Section not found."));
+    if (!preliminary.valid) {
+      return void res.status(409).json({
+        error: { code: "CONFLICT", message: "Resolve the admission preview errors and try again.", details: preliminary.errors },
+      });
+    }
+
+    const preparedRows = preliminary.items.map(({ name, email, admissionNo }) => ({ name, email, admissionNo }));
+    const credentialRows = await hashAdmissionPasswords(preparedRows);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const result = await withOrg(user.orgId, async (client) => {
+      const current = await inspectAdmissions(
+        client,
+        user.orgId,
+        parsed.data.sectionId,
+        academicYear,
+        preparedRows,
+        true,
+      );
+      if (!current) return { kind: "section_not_found" as const };
+      if (!current.valid) return { kind: "invalid" as const, errors: current.errors };
+
+      const created = [];
+      for (const [index, item] of current.items.entries()) {
+        const credential = credentialRows[index]!;
+        const account = await client.query<{ id: string }>(
+          `INSERT INTO identity.users
+             (org_id, email, name, password_hash, must_change_password, temporary_password_expires_at)
+           VALUES ($1, $2, $3, $4, true, $5)
+           RETURNING id`,
+          [user.orgId, item.email, item.name, credential.passwordHash, expiresAt],
+        );
+        const studentId = account.rows[0]!.id;
+        await client.query(
+          `INSERT INTO identity.user_roles (org_id, user_id, role)
+           VALUES ($1, $2, 'student')`,
+          [user.orgId, studentId],
+        );
+        const enrollment = await client.query(
+          `INSERT INTO academic.enrollments
+             (org_id, student_user_id, section_id, admission_no, academic_year)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [user.orgId, studentId, current.section.id, item.admissionNo, academicYear],
+        );
+        if (!enrollment.rowCount) throw new Error("Admission enrollment was not created.");
+        created.push({
+          id: studentId,
+          name: item.name,
+          email: item.email,
+          admissionNo: item.admissionNo,
+          sectionId: current.section.id,
+          sectionName: current.section.name,
+          academicYear,
+          temporaryPassword: credential.temporaryPassword,
+          temporaryPasswordExpiresAt: expiresAt.toISOString(),
+        });
+      }
+      return { kind: "created" as const, items: created };
+    });
+
+    if (result.kind === "section_not_found") {
+      return void res.status(404).json(errorBody("NOT_FOUND", "Section not found."));
+    }
+    if (result.kind === "invalid") {
+      return void res.status(409).json({
+        error: { code: "CONFLICT", message: "The section or student data changed after preview. Review the errors and try again.", details: result.errors },
+      });
+    }
+    res.status(201).json({ items: result.items, total: result.items.length });
+  } catch (error: any) {
+    if (error?.code === "23505") {
+      return void res.status(409).json(errorBody("CONFLICT", "An email or admission number was claimed by another request. Preview the batch again."));
+    }
     next(error);
   }
 });

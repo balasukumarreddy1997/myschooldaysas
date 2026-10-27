@@ -510,6 +510,100 @@ export const CreateEnrollmentResponse = zod.object({
 
 
 /**
+ * @summary Validate one or more new student admissions without saving
+ */
+export const previewStudentAdmissionsBodyAcademicYearMin = 4;
+export const previewStudentAdmissionsBodyAcademicYearMax = 24;
+
+export const previewStudentAdmissionsBodyRowsItemNameMax = 120;
+
+export const previewStudentAdmissionsBodyRowsItemEmailMax = 254;
+
+export const previewStudentAdmissionsBodyRowsItemAdmissionNoMax = 40;
+
+export const previewStudentAdmissionsBodyRowsMax = 20;
+
+
+
+export const PreviewStudentAdmissionsBody = zod.object({
+  "sectionId": zod.uuid(),
+  "academicYear": zod.string().min(previewStudentAdmissionsBodyAcademicYearMin).max(previewStudentAdmissionsBodyAcademicYearMax),
+  "rows": zod.array(zod.object({
+  "name": zod.string().min(1).max(previewStudentAdmissionsBodyRowsItemNameMax),
+  "email": zod.email().max(previewStudentAdmissionsBodyRowsItemEmailMax),
+  "admissionNo": zod.string().min(1).max(previewStudentAdmissionsBodyRowsItemAdmissionNoMax)
+})).min(1).max(previewStudentAdmissionsBodyRowsMax)
+})
+
+
+
+
+
+export const PreviewStudentAdmissionsResponse = zod.object({
+  "sectionId": zod.uuid(),
+  "sectionName": zod.string(),
+  "academicYear": zod.string(),
+  "capacity": zod.int().nullable(),
+  "activeEnrollmentCount": zod.int(),
+  "seatsAvailable": zod.int().nullable(),
+  "valid": zod.boolean(),
+  "items": zod.array(zod.object({
+  "row": zod.int().min(1),
+  "name": zod.string(),
+  "email": zod.email(),
+  "admissionNo": zod.string()
+})),
+  "errors": zod.array(zod.object({
+  "row": zod.int().min(1),
+  "field": zod.string(),
+  "message": zod.string()
+}))
+})
+
+
+/**
+ * @summary Create student accounts and enroll them atomically
+ */
+export const createStudentAdmissionsBodyAcademicYearMin = 4;
+export const createStudentAdmissionsBodyAcademicYearMax = 24;
+
+export const createStudentAdmissionsBodyRowsItemNameMax = 120;
+
+export const createStudentAdmissionsBodyRowsItemEmailMax = 254;
+
+export const createStudentAdmissionsBodyRowsItemAdmissionNoMax = 40;
+
+export const createStudentAdmissionsBodyRowsMax = 20;
+
+
+
+export const CreateStudentAdmissionsBody = zod.object({
+  "sectionId": zod.uuid(),
+  "academicYear": zod.string().min(createStudentAdmissionsBodyAcademicYearMin).max(createStudentAdmissionsBodyAcademicYearMax),
+  "rows": zod.array(zod.object({
+  "name": zod.string().min(1).max(createStudentAdmissionsBodyRowsItemNameMax),
+  "email": zod.email().max(createStudentAdmissionsBodyRowsItemEmailMax),
+  "admissionNo": zod.string().min(1).max(createStudentAdmissionsBodyRowsItemAdmissionNoMax)
+})).min(1).max(createStudentAdmissionsBodyRowsMax)
+})
+
+export const CreateStudentAdmissionsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "name": zod.string(),
+  "email": zod.email(),
+  "admissionNo": zod.string(),
+  "sectionId": zod.uuid(),
+  "sectionName": zod.string(),
+  "academicYear": zod.string(),
+  "temporaryPassword": zod.string(),
+  "temporaryPasswordExpiresAt": zod.coerce.date()
+})),
+  "total": zod.int()
+})
+
+
+/**
  * @summary Update enrollment academic year
  */
 export const UpdateEnrollmentYearParams = zod.object({

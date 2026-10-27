@@ -209,6 +209,81 @@ export interface CreateEnrollmentInput {
   academicYear: string;
 }
 
+export type AdmissionBatchInputRowsItem = {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  admissionNo: string;
+};
+
+export interface AdmissionBatchInput {
+  sectionId: string;
+  /**
+     * @minLength 4
+     * @maxLength 24
+     */
+  academicYear: string;
+  /**
+     * @minItems 1
+     * @maxItems 20
+     */
+  rows: AdmissionBatchInputRowsItem[];
+}
+
+export interface AdmissionPreviewRow {
+  /** @minimum 1 */
+  row: number;
+  name: string;
+  email: string;
+  admissionNo: string;
+}
+
+export interface AdmissionRowError {
+  /** @minimum 1 */
+  row: number;
+  field: string;
+  message: string;
+}
+
+export interface AdmissionPreview {
+  sectionId: string;
+  sectionName: string;
+  academicYear: string;
+  /** @nullable */
+  capacity: number | null;
+  activeEnrollmentCount: number;
+  /** @nullable */
+  seatsAvailable: number | null;
+  valid: boolean;
+  items: AdmissionPreviewRow[];
+  errors: AdmissionRowError[];
+}
+
+export interface CreatedAdmission {
+  id: string;
+  name: string;
+  email: string;
+  admissionNo: string;
+  sectionId: string;
+  sectionName: string;
+  academicYear: string;
+  temporaryPassword: string;
+  temporaryPasswordExpiresAt: string;
+}
+
+export interface CreatedAdmissions {
+  items: CreatedAdmission[];
+  total: number;
+}
+
 export interface SectionCapacityUpdateInput {
   /**
      * @minimum 1

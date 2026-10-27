@@ -29,6 +29,7 @@ import { TimetablePage } from '@/components/academic/timetable-page';
 import { SectionCapacityField } from '@/components/academic/section-capacity-field';
 import { EnrollmentYearField } from '@/components/academic/enrollment-year-field';
 import { EnrollmentForm } from '@/components/academic/enrollment-form';
+import { AdmissionIntake } from '@/components/academic/admission-intake';
 import { GuardianAccessPage } from '@/components/academic/guardian-access-page';
 
 const queryClient = new QueryClient();
@@ -331,7 +332,10 @@ function StudentsPage({ roles }: { roles: string[] }) {
       <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={16}/><input aria-label="Search students" data-testid="input-search-students" className="field pl-9" placeholder="Search by name or admission number" value={search} onChange={e => { setSearch(e.target.value); setPage(0); }}/></div>
       <label className="flex items-center gap-2 text-xs font-semibold"><span>Section</span><select data-testid="select-student-section" className="field min-w-[150px]" value={effectiveSection} onChange={e => { setSectionId(e.target.value); setPage(0); }}><option value="">Choose section</option>{sections.data?.items.map(s => <option key={s.id} value={s.id}>{s.className} · {s.name}</option>)}</select></label>
     </div>
-    {canManage && sections.data && <EnrollmentForm sections={sections.data.items}/>}
+    {canManage && sections.data && <>
+      <AdmissionIntake sections={sections.data.items}/>
+      <EnrollmentForm sections={sections.data.items}/>
+    </>}
     {sections.isLoading ? <div className="skeleton h-48"/> : sections.error ? <QueryState loading={false} error={sections.error} empty={false} retry={() => sections.refetch()}><></></QueryState> :
       !effectiveSection ? <InlineEmpty text="No sections are available to display students."/> :
       <QueryState loading={students.isLoading} error={students.error} empty={!students.data?.items.length} retry={() => students.refetch()}>
