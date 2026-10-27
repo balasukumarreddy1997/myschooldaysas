@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import NotFound from '@/components/not-found';
+import '@/components/auth/login-page.css';
 import { setAccessToken } from './auth-token';
 import { ClassroomScreen } from '@/components/classroom/classroom-screen';
 import { LearningPage } from '@/components/learning/learning-page';
@@ -186,28 +187,73 @@ function LoginGate({ error, retry }: { error: unknown; retry: () => void }) {
 function LoginPage() {
   const [orgSlug, setOrgSlug] = useState(''); const [email, setEmail] = useState(''); const [password, setPassword] = useState('');
   const [, setLocation] = useLocation(); const login = useLogin({ mutation: { onSuccess: result => { setAccessToken(result.accessToken); queryClient.setQueryData(getGetMeQueryKey(), result.user); setLocation('/dashboard'); } } });
-  return <div className="grid min-h-[100dvh] md:grid-cols-[1.05fr_.95fr]">
-    <section className="relative hidden overflow-hidden bg-[hsl(var(--brand-forest))] p-12 text-[hsl(var(--brand-inverse))] md:flex md:flex-col md:justify-between">
-      <div className="absolute -right-24 -top-24 h-[440px] w-[440px] rounded-full border border-white/10"/><div className="absolute -right-5 top-[-70px] h-[300px] w-[300px] rounded-full border border-white/10"/>
-       <div className="relative flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--brand-accent))] text-[hsl(var(--brand-ink))]"><GraduationCap/></div><div><div className="display text-base font-extrabold leading-tight">{SCHOOL_NAME}</div><div className="mt-1 text-[10px] uppercase tracking-[.14em] text-white/55">{PLATFORM_NAME}</div></div></div>
-      <div className="relative max-w-xl pb-12"><div className="mb-6 flex items-center gap-2 text-xs font-bold uppercase tracking-[.18em] text-[hsl(var(--classroom-ready))]"><span className="h-px w-8 bg-[hsl(var(--brand-accent))]"/>A closer school community</div><h1 className="display text-5xl font-extrabold leading-[1.08] tracking-[-.04em]">Learning moves<br/>better <span className="text-[hsl(var(--brand-accent))]">together.</span></h1><p className="mt-6 max-w-md text-[15px] leading-7 text-white/65">Classes, teachers and families — connected in one dependable space built around your school.</p></div>
-      <div className="relative flex justify-between border-t border-white/15 pt-5 text-[10px] uppercase tracking-[.16em] text-white/45"><span>{PLATFORM_NAME}</span><span>For every learner</span></div>
+  return <main className="premium-login">
+    <section className="premium-story" aria-label="School welcome">
+      <div className="premium-orbit premium-orbit-one" aria-hidden="true"/>
+      <div className="premium-orbit premium-orbit-two" aria-hidden="true"/>
+      <div className="premium-story-top">
+        <div className="premium-crest" aria-hidden="true"><GraduationCap size={25} strokeWidth={1.7}/></div>
+        <div>
+          <p className="premium-school-name">{SCHOOL_NAME}</p>
+          <p className="premium-platform">{PLATFORM_NAME}</p>
+        </div>
+      </div>
+      <div className="premium-story-copy">
+        <div className="premium-eyebrow"><span aria-hidden="true"/>A school community, connected</div>
+        <h1>Every day<br/>begins <em>together.</em></h1>
+        <p>One trusted place for the people and moments that make a school day matter.</p>
+      </div>
+      <div className="premium-story-footer">
+        <BookOpen size={17} strokeWidth={1.7} aria-hidden="true"/>
+        <span>Learning, belonging, becoming.</span>
+        <span className="premium-footer-rule" aria-hidden="true"/>
+        <span>{PLATFORM_NAME}</span>
+      </div>
+      <div className="premium-side-mark" aria-hidden="true">SJP&nbsp; · &nbsp;MY SCHOOL DAY</div>
     </section>
-    <section className="flex min-h-[100dvh] items-center justify-center px-5 py-10">
-      <div className="w-full max-w-[410px]">
-         <div className="mb-9 md:hidden"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--primary))] text-white"><GraduationCap/></div><div><div className="display text-base font-extrabold leading-tight">{SCHOOL_NAME}</div><div className="mt-1 text-[10px] uppercase tracking-[.14em] text-[hsl(var(--muted-foreground))]">{PLATFORM_NAME}</div></div></div></div>
-        <div className="mb-8"><span className="tag mb-4">School sign-in</span><h2 className="display mb-2 text-[30px] font-extrabold tracking-[-.04em]">Welcome back</h2><p className="m-0 text-sm text-[hsl(var(--muted-foreground))]">Sign in with your school account to continue.</p></div>
-        <form className="space-y-4" onSubmit={event => { event.preventDefault(); login.mutate({ data: { orgSlug, email, password } }); }}>
-           <label className="block text-xs font-bold">Organization<div className="mt-1.5"><input required autoComplete="organization" data-testid="input-organization" className="field" placeholder="Your school’s organization" value={orgSlug} onChange={e => setOrgSlug(e.target.value)}/></div></label>
-           <label className="block text-xs font-bold">Email address<div className="mt-1.5"><input required type="email" autoComplete="username" data-testid="input-email" className="field" placeholder="name@school.edu.in" value={email} onChange={e => setEmail(e.target.value)}/></div></label>
-           <label className="block text-xs font-bold">Password<div className="mt-1.5"><input required type="password" autoComplete="current-password" data-testid="input-password" className="field" placeholder="Enter your password" value={password} onChange={e => setPassword(e.target.value)}/></div></label>
-          {login.isError && <div role="alert" data-testid="status-login-error" className="rounded-lg border border-[hsl(var(--destructive)/.25)] bg-[hsl(var(--destructive)/.08)] p-3 text-xs text-[hsl(var(--destructive))]">{errorText(login.error)}</div>}
-          <button disabled={login.isPending} data-testid="button-submit-login" className="btn btn-primary mt-2 w-full">{login.isPending ? <LoaderCircle className="animate-spin" size={17}/> : null}{login.isPending ? 'Signing in…' : 'Sign in'}<ArrowRight size={16}/></button>
+
+    <section className="premium-form-panel" aria-label="Sign in">
+      <div className="premium-mobile-brand">
+        <div className="premium-crest" aria-hidden="true"><GraduationCap size={23} strokeWidth={1.7}/></div>
+        <div>
+          <p className="premium-school-name">{SCHOOL_NAME}</p>
+          <p className="premium-platform">{PLATFORM_NAME}</p>
+        </div>
+      </div>
+      <div className="premium-form-wrap">
+        <div className="premium-form-heading">
+          <div className="premium-kicker"><span className="premium-kicker-dot" aria-hidden="true"/>SCHOOL PORTAL</div>
+          <h2>Welcome back.</h2>
+          <p>Sign in with your school account to continue.</p>
+        </div>
+        <form onSubmit={event => { event.preventDefault(); login.mutate({ data: { orgSlug, email, password } }); }}>
+          <label className="premium-label" htmlFor="login-organization">Organization</label>
+          <input id="login-organization" required autoComplete="organization" data-testid="input-organization" className="premium-input" placeholder="Your school's organization" value={orgSlug} onChange={event => setOrgSlug(event.target.value)}/>
+
+          <label className="premium-label premium-label-spaced" htmlFor="login-email">Email address</label>
+          <input id="login-email" required type="email" autoComplete="username" data-testid="input-email" className="premium-input" placeholder="name@school.edu.in" value={email} onChange={event => setEmail(event.target.value)}/>
+
+          <label className="premium-label premium-label-spaced" htmlFor="login-password">Password</label>
+          <input id="login-password" required type="password" autoComplete="current-password" data-testid="input-password" className="premium-input" placeholder="Enter your password" value={password} onChange={event => setPassword(event.target.value)}/>
+
+          {login.isError && <div role="alert" data-testid="status-login-error" className="premium-login-error">{errorText(login.error)}</div>}
+          <button type="submit" disabled={login.isPending} aria-busy={login.isPending} data-testid="button-submit-login" className="premium-submit">
+            <span>{login.isPending ? 'Signing in…' : 'Sign in'}</span>
+            {login.isPending ? <LoaderCircle className="premium-submit-icon animate-spin" size={17}/> : <ArrowRight className="premium-submit-icon" size={17} strokeWidth={1.8}/>}
+          </button>
         </form>
-        <div className="mt-7 flex items-center gap-2 border-t border-[hsl(var(--border))] pt-5 text-[11px] text-[hsl(var(--muted-foreground))]"><ShieldCheck size={15} className="text-[hsl(var(--primary))]"/>Your school credentials stay protected.</div>
+        <div className="premium-assurance">
+          <div className="premium-assurance-icon" aria-hidden="true"><ShieldCheck size={17} strokeWidth={1.8}/></div>
+          <div><strong>A considered space for your school.</strong><span>Your school credentials stay protected.</span></div>
+          <Check className="premium-assurance-check" size={16} aria-hidden="true"/>
+        </div>
+      </div>
+      <div className="premium-panel-footer" aria-hidden="true">
+        <span>{PLATFORM_NAME.toUpperCase()}</span>
+        <span>{SCHOOL_NAME.toUpperCase()}</span>
       </div>
     </section>
-  </div>;
+  </main>;
 }
 
 function PasswordChangePage({ email }: { email: string }) {
