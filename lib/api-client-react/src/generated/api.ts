@@ -50,11 +50,17 @@ import type {
   CreatedAdmissions,
   DashboardOverview,
   EnrollmentYearUpdateInput,
+  FeeInvoiceGenerateInput,
+  FeeInvoiceGenerateResult,
+  FeeInvoicePage,
+  FeePaymentResult,
+  FeeReceipt,
   GetAcademicTeacherAssignmentsParams,
   GetAvailableStudentsParams,
   GetBoardTemplates200,
   GetClasses200,
   GetConsents200,
+  GetFeeInvoicesParams,
   GetGuardianLinksParams,
   GetLearningAssignmentsParams,
   GetLearningExamsParams,
@@ -6823,6 +6829,479 @@ export function usePrintLearningReportCard<TData = Awaited<ReturnType<typeof pri
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getPrintLearningReportCardQueryOptions(reportCardId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetFeeInvoicesUrl = (params?: GetFeeInvoicesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/fees/invoices?${stringifiedParams}` : `/api/fees/invoices`
+}
+
+/**
+ * @summary List invoices for school administrators
+ */
+export const getFeeInvoices = async (params?: GetFeeInvoicesParams, options?: Parameters<typeof customFetch>[1]): Promise<FeeInvoicePage> => {
+
+  return customFetch<FeeInvoicePage>(getGetFeeInvoicesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFeeInvoicesQueryKey = (params?: GetFeeInvoicesParams,) => {
+    return [
+    `/api/fees/invoices`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetFeeInvoicesQueryOptions = <TData = Awaited<ReturnType<typeof getFeeInvoices>>, TError = ErrorType<void>>(params?: GetFeeInvoicesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeeInvoices>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFeeInvoicesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFeeInvoices>>> = ({ signal }) => getFeeInvoices(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFeeInvoices>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetFeeInvoicesQueryResult = NonNullable<Awaited<ReturnType<typeof getFeeInvoices>>>
+export type GetFeeInvoicesQueryError = ErrorType<void>
+
+
+export function useGetFeeInvoices<TData = Awaited<ReturnType<typeof getFeeInvoices>>, TError = ErrorType<void>>(
+ params: undefined |  GetFeeInvoicesParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeeInvoices>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFeeInvoices>>,
+          TError,
+          Awaited<ReturnType<typeof getFeeInvoices>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetFeeInvoices<TData = Awaited<ReturnType<typeof getFeeInvoices>>, TError = ErrorType<void>>(
+ params?: GetFeeInvoicesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeeInvoices>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFeeInvoices>>,
+          TError,
+          Awaited<ReturnType<typeof getFeeInvoices>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetFeeInvoices<TData = Awaited<ReturnType<typeof getFeeInvoices>>, TError = ErrorType<void>>(
+ params?: GetFeeInvoicesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeeInvoices>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List invoices for school administrators
+ */
+
+export function useGetFeeInvoices<TData = Awaited<ReturnType<typeof getFeeInvoices>>, TError = ErrorType<void>>(
+ params?: GetFeeInvoicesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeeInvoices>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetFeeInvoicesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGenerateFeeInvoicesUrl = () => {
+
+
+
+
+  return `/api/fees/invoices/generate`
+}
+
+/**
+ * @summary Issue one invoice per active student in a section
+ */
+export const generateFeeInvoices = async (feeInvoiceGenerateInput: FeeInvoiceGenerateInput, options?: Parameters<typeof customFetch>[1]): Promise<FeeInvoiceGenerateResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<FeeInvoiceGenerateResult>(getGenerateFeeInvoicesUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(feeInvoiceGenerateInput)
+  }
+);}
+
+
+
+
+
+export const getGenerateFeeInvoicesMutationKey = () => ['generateFeeInvoices'] as const;
+
+export const getGenerateFeeInvoicesMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateFeeInvoices>>, TError,GenerateFeeInvoicesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateFeeInvoices>>, TError,GenerateFeeInvoicesMutationVariables, TContext> => {
+
+const mutationKey = getGenerateFeeInvoicesMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateFeeInvoices>>, GenerateFeeInvoicesMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  generateFeeInvoices(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateFeeInvoicesMutationResult = NonNullable<Awaited<ReturnType<typeof generateFeeInvoices>>>
+    export type GenerateFeeInvoicesMutationBody = BodyType<FeeInvoiceGenerateInput>
+    export type GenerateFeeInvoicesMutationError = ErrorType<void>
+    export type GenerateFeeInvoicesMutationVariables = {data: BodyType<FeeInvoiceGenerateInput>}
+
+    /**
+ * @summary Issue one invoice per active student in a section
+ */
+export const useGenerateFeeInvoices = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateFeeInvoices>>, TError,GenerateFeeInvoicesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof generateFeeInvoices>>,
+        TError,
+        GenerateFeeInvoicesMutationVariables,
+        TContext
+      > => {
+      return useMutation(getGenerateFeeInvoicesMutationOptions(options), queryClient);
+    }
+
+export const getGetMyFeeInvoicesUrl = () => {
+
+
+
+
+  return `/api/fees/my-invoices`
+}
+
+/**
+ * @summary List invoices for a parent's linked children
+ */
+export const getMyFeeInvoices = async ( options?: Parameters<typeof customFetch>[1]): Promise<FeeInvoicePage> => {
+
+  return customFetch<FeeInvoicePage>(getGetMyFeeInvoicesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyFeeInvoicesQueryKey = () => {
+    return [
+    `/api/fees/my-invoices`
+    ] as const;
+    }
+
+
+export const getGetMyFeeInvoicesQueryOptions = <TData = Awaited<ReturnType<typeof getMyFeeInvoices>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyFeeInvoices>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyFeeInvoicesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyFeeInvoices>>> = ({ signal }) => getMyFeeInvoices({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyFeeInvoices>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetMyFeeInvoicesQueryResult = NonNullable<Awaited<ReturnType<typeof getMyFeeInvoices>>>
+export type GetMyFeeInvoicesQueryError = ErrorType<void>
+
+
+export function useGetMyFeeInvoices<TData = Awaited<ReturnType<typeof getMyFeeInvoices>>, TError = ErrorType<void>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyFeeInvoices>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMyFeeInvoices>>,
+          TError,
+          Awaited<ReturnType<typeof getMyFeeInvoices>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMyFeeInvoices<TData = Awaited<ReturnType<typeof getMyFeeInvoices>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyFeeInvoices>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMyFeeInvoices>>,
+          TError,
+          Awaited<ReturnType<typeof getMyFeeInvoices>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMyFeeInvoices<TData = Awaited<ReturnType<typeof getMyFeeInvoices>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyFeeInvoices>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List invoices for a parent's linked children
+ */
+
+export function useGetMyFeeInvoices<TData = Awaited<ReturnType<typeof getMyFeeInvoices>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyFeeInvoices>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetMyFeeInvoicesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getPayFeeInvoiceUrl = (invoiceId: string,) => {
+
+
+
+
+  return `/api/fees/invoices/${invoiceId}/pay`
+}
+
+/**
+ * Production requests fail closed until a real payment gateway is configured.
+ * @summary Pay an invoice using the development-only mock gateway
+ */
+export const payFeeInvoice = async (invoiceId: string, options?: Parameters<typeof customFetch>[1]): Promise<FeePaymentResult> => {
+
+  return customFetch<FeePaymentResult>(getPayFeeInvoiceUrl(invoiceId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getPayFeeInvoiceMutationKey = () => ['payFeeInvoice'] as const;
+
+export const getPayFeeInvoiceMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof payFeeInvoice>>, TError,PayFeeInvoiceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof payFeeInvoice>>, TError,PayFeeInvoiceMutationVariables, TContext> => {
+
+const mutationKey = getPayFeeInvoiceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof payFeeInvoice>>, PayFeeInvoiceMutationVariables> = (props) => {
+          const {invoiceId} = props ?? {};
+
+          return  payFeeInvoice(invoiceId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PayFeeInvoiceMutationResult = NonNullable<Awaited<ReturnType<typeof payFeeInvoice>>>
+
+    export type PayFeeInvoiceMutationError = ErrorType<void>
+    export type PayFeeInvoiceMutationVariables = {invoiceId: string}
+
+    /**
+ * @summary Pay an invoice using the development-only mock gateway
+ */
+export const usePayFeeInvoice = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof payFeeInvoice>>, TError,PayFeeInvoiceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof payFeeInvoice>>,
+        TError,
+        PayFeeInvoiceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPayFeeInvoiceMutationOptions(options), queryClient);
+    }
+
+export const getGetFeeReceiptUrl = (receiptNumber: string,) => {
+
+
+
+
+  return `/api/fees/receipts/${receiptNumber}`
+}
+
+/**
+ * @summary Read a payment receipt
+ */
+export const getFeeReceipt = async (receiptNumber: string, options?: Parameters<typeof customFetch>[1]): Promise<FeeReceipt> => {
+
+  return customFetch<FeeReceipt>(getGetFeeReceiptUrl(receiptNumber),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFeeReceiptQueryKey = (receiptNumber: string,) => {
+    return [
+    `/api/fees/receipts/${receiptNumber}`
+    ] as const;
+    }
+
+
+export const getGetFeeReceiptQueryOptions = <TData = Awaited<ReturnType<typeof getFeeReceipt>>, TError = ErrorType<void>>(receiptNumber: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeeReceipt>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFeeReceiptQueryKey(receiptNumber);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFeeReceipt>>> = ({ signal }) => getFeeReceipt(receiptNumber, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: receiptNumber !== null && receiptNumber !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFeeReceipt>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetFeeReceiptQueryResult = NonNullable<Awaited<ReturnType<typeof getFeeReceipt>>>
+export type GetFeeReceiptQueryError = ErrorType<void>
+
+
+export function useGetFeeReceipt<TData = Awaited<ReturnType<typeof getFeeReceipt>>, TError = ErrorType<void>>(
+ receiptNumber: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeeReceipt>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFeeReceipt>>,
+          TError,
+          Awaited<ReturnType<typeof getFeeReceipt>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetFeeReceipt<TData = Awaited<ReturnType<typeof getFeeReceipt>>, TError = ErrorType<void>>(
+ receiptNumber: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeeReceipt>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFeeReceipt>>,
+          TError,
+          Awaited<ReturnType<typeof getFeeReceipt>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetFeeReceipt<TData = Awaited<ReturnType<typeof getFeeReceipt>>, TError = ErrorType<void>>(
+ receiptNumber: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeeReceipt>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Read a payment receipt
+ */
+
+export function useGetFeeReceipt<TData = Awaited<ReturnType<typeof getFeeReceipt>>, TError = ErrorType<void>>(
+ receiptNumber: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeeReceipt>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetFeeReceiptQueryOptions(receiptNumber,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

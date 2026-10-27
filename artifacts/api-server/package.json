@@ -12,6 +12,7 @@
     "test:unit": "DATABASE_URL=postgres://campus_app:campus_app@127.0.0.1:5432/campus NODE_ENV=test node --experimental-strip-types --test src/lib/*.test.ts",
     "test:integration:classroom": "node --test ../../scripts/tests/classroom.integration.mjs",
     "test:integration:academic": "node --test ../../scripts/tests/academic-scheduling.integration.mjs",
+    "test:integration:fees": "test -f ../../.env || { echo 'Missing root .env; gated fee integration needs the local campus_app connection.' >&2; exit 2; }; set -a; . ../../.env; set +a; DATABASE_URL=\"${DATABASE_URL:?DATABASE_URL is required}\" NODE_ENV=test RUN_FEES_INTEGRATION=1 node --experimental-strip-types --test ../../scripts/tests/fees.integration.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

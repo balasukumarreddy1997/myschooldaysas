@@ -18,6 +18,7 @@ import {
   ChevronLeft, ChevronRight, CircleAlert, Clock3, DoorOpen, GraduationCap, LayoutDashboard,
   Library, LoaderCircle, LogOut, Menu, Moon, Plus, Radio, Search, Settings2, ShieldCheck,
   Sun, Users, Video, X, CalendarCheck,
+  CreditCard,
 } from 'lucide-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import NotFound from '@/components/not-found';
@@ -33,6 +34,7 @@ import { AdmissionIntake } from '@/components/academic/admission-intake';
 import { StudentProfileEditor } from '@/components/academic/student-profile-editor';
 import { ClassPromotionWizard } from '@/components/academic/class-promotion-wizard';
 import { GuardianAccessPage } from '@/components/academic/guardian-access-page';
+import { FeeReceiptPage, FeesPage } from '@/components/fees/fees-page';
 
 const queryClient = new QueryClient();
 const fmtDate = (iso?: string) => iso ? `${iso.slice(0, 10)} · ${iso.slice(11, 16)}` : 'Time not set';
@@ -89,6 +91,8 @@ function ProtectedApp() {
         <Route path="/attendance" component={() => <AttendancePage roles={user.roles} />} />
         <Route path="/timetable" component={() => <TimetablePage canManage={user.roles.some(role => ['super_admin', 'org_admin', 'campus_admin'].includes(role))} />} />
         <Route path="/family/consents" component={() => user.roles.includes('parent') ? <ConsentsPage/> : <NotFound/>} />
+        <Route path="/fees/receipts/:receiptNumber" component={FeeReceiptPage} />
+        <Route path="/fees" component={() => <FeesPage roles={user.roles} />} />
         <Route path="/classroom/:sessionId" component={() => <ClassroomPage roles={user.roles} />} />
         <Route component={NotFound} />
       </Switch>
@@ -112,8 +116,12 @@ function AppShell({ user, path, onLogout, children }: { user: { name: string; em
   ];
   if (user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role))) {
     nav.push({ label: 'Family access', href: '/admin/guardians', icon: ShieldCheck });
+    nav.push({ label: 'Fees', href: '/fees', icon: CreditCard });
   }
-  if (user.roles.includes('parent')) nav.push({ label: 'Privacy & consent', href: '/family/consents', icon: ShieldCheck });
+  if (user.roles.includes('parent')) {
+    nav.push({ label: 'Fees', href: '/fees', icon: CreditCard });
+    nav.push({ label: 'Privacy & consent', href: '/family/consents', icon: ShieldCheck });
+  }
   return <div className="min-h-[100dvh] md:flex">
     <aside className={`fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col bg-[hsl(var(--sidebar))] px-4 py-5 text-[hsl(var(--sidebar-foreground))] transition-transform md:translate-x-0 ${mobileNav ? 'translate-x-0' : '-translate-x-full'}`}>
       <div className="mb-9 flex items-center gap-3 px-2">

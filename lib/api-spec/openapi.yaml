@@ -1438,6 +1438,101 @@ paths:
           content:
             text/html:
               schema: { type: string }
+  /fees/invoices:
+    get:
+      operationId: getFeeInvoices
+      tags: [fees]
+      summary: List invoices for school administrators
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - in: query
+          name: offset
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        "200":
+          description: Paginated school invoices
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeeInvoicePage" }
+        "403": { description: Administrator role required }
+  /fees/invoices/generate:
+    post:
+      operationId: generateFeeInvoices
+      tags: [fees]
+      summary: Issue one invoice per active student in a section
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FeeInvoiceGenerateInput" }
+      responses:
+        "200":
+          description: Existing invoices are returned on repeated requests for the same period
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeeInvoiceGenerateResult" }
+        "400": { description: Invalid invoice details }
+        "403": { description: Administrator role required }
+        "404": { description: Section not found }
+        "409": { description: No active students or conflicting invoices for the period }
+  /fees/my-invoices:
+    get:
+      operationId: getMyFeeInvoices
+      tags: [fees]
+      summary: List invoices for a parent's linked children
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Parent-visible invoices and payment permissions
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeeInvoicePage" }
+        "403": { description: Parent role required }
+  /fees/invoices/{invoiceId}/pay:
+    post:
+      operationId: payFeeInvoice
+      tags: [fees]
+      summary: Pay an invoice using the development-only mock gateway
+      description: Production requests fail closed until a real payment gateway is configured.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: invoiceId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Captured payment and issued receipt
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeePaymentResult" }
+        "403": { description: Parent payment permission required }
+        "404": { description: Invoice not found }
+        "409": { description: Invoice is void }
+        "503": { description: Online payment is not configured in production }
+  /fees/receipts/{receiptNumber}:
+    get:
+      operationId: getFeeReceipt
+      tags: [fees]
+      summary: Read a payment receipt
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: receiptNumber
+          required: true
+          schema: { type: string, minLength: 8, maxLength: 80 }
+      responses:
+        "200":
+          description: Receipt for a captured payment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeeReceipt" }
+        "403": { description: Receipt access is restricted to school administrators and linked parents }
+        "404": { description: Receipt not found }
 components:
   securitySchemes:
     bearerAuth:
@@ -2388,4 +2483,75 @@ components:
       properties:
         subjectId: { type: string, format: uuid, nullable: true }
         remark: { type: string, minLength: 1, maxLength: 2000 }
+    FeeInvoiceStatus:
+      type: string
+      enum: [unpaid, paid, void]
+    FeeInvoice:
+      type: object
+      required: [id, studentId, studentName, sectionId, invoiceNumber, academicYear, period, description, amountPaise, dueDate, status, receiptNumber, paidAt, canPay]
+      properties:
+        id: { type: string, format: uuid }
+        studentId: { type: string, format: uuid }
+        studentName: { type: string }
+        sectionId: { type: string, format: uuid }
+        invoiceNumber: { type: string }
+        academicYear: { type: string }
+        period: { type: string }
+        description: { type: string }
+        amountPaise: { type: integer, minimum: 1 }
+        dueDate: { type: string, format: date }
+        status: { $ref: "#/components/schemas/FeeInvoiceStatus" }
+        receiptNumber: { type: string, nullable: true }
+        paidAt: { type: string, format: date-time, nullable: true }
+        canPay: { type: boolean }
+    FeeInvoicePage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/FeeInvoice" }
+        total: { type: integer }
+    FeeInvoiceGenerateInput:
+      type: object
+      required: [sectionId, academicYear, period, description, amountPaise, dueDate]
+      properties:
+        sectionId: { type: string, format: uuid }
+        academicYear: { type: string, minLength: 4, maxLength: 24 }
+        period: { type: string, minLength: 1, maxLength: 40 }
+        description: { type: string, minLength: 1, maxLength: 160 }
+        amountPaise: { type: integer, minimum: 1, maximum: 1000000000 }
+        dueDate: { type: string, format: date }
+    FeeInvoiceGenerateResult:
+      type: object
+      required: [generatedCount, total, items]
+      properties:
+        generatedCount: { type: integer }
+        total: { type: integer }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/FeeInvoice" }
+    FeePaymentResult:
+      type: object
+      required: [invoiceId, invoiceNumber, amountPaise, status, receiptNumber, paidAt]
+      properties:
+        invoiceId: { type: string, format: uuid }
+        invoiceNumber: { type: string }
+        amountPaise: { type: integer, minimum: 1 }
+        status: { type: string, enum: [paid] }
+        receiptNumber: { type: string }
+        paidAt: { type: string, format: date-time }
+    FeeReceipt:
+      type: object
+      required: [receiptNumber, invoiceNumber, studentName, description, academicYear, period, amountPaise, paidAt, paymentMethod]
+      properties:
+        receiptNumber: { type: string }
+        invoiceNumber: { type: string }
+        studentName: { type: string }
+        description: { type: string }
+        academicYear: { type: string }
+        period: { type: string }
+        amountPaise: { type: integer, minimum: 1 }
+        paidAt: { type: string, format: date-time }
+        paymentMethod: { type: string, enum: [mock, razorpay, manual] }
 

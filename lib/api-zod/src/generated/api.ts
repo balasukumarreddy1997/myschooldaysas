@@ -2356,3 +2356,167 @@ export const PrintLearningReportCardParams = zod.object({
 export const PrintLearningReportCardResponse = zod.unknown()
 
 
+/**
+ * @summary List invoices for school administrators
+ */
+export const getFeeInvoicesQueryLimitDefault = 50;
+export const getFeeInvoicesQueryLimitMax = 100;
+
+export const getFeeInvoicesQueryOffsetDefault = 0;
+export const getFeeInvoicesQueryOffsetMin = 0;
+
+
+
+export const GetFeeInvoicesQueryParams = zod.object({
+  "limit": zod.coerce.number().int().min(1).max(getFeeInvoicesQueryLimitMax).default(getFeeInvoicesQueryLimitDefault),
+  "offset": zod.coerce.number().int().min(getFeeInvoicesQueryOffsetMin).default(getFeeInvoicesQueryOffsetDefault)
+})
+
+
+
+
+export const GetFeeInvoicesResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "sectionId": zod.uuid(),
+  "invoiceNumber": zod.string(),
+  "academicYear": zod.string(),
+  "period": zod.string(),
+  "description": zod.string(),
+  "amountPaise": zod.int().min(1),
+  "dueDate": zod.coerce.date(),
+  "status": zod.enum(['unpaid', 'paid', 'void']),
+  "receiptNumber": zod.string().nullable(),
+  "paidAt": zod.coerce.date().nullable(),
+  "canPay": zod.boolean()
+})),
+  "total": zod.int()
+})
+
+
+/**
+ * @summary Issue one invoice per active student in a section
+ */
+export const generateFeeInvoicesBodyAcademicYearMin = 4;
+export const generateFeeInvoicesBodyAcademicYearMax = 24;
+
+export const generateFeeInvoicesBodyPeriodMax = 40;
+
+export const generateFeeInvoicesBodyDescriptionMax = 160;
+
+export const generateFeeInvoicesBodyAmountPaiseMax = 1000000000;
+
+
+
+export const GenerateFeeInvoicesBody = zod.object({
+  "sectionId": zod.uuid(),
+  "academicYear": zod.string().min(generateFeeInvoicesBodyAcademicYearMin).max(generateFeeInvoicesBodyAcademicYearMax),
+  "period": zod.string().min(1).max(generateFeeInvoicesBodyPeriodMax),
+  "description": zod.string().min(1).max(generateFeeInvoicesBodyDescriptionMax),
+  "amountPaise": zod.int().min(1).max(generateFeeInvoicesBodyAmountPaiseMax),
+  "dueDate": zod.coerce.date()
+})
+
+
+
+
+export const GenerateFeeInvoicesResponse = zod.object({
+  "generatedCount": zod.int(),
+  "total": zod.int(),
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "sectionId": zod.uuid(),
+  "invoiceNumber": zod.string(),
+  "academicYear": zod.string(),
+  "period": zod.string(),
+  "description": zod.string(),
+  "amountPaise": zod.int().min(1),
+  "dueDate": zod.coerce.date(),
+  "status": zod.enum(['unpaid', 'paid', 'void']),
+  "receiptNumber": zod.string().nullable(),
+  "paidAt": zod.coerce.date().nullable(),
+  "canPay": zod.boolean()
+}))
+})
+
+
+/**
+ * @summary List invoices for a parent's linked children
+ */
+
+
+
+export const GetMyFeeInvoicesResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "sectionId": zod.uuid(),
+  "invoiceNumber": zod.string(),
+  "academicYear": zod.string(),
+  "period": zod.string(),
+  "description": zod.string(),
+  "amountPaise": zod.int().min(1),
+  "dueDate": zod.coerce.date(),
+  "status": zod.enum(['unpaid', 'paid', 'void']),
+  "receiptNumber": zod.string().nullable(),
+  "paidAt": zod.coerce.date().nullable(),
+  "canPay": zod.boolean()
+})),
+  "total": zod.int()
+})
+
+
+/**
+ * Production requests fail closed until a real payment gateway is configured.
+ * @summary Pay an invoice using the development-only mock gateway
+ */
+export const PayFeeInvoiceParams = zod.object({
+  "invoiceId": zod.uuid()
+})
+
+
+
+
+export const PayFeeInvoiceResponse = zod.object({
+  "invoiceId": zod.uuid(),
+  "invoiceNumber": zod.string(),
+  "amountPaise": zod.int().min(1),
+  "status": zod.enum(['paid']),
+  "receiptNumber": zod.string(),
+  "paidAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Read a payment receipt
+ */
+export const getFeeReceiptPathReceiptNumberMin = 8;
+export const getFeeReceiptPathReceiptNumberMax = 80;
+
+
+
+export const GetFeeReceiptParams = zod.object({
+  "receiptNumber": zod.string().min(getFeeReceiptPathReceiptNumberMin).max(getFeeReceiptPathReceiptNumberMax)
+})
+
+
+
+
+export const GetFeeReceiptResponse = zod.object({
+  "receiptNumber": zod.string(),
+  "invoiceNumber": zod.string(),
+  "studentName": zod.string(),
+  "description": zod.string(),
+  "academicYear": zod.string(),
+  "period": zod.string(),
+  "amountPaise": zod.int().min(1),
+  "paidAt": zod.coerce.date(),
+  "paymentMethod": zod.enum(['mock', 'razorpay', 'manual'])
+})
+
+

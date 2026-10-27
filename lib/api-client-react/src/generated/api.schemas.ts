@@ -1275,6 +1275,110 @@ export interface LearningReportCardRemarkInput {
   remark: string;
 }
 
+export type FeeInvoiceStatus = typeof FeeInvoiceStatus[keyof typeof FeeInvoiceStatus];
+
+
+export const FeeInvoiceStatus = {
+  unpaid: 'unpaid',
+  paid: 'paid',
+  void: 'void',
+} as const;
+
+export interface FeeInvoice {
+  id: string;
+  studentId: string;
+  studentName: string;
+  sectionId: string;
+  invoiceNumber: string;
+  academicYear: string;
+  period: string;
+  description: string;
+  /** @minimum 1 */
+  amountPaise: number;
+  dueDate: string;
+  status: FeeInvoiceStatus;
+  /** @nullable */
+  receiptNumber: string | null;
+  /** @nullable */
+  paidAt: string | null;
+  canPay: boolean;
+}
+
+export interface FeeInvoicePage {
+  items: FeeInvoice[];
+  total: number;
+}
+
+export interface FeeInvoiceGenerateInput {
+  sectionId: string;
+  /**
+     * @minLength 4
+     * @maxLength 24
+     */
+  academicYear: string;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  period: string;
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  description: string;
+  /**
+     * @minimum 1
+     * @maximum 1000000000
+     */
+  amountPaise: number;
+  dueDate: string;
+}
+
+export interface FeeInvoiceGenerateResult {
+  generatedCount: number;
+  total: number;
+  items: FeeInvoice[];
+}
+
+export type FeePaymentResultStatus = typeof FeePaymentResultStatus[keyof typeof FeePaymentResultStatus];
+
+
+export const FeePaymentResultStatus = {
+  paid: 'paid',
+} as const;
+
+export interface FeePaymentResult {
+  invoiceId: string;
+  invoiceNumber: string;
+  /** @minimum 1 */
+  amountPaise: number;
+  status: FeePaymentResultStatus;
+  receiptNumber: string;
+  paidAt: string;
+}
+
+export type FeeReceiptPaymentMethod = typeof FeeReceiptPaymentMethod[keyof typeof FeeReceiptPaymentMethod];
+
+
+export const FeeReceiptPaymentMethod = {
+  mock: 'mock',
+  razorpay: 'razorpay',
+  manual: 'manual',
+} as const;
+
+export interface FeeReceipt {
+  receiptNumber: string;
+  invoiceNumber: string;
+  studentName: string;
+  description: string;
+  academicYear: string;
+  period: string;
+  /** @minimum 1 */
+  amountPaise: number;
+  paidAt: string;
+  paymentMethod: FeeReceiptPaymentMethod;
+}
+
 export type GetAcademicTeacherAssignmentsParams = {
 sectionId?: string;
 };
@@ -1397,5 +1501,17 @@ sectionId?: string;
 export type GetLearningReportCardsParams = {
 sectionId?: string;
 termId?: string;
+};
+
+export type GetFeeInvoicesParams = {
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
 };
 

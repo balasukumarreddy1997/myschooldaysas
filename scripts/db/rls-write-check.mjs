@@ -3,12 +3,16 @@ import { Pool } from "pg";
 import { extraTenantCases } from "./rls-write-fixtures.mjs";
 
 const expectedDatabase = "campus_rls_test";
-const expectedTenantTableCount = 33;
+const expectedTenantTableCount = 36;
 const localHosts = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
 const organizationIds = { a: randomUUID(), b: randomUUID() };
 const auxiliaryIds = {
   users: { a: randomUUID(), b: randomUUID() },
   sessions: { a: randomUUID(), b: randomUUID() },
+  profileUsers: {
+    a: { foreign: randomUUID(), transient: randomUUID() },
+    b: { foreign: randomUUID(), transient: randomUUID() },
+  },
 };
 let fixtureIds = {};
 const failures = [];
@@ -63,6 +67,36 @@ const baseTableCases = [
     updateSql: "UPDATE identity.users SET name = $1 WHERE id = $2 RETURNING id",
     initialValue: ({ side, id }) => `RLS fixture user ${side} ${id.slice(0, 8)}`,
     updateValue: ({ side }) => `RLS same-org user update ${side}`,
+  },
+  {
+    table: "identity.profiles",
+    idColumn: "id",
+    keySql: "user_id = $1",
+    keyValues: ({ side, ids, auxiliaryIds, isFixture }) => [
+      isFixture ? ids["identity.users"][side] : auxiliaryIds.profileUsers[side].transient,
+    ],
+    valueColumn: "phone",
+    selectValueSql: "SELECT phone AS value FROM identity.profiles WHERE user_id = $1",
+    insertSql: `
+      INSERT INTO identity.profiles (id, org_id, user_id, phone)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id
+    `,
+    insertValues: ({ id, orgId, side, ids, auxiliaryIds, isFixture }) => [
+      id,
+      orgId,
+      isFixture ? ids["identity.users"][side] : auxiliaryIds.profileUsers[side].transient,
+      `RLS profile ${side} ${id.slice(0, 8)}`,
+    ],
+    foreignInsertValues: ({ id, orgId, side, auxiliaryIds }) => [
+      id,
+      orgId,
+      auxiliaryIds.profileUsers[side].foreign,
+      `RLS foreign profile ${side} ${id.slice(0, 8)}`,
+    ],
+    updateSql: "UPDATE identity.profiles SET phone = $1 WHERE user_id = $2 RETURNING id",
+    initialValue: ({ side, id }) => `RLS profile ${side} ${id.slice(0, 8)}`,
+    updateValue: ({ side }) => `RLS profile update ${side}`,
   },
   {
     table: "academic.classes",
@@ -179,6 +213,52 @@ const baseTableCases = [
     initialValue: () => "2026-01-02",
     updateValue: () => "2026-03-02",
   },
+  {
+    table: "fees.invoices",
+    idColumn: "id",
+    valueColumn: "invoice_number",
+    selectValueSql: "SELECT invoice_number AS value FROM fees.invoices WHERE id = $1",
+    insertSql: `
+      INSERT INTO fees.invoices
+        (id, org_id, student_user_id, section_id, invoice_number, academic_year, period,
+         description, amount_paise, due_date, created_by)
+      VALUES ($1, $2, $3, $4, $5, '2026-2027', 'rls-check', 'RLS invoice fixture', 10000, '2026-12-31', $3)
+      RETURNING id
+    `,
+    insertValues: ({ id, orgId, side, ids }) => [
+      id,
+      orgId,
+      ids["identity.users"][side],
+      ids["academic.sections"][side],
+      `RLS-INV-${side}-${id.slice(0, 8)}`,
+    ],
+    updateSql: "UPDATE fees.invoices SET invoice_number = $1 WHERE id = $2 RETURNING id",
+    initialValue: ({ side, id }) => `RLS-INV-${side}-${id.slice(0, 8)}`,
+    updateValue: ({ side }) => `RLS-UPDATED-${side}`,
+  },
+  {
+    table: "fees.payments",
+    idColumn: "id",
+    valueColumn: "receipt_number",
+    selectValueSql: "SELECT receipt_number AS value FROM fees.payments WHERE id = $1",
+    insertSql: `
+      INSERT INTO fees.payments
+        (id, org_id, invoice_id, amount_paise, gateway, gateway_payment_id, receipt_number, received_by)
+      VALUES ($1, $2, $3, 10000, 'mock', $4, $5, $6)
+      RETURNING id
+    `,
+    insertValues: ({ id, orgId, side, ids }) => [
+      id,
+      orgId,
+      ids["fees.invoices"][side],
+      `RLS-PAY-${side}-${id.slice(0, 8)}`,
+      `RLS-RCT-${side}-${id.slice(0, 8)}`,
+      ids["identity.users"][side],
+    ],
+    updateSql: "UPDATE fees.payments SET receipt_number = $1 WHERE id = $2 RETURNING id",
+    initialValue: ({ side, id }) => `RLS-RCT-${side}-${id.slice(0, 8)}`,
+    updateValue: ({ side }) => `RLS-UPDATED-RCT-${side}`,
+  },
 ];
 
 const tableCases = [...baseTableCases, ...extraTenantCases];
@@ -239,7 +319,10 @@ async function expectForeignInsertDenied(client, tableCase, side, otherSide) {
   await client.query("SAVEPOINT foreign_org_insert");
   let denied = false;
   try {
-    await client.query(tableCase.insertSql, tableCase.insertValues(context));
+    await client.query(
+      tableCase.insertSql,
+      tableCase.foreignInsertValues?.(context) ?? tableCase.insertValues(context),
+    );
   } catch (error) {
     if (error?.code === "42501") denied = true;
     else throw error;
@@ -527,6 +610,13 @@ async function main() {
               tableCase.insertSql,
               tableCase.insertValues(auxiliaryUser),
             );
+            for (const userId of Object.values(auxiliaryIds.profileUsers[side])) {
+              const profileUser = createContext(tableCase, side, userId);
+              await client.query(
+                tableCase.insertSql,
+                tableCase.insertValues(profileUser),
+              );
+            }
           }
           if (tableCase.table === "live.sessions") {
             const auxiliarySession = createContext(
@@ -544,7 +634,7 @@ async function main() {
     }
 
     console.log(
-      `Temporary database: migrations applied; two synthetic organizations, ${tableCases.length * 2} tenant fixtures, and 4 supporting rows created.`,
+      `Temporary database: migrations applied; two synthetic organizations, ${tableCases.length * 2} tenant fixtures, and 8 supporting rows created.`,
     );
     await runTenantWriteChecks(appPool);
     await verifyFixturesUnchanged(migratorPool);
