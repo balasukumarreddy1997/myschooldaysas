@@ -12,7 +12,20 @@ import {
 import type { SectionSummary } from "@workspace/api-client-react";
 import { FileUp, UserPlus } from "lucide-react";
 
-type AdmissionRow = { name: string; email: string; admissionNo: string };
+type AdmissionRow = {
+  name: string;
+  email: string;
+  admissionNo: string;
+  dateOfBirth?: string;
+  gender?: string;
+  phone?: string;
+  address?: string;
+  bloodGroup?: string;
+  guardianName?: string;
+  guardianEmail?: string;
+  guardianPhone?: string;
+  guardianRelationship?: string;
+};
 
 function parseAdmissionCsv(text: string): AdmissionRow[] {
   const source = text.replace(/^\uFEFF/, "");
@@ -58,11 +71,26 @@ function parseAdmissionCsv(text: string): AdmissionRow[] {
   if ([nameIndex, emailIndex, admissionIndex].some((index) => index < 0)) {
     throw new Error("CSV headers must include name, email, and admissionNo.");
   }
+  const optionalColumns = {
+    dateOfBirth: headers.findIndex((value) => ["dateofbirth", "dob"].includes(value)),
+    gender: headers.indexOf("gender"),
+    phone: headers.findIndex((value) => ["phone", "studentphone"].includes(value)),
+    address: headers.indexOf("address"),
+    bloodGroup: headers.findIndex((value) => ["bloodgroup", "bloodtype"].includes(value)),
+    guardianName: headers.findIndex((value) => ["guardianname", "parentname"].includes(value)),
+    guardianEmail: headers.findIndex((value) => ["guardianemail", "parentemail"].includes(value)),
+    guardianPhone: headers.findIndex((value) => ["guardianphone", "parentphone"].includes(value)),
+    guardianRelationship: headers.findIndex((value) => ["guardianrelationship", "relationship"].includes(value)),
+  };
   const rows = table.slice(1).map((values) => ({
     name: values[nameIndex] ?? "",
     email: values[emailIndex] ?? "",
     admissionNo: values[admissionIndex] ?? "",
-  }));
+    ...Object.fromEntries(Object.entries(optionalColumns).map(([field, index]) => [
+      field,
+      index >= 0 ? values[index]?.trim() || undefined : undefined,
+    ])),
+  })) as AdmissionRow[];
   if (rows.length > 20) throw new Error("A batch can contain at most 20 students.");
   return rows;
 }
@@ -77,6 +105,17 @@ export function AdmissionIntake({ sections }: { sections: SectionSummary[] }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [admissionNo, setAdmissionNo] = useState("");
+  const [profile, setProfile] = useState({
+    dateOfBirth: "",
+    gender: "",
+    phone: "",
+    address: "",
+    bloodGroup: "",
+    guardianName: "",
+    guardianEmail: "",
+    guardianPhone: "",
+    guardianRelationship: "",
+  });
   const [csvText, setCsvText] = useState("");
   const [csvError, setCsvError] = useState("");
   const [credentials, setCredentials] = useState<Array<{
@@ -108,7 +147,12 @@ export function AdmissionIntake({ sections }: { sections: SectionSummary[] }) {
   };
 
   const admissionRows = (): AdmissionRow[] => {
-    if (mode === "single") return [{ name, email, admissionNo }];
+    if (mode === "single") {
+      return [{
+        name, email, admissionNo,
+        ...Object.fromEntries(Object.entries(profile).map(([key, value]) => [key, value.trim() || undefined])),
+      }];
+    }
     return parseAdmissionCsv(csvText);
   };
 
@@ -151,10 +195,19 @@ export function AdmissionIntake({ sections }: { sections: SectionSummary[] }) {
       data: {
         sectionId: preview.data.sectionId,
         academicYear: preview.data.academicYear,
-        rows: preview.data.items.map(({ name: rowName, email: rowEmail, admissionNo: rowAdmissionNo }) => ({
-          name: rowName,
-          email: rowEmail,
-          admissionNo: rowAdmissionNo,
+        rows: preview.data.items.map((item) => ({
+          name: item.name,
+          email: item.email,
+          admissionNo: item.admissionNo,
+          dateOfBirth: item.dateOfBirth ?? undefined,
+          gender: item.gender ?? undefined,
+          phone: item.phone ?? undefined,
+          address: item.address ?? undefined,
+          bloodGroup: item.bloodGroup ?? undefined,
+          guardianName: item.guardianName ?? undefined,
+          guardianEmail: item.guardianEmail ?? undefined,
+          guardianPhone: item.guardianPhone ?? undefined,
+          guardianRelationship: item.guardianRelationship ?? undefined,
         })),
       },
     });
@@ -196,9 +249,42 @@ export function AdmissionIntake({ sections }: { sections: SectionSummary[] }) {
           <label className="text-xs font-semibold">Student email
             <input className="field mt-1.5" required type="email" maxLength={254} value={email} onChange={(event) => { setEmail(event.target.value); clearResults(); }} />
           </label>
-          <label className="text-xs font-semibold md:col-span-2">Admission number
+          <label className="text-xs font-semibold">Admission number
             <input className="field mt-1.5" required maxLength={40} value={admissionNo} onChange={(event) => { setAdmissionNo(event.target.value); clearResults(); }} />
           </label>
+          <label className="text-xs font-semibold">Date of birth
+            <input className="field mt-1.5" type="date" value={profile.dateOfBirth} onChange={(event) => { setProfile({ ...profile, dateOfBirth: event.target.value }); clearResults(); }} />
+          </label>
+          <label className="text-xs font-semibold">Gender
+            <input className="field mt-1.5" maxLength={40} value={profile.gender} onChange={(event) => { setProfile({ ...profile, gender: event.target.value }); clearResults(); }} />
+          </label>
+          <label className="text-xs font-semibold">Student phone
+            <input className="field mt-1.5" type="tel" maxLength={32} value={profile.phone} onChange={(event) => { setProfile({ ...profile, phone: event.target.value }); clearResults(); }} />
+          </label>
+          <label className="text-xs font-semibold">Blood group
+            <input className="field mt-1.5" maxLength={8} value={profile.bloodGroup} placeholder="e.g. O+" onChange={(event) => { setProfile({ ...profile, bloodGroup: event.target.value }); clearResults(); }} />
+          </label>
+          <label className="text-xs font-semibold md:col-span-2">Address
+            <textarea className="field mt-1.5 min-h-16" maxLength={500} value={profile.address} onChange={(event) => { setProfile({ ...profile, address: event.target.value }); clearResults(); }} />
+          </label>
+          <div className="md:col-span-2 border-t border-[hsl(var(--border))] pt-3">
+            <h3 className="m-0 text-xs font-bold">Guardian contact (optional)</h3>
+            <p className="mb-2 mt-1 text-xs text-[hsl(var(--muted-foreground))]">Saved as contact details only; this does not create a guardian login or access link.</p>
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="text-xs font-semibold">Guardian name
+                <input className="field mt-1.5" maxLength={120} value={profile.guardianName} onChange={(event) => { setProfile({ ...profile, guardianName: event.target.value }); clearResults(); }} />
+              </label>
+              <label className="text-xs font-semibold">Relationship
+                <input className="field mt-1.5" maxLength={40} placeholder="e.g. Parent" value={profile.guardianRelationship} onChange={(event) => { setProfile({ ...profile, guardianRelationship: event.target.value }); clearResults(); }} />
+              </label>
+              <label className="text-xs font-semibold">Guardian email
+                <input className="field mt-1.5" type="email" maxLength={254} value={profile.guardianEmail} onChange={(event) => { setProfile({ ...profile, guardianEmail: event.target.value }); clearResults(); }} />
+              </label>
+              <label className="text-xs font-semibold">Guardian phone
+                <input className="field mt-1.5" type="tel" maxLength={32} value={profile.guardianPhone} onChange={(event) => { setProfile({ ...profile, guardianPhone: event.target.value }); clearResults(); }} />
+              </label>
+            </div>
+          </div>
         </> : <div className="md:col-span-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <label className="text-xs font-semibold" htmlFor="admission-csv">CSV rows</label>
@@ -207,8 +293,8 @@ export function AdmissionIntake({ sections }: { sections: SectionSummary[] }) {
               <input id="admission-csv" className="sr-only" type="file" accept=".csv,text/csv" onChange={loadCsv} />
             </label>
           </div>
-          <textarea className="field mt-1.5 min-h-32 font-mono text-xs" value={csvText} onChange={(event) => { setCsvText(event.target.value); clearResults(); }} placeholder={"name,email,admissionNo\nAsha Rao,asha@example.com,ADM-1001\nRavi Das,ravi@example.com,ADM-1002"} />
-          <p className="mb-0 mt-1 text-xs text-[hsl(var(--muted-foreground))]">Include the header row. Up to 20 students per batch. Quoted CSV values are supported.</p>
+          <textarea className="field mt-1.5 min-h-32 font-mono text-xs" value={csvText} onChange={(event) => { setCsvText(event.target.value); clearResults(); }} placeholder={"name,email,admissionNo,dateOfBirth,gender,phone,address,bloodGroup,guardianName,guardianEmail,guardianPhone,guardianRelationship\nAsha Rao,asha@example.com,ADM-1001,2015-04-12,Female,9876543210,\"12 Park Road\",O+,Mira Rao,mira@example.com,9876500000,Mother"} />
+          <p className="mb-0 mt-1 text-xs text-[hsl(var(--muted-foreground))]">Required headers: name, email, admissionNo. Profile and guardian columns are optional. Up to 20 students per batch.</p>
         </div>}
 
         {csvError && <p role="alert" className="m-0 text-xs text-[hsl(var(--destructive))] md:col-span-2">{csvError}</p>}
@@ -233,8 +319,8 @@ export function AdmissionIntake({ sections }: { sections: SectionSummary[] }) {
         </div>
         <div className="mt-3 overflow-x-auto">
           <table className="w-full min-w-[540px] text-left text-xs">
-            <thead><tr className="text-[hsl(var(--muted-foreground))]"><th className="p-2">Row</th><th className="p-2">Name</th><th className="p-2">Email</th><th className="p-2">Admission no.</th></tr></thead>
-            <tbody>{preview.data.items.map((item) => <tr key={item.row} className="border-t border-[hsl(var(--border))]"><td className="p-2">{item.row}</td><td className="p-2">{item.name}</td><td className="p-2">{item.email}</td><td className="p-2">{item.admissionNo}</td></tr>)}</tbody>
+            <thead><tr className="text-[hsl(var(--muted-foreground))]"><th className="p-2">Row</th><th className="p-2">Name</th><th className="p-2">Email</th><th className="p-2">Admission no.</th><th className="p-2">Guardian</th></tr></thead>
+            <tbody>{preview.data.items.map((item) => <tr key={item.row} className="border-t border-[hsl(var(--border))]"><td className="p-2">{item.row}</td><td className="p-2">{item.name}</td><td className="p-2">{item.email}</td><td className="p-2">{item.admissionNo}</td><td className="p-2">{item.guardianName || "—"}</td></tr>)}</tbody>
           </table>
         </div>
         {!!preview.data.errors.length && <ul className="mb-0 mt-2 space-y-1 text-xs text-[hsl(var(--destructive))]">

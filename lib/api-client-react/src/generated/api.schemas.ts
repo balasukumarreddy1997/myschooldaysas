@@ -222,6 +222,24 @@ export type AdmissionBatchInputRowsItem = {
      * @maxLength 40
      */
   admissionNo: string;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  dateOfBirth?: string;
+  /** @maxLength 40 */
+  gender?: string;
+  /** @maxLength 32 */
+  phone?: string;
+  /** @maxLength 500 */
+  address?: string;
+  /** @maxLength 8 */
+  bloodGroup?: string;
+  /** @maxLength 120 */
+  guardianName?: string;
+  /** @maxLength 254 */
+  guardianEmail?: string;
+  /** @maxLength 32 */
+  guardianPhone?: string;
+  /** @maxLength 40 */
+  guardianRelationship?: string;
 };
 
 export interface AdmissionBatchInput {
@@ -244,6 +262,27 @@ export interface AdmissionPreviewRow {
   name: string;
   email: string;
   admissionNo: string;
+  /**
+     * @nullable
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  dateOfBirth?: string | null;
+  /** @nullable */
+  gender?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  address?: string | null;
+  /** @nullable */
+  bloodGroup?: string | null;
+  /** @nullable */
+  guardianName?: string | null;
+  /** @nullable */
+  guardianEmail?: string | null;
+  /** @nullable */
+  guardianPhone?: string | null;
+  /** @nullable */
+  guardianRelationship?: string | null;
 }
 
 export interface AdmissionRowError {

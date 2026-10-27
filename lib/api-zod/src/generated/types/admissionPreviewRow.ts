@@ -12,4 +12,25 @@ export interface AdmissionPreviewRow {
   name: string;
   email: string;
   admissionNo: string;
+  /**
+     * @nullable
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  dateOfBirth?: string | null;
+  /** @nullable */
+  gender?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  address?: string | null;
+  /** @nullable */
+  bloodGroup?: string | null;
+  /** @nullable */
+  guardianName?: string | null;
+  /** @nullable */
+  guardianEmail?: string | null;
+  /** @nullable */
+  guardianPhone?: string | null;
+  /** @nullable */
+  guardianRelationship?: string | null;
 }

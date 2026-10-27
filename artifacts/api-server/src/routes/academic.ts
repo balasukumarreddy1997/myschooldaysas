@@ -29,7 +29,20 @@ const adminRoles: CampusRole[] = ["super_admin", "org_admin", "campus_admin"];
 const teachingRoles: CampusRole[] = ["teacher", "class_teacher", "hod"];
 type ConsentPurpose = "live_view" | "recording" | "photo" | "data_processing";
 
-type AdmissionInputRow = { name: string; email: string; admissionNo: string };
+type AdmissionInputRow = {
+  name: string;
+  email: string;
+  admissionNo: string;
+  dateOfBirth?: string | Date;
+  gender?: string;
+  phone?: string;
+  address?: string;
+  bloodGroup?: string;
+  guardianName?: string;
+  guardianEmail?: string;
+  guardianPhone?: string;
+  guardianRelationship?: string;
+};
 type AdmissionRowError = { row: number; field: string; message: string };
 
 async function inspectAdmissions(
@@ -55,6 +68,17 @@ async function inspectAdmissions(
     name: row.name.trim(),
     email: row.email.trim().toLowerCase(),
     admissionNo: row.admissionNo.trim().toUpperCase(),
+    dateOfBirth: row.dateOfBirth instanceof Date
+      ? row.dateOfBirth.toISOString().slice(0, 10)
+      : row.dateOfBirth?.trim() || null,
+    gender: row.gender?.trim() || null,
+    phone: row.phone?.trim() || null,
+    address: row.address?.trim() || null,
+    bloodGroup: row.bloodGroup?.trim() || null,
+    guardianName: row.guardianName?.trim() || null,
+    guardianEmail: row.guardianEmail?.trim().toLowerCase() || null,
+    guardianPhone: row.guardianPhone?.trim() || null,
+    guardianRelationship: row.guardianRelationship?.trim() || null,
   }));
   const seenEmails = new Set<string>();
   const seenAdmissionNumbers = new Set<string>();
@@ -62,6 +86,24 @@ async function inspectAdmissions(
     if (!item.name) errors.push({ row: item.row, field: "name", message: "Student name is required." });
     if (!item.email) errors.push({ row: item.row, field: "email", message: "Email is required." });
     if (!item.admissionNo) errors.push({ row: item.row, field: "admissionNo", message: "Admission number is required." });
+    if (item.dateOfBirth) {
+      const parsedDate = new Date(`${item.dateOfBirth}T00:00:00.000Z`);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(item.dateOfBirth)
+        || Number.isNaN(parsedDate.getTime())
+        || parsedDate.toISOString().slice(0, 10) !== item.dateOfBirth) {
+        errors.push({ row: item.row, field: "dateOfBirth", message: "Use a valid date in YYYY-MM-DD format." });
+      }
+    }
+    if (item.guardianEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(item.guardianEmail)) {
+      errors.push({ row: item.row, field: "guardianEmail", message: "Provide a valid guardian email address." });
+    }
+    const hasGuardianContact = !!(item.guardianName || item.guardianEmail || item.guardianPhone || item.guardianRelationship);
+    if (hasGuardianContact && !item.guardianName) {
+      errors.push({ row: item.row, field: "guardianName", message: "Guardian name is required when providing guardian contact details." });
+    }
+    if (hasGuardianContact && !item.guardianEmail && !item.guardianPhone) {
+      errors.push({ row: item.row, field: "guardianPhone", message: "Provide a guardian email or phone number." });
+    }
     if (seenEmails.has(item.email)) errors.push({ row: item.row, field: "email", message: "Email is repeated in this batch." });
     if (seenAdmissionNumbers.has(item.admissionNo)) {
       errors.push({ row: item.row, field: "admissionNo", message: "Admission number is repeated in this batch." });
@@ -752,7 +794,16 @@ router.post("/academic/admissions", requireAuth, async (req, res, next) => {
       });
     }
 
-    const preparedRows = preliminary.items.map(({ name, email, admissionNo }) => ({ name, email, admissionNo }));
+    const preparedRows = preliminary.items.map(({
+      name, email, admissionNo, dateOfBirth, gender, phone, address, bloodGroup,
+      guardianName, guardianEmail, guardianPhone, guardianRelationship,
+    }) => ({
+      name, email, admissionNo, dateOfBirth: dateOfBirth ?? undefined,
+      gender: gender ?? undefined, phone: phone ?? undefined, address: address ?? undefined,
+      bloodGroup: bloodGroup ?? undefined, guardianName: guardianName ?? undefined,
+      guardianEmail: guardianEmail ?? undefined, guardianPhone: guardianPhone ?? undefined,
+      guardianRelationship: guardianRelationship ?? undefined,
+    }));
     const credentialRows = await hashAdmissionPasswords(preparedRows);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     const result = await withOrg(user.orgId, async (client) => {
@@ -782,6 +833,17 @@ router.post("/academic/admissions", requireAuth, async (req, res, next) => {
           `INSERT INTO identity.user_roles (org_id, user_id, role)
            VALUES ($1, $2, 'student')`,
           [user.orgId, studentId],
+        );
+        await client.query(
+          `INSERT INTO identity.profiles
+             (org_id, user_id, date_of_birth, gender, phone, address, blood_group,
+              guardian_name, guardian_email, guardian_phone, guardian_relationship)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          [
+            user.orgId, studentId, item.dateOfBirth, item.gender, item.phone, item.address,
+            item.bloodGroup, item.guardianName, item.guardianEmail, item.guardianPhone,
+            item.guardianRelationship,
+          ],
         );
         const enrollment = await client.query(
           `INSERT INTO academic.enrollments

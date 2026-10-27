@@ -59,6 +59,7 @@ The separate `snyk test` command was attempted but Snyk is not installed in this
 
 ## Learning and assessment implementation (2026-10-26)
 
+- Admission profile intake update (2026-10-27): optional student date of birth, gender, phone, address, blood group, and guardian contact details now accompany single/batch admissions and persist atomically in the new tenant-RLS `identity.profiles` table. Guardian contact details are not account links. Workspace typecheck and API unit tests passed; local database was unavailable, so migration, RLS audit, and DB integration remain unverified.
 - The `/learning` page supports role-aware assignment creation, publishing/closing, student submissions, teacher grading and feedback, assessment marks, result publishing/unpublishing, academic terms, and grade-scale configuration.
 - The API checks teacher section assignments, student enrollment, and guardian-child links on the server. Students can submit only their own work; guardian views are read-only; unpublished exam results are hidden from students and guardians. Exam marks lock while results are published.
 - `services/learning/migrations/001_learning.sql` adds organization-scoped learning tables with forced RLS and org-leading indexes. The new numbered subject, attendance, and report-card migrations are registered and have now been applied to the local development database as `campus_migrator`; production was not touched.

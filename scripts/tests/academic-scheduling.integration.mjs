@@ -277,11 +277,32 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
     const singleAdmission = {
       sectionId: section.id,
       academicYear: admissionsBatchYear,
-      rows: [{ name: "Integration Single Admission", email: `single-${batchSuffix}@example.test`, admissionNo: `ADM-SINGLE-${batchSuffix}` }],
+      rows: [{
+        name: "Integration Single Admission",
+        email: `single-${batchSuffix}@example.test`,
+        admissionNo: `ADM-SINGLE-${batchSuffix}`,
+        dateOfBirth: "2015-04-12",
+        gender: "Female",
+        phone: "+91 9876543210",
+        address: "12 Example Road",
+        bloodGroup: "O+",
+        guardianName: "Integration Guardian",
+        guardianEmail: `guardian-${batchSuffix}@example.test`,
+        guardianPhone: "+91 9876500000",
+        guardianRelationship: "Mother",
+      }],
     };
     const singlePreview = await api("/academic/admissions/preview", admin, "POST", singleAdmission);
     assert.equal(singlePreview.status, 200, JSON.stringify(singlePreview.body));
     assert.equal(singlePreview.body.valid, true, JSON.stringify(singlePreview.body.errors));
+    assert.equal(singlePreview.body.items[0].guardianName, "Integration Guardian");
+    const invalidGuardianPreview = await api("/academic/admissions/preview", admin, "POST", {
+      ...singleAdmission,
+      rows: [{ ...singleAdmission.rows[0], guardianName: "", guardianEmail: "", guardianPhone: "", guardianRelationship: "Mother" }],
+    });
+    assert.equal(invalidGuardianPreview.status, 200, JSON.stringify(invalidGuardianPreview.body));
+    assert.equal(invalidGuardianPreview.body.valid, false);
+    assert.ok(invalidGuardianPreview.body.errors.some((issue) => issue.field === "guardianName"));
     const singleCreated = await api("/academic/admissions", admin, "POST", singleAdmission);
     for (const created of singleCreated.body.items ?? []) {
       if (created.id) createdIdentityUserIds.push(created.id);
@@ -323,6 +344,25 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
           GROUP BY u.id, e.section_id, e.admission_no`,
       [orgId, createdIdentityUserIds, admissionsBatchYear],
       )).rows;
+      const profileResult = await verificationClient.query(
+        `SELECT date_of_birth::text AS date_of_birth, gender, phone, address, blood_group,
+                guardian_name, guardian_email, guardian_phone, guardian_relationship
+           FROM identity.profiles
+          WHERE org_id = $1 AND user_id = $2`,
+        [orgId, singleCreated.body.items[0].id],
+      );
+      assert.equal(profileResult.rows.length, 1);
+      assert.deepEqual(profileResult.rows[0], {
+        date_of_birth: "2015-04-12",
+        gender: "Female",
+        phone: "+91 9876543210",
+        address: "12 Example Road",
+        blood_group: "O+",
+        guardian_name: "Integration Guardian",
+        guardian_email: `guardian-${batchSuffix}@example.test`,
+        guardian_phone: "+91 9876500000",
+        guardian_relationship: "Mother",
+      });
       await verificationClient.query("COMMIT");
     } catch (error) {
       await verificationClient.query("ROLLBACK").catch(() => {});

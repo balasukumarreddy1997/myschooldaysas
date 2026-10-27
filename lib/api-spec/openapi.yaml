@@ -1475,6 +1475,15 @@ components:
               name: { type: string, minLength: 1, maxLength: 120 }
               email: { type: string, format: email, maxLength: 254 }
               admissionNo: { type: string, minLength: 1, maxLength: 40 }
+              dateOfBirth: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+              gender: { type: string, maxLength: 40 }
+              phone: { type: string, maxLength: 32 }
+              address: { type: string, maxLength: 500 }
+              bloodGroup: { type: string, maxLength: 8 }
+              guardianName: { type: string, maxLength: 120 }
+              guardianEmail: { type: string, format: email, maxLength: 254 }
+              guardianPhone: { type: string, maxLength: 32 }
+              guardianRelationship: { type: string, maxLength: 40 }
     AdmissionPreviewRow:
       type: object
       required: [row, name, email, admissionNo]
@@ -1483,6 +1492,15 @@ components:
         name: { type: string }
         email: { type: string, format: email }
         admissionNo: { type: string }
+        dateOfBirth: { type: [string, "null"], pattern: '^\d{4}-\d{2}-\d{2}$' }
+        gender: { type: [string, "null"] }
+        phone: { type: [string, "null"] }
+        address: { type: [string, "null"] }
+        bloodGroup: { type: [string, "null"] }
+        guardianName: { type: [string, "null"] }
+        guardianEmail: { type: [string, "null"], format: email }
+        guardianPhone: { type: [string, "null"] }
+        guardianRelationship: { type: [string, "null"] }
     AdmissionRowError:
       type: object
       required: [row, field, message]

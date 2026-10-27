@@ -521,6 +521,23 @@ export const previewStudentAdmissionsBodyRowsItemEmailMax = 254;
 
 export const previewStudentAdmissionsBodyRowsItemAdmissionNoMax = 40;
 
+export const previewStudentAdmissionsBodyRowsItemDateOfBirthRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const previewStudentAdmissionsBodyRowsItemGenderMax = 40;
+
+export const previewStudentAdmissionsBodyRowsItemPhoneMax = 32;
+
+export const previewStudentAdmissionsBodyRowsItemAddressMax = 500;
+
+export const previewStudentAdmissionsBodyRowsItemBloodGroupMax = 8;
+
+export const previewStudentAdmissionsBodyRowsItemGuardianNameMax = 120;
+
+export const previewStudentAdmissionsBodyRowsItemGuardianEmailMax = 254;
+
+export const previewStudentAdmissionsBodyRowsItemGuardianPhoneMax = 32;
+
+export const previewStudentAdmissionsBodyRowsItemGuardianRelationshipMax = 40;
+
 export const previewStudentAdmissionsBodyRowsMax = 20;
 
 
@@ -531,11 +548,21 @@ export const PreviewStudentAdmissionsBody = zod.object({
   "rows": zod.array(zod.object({
   "name": zod.string().min(1).max(previewStudentAdmissionsBodyRowsItemNameMax),
   "email": zod.email().max(previewStudentAdmissionsBodyRowsItemEmailMax),
-  "admissionNo": zod.string().min(1).max(previewStudentAdmissionsBodyRowsItemAdmissionNoMax)
+  "admissionNo": zod.string().min(1).max(previewStudentAdmissionsBodyRowsItemAdmissionNoMax),
+  "dateOfBirth": zod.string().regex(previewStudentAdmissionsBodyRowsItemDateOfBirthRegExp).optional(),
+  "gender": zod.string().max(previewStudentAdmissionsBodyRowsItemGenderMax).optional(),
+  "phone": zod.string().max(previewStudentAdmissionsBodyRowsItemPhoneMax).optional(),
+  "address": zod.string().max(previewStudentAdmissionsBodyRowsItemAddressMax).optional(),
+  "bloodGroup": zod.string().max(previewStudentAdmissionsBodyRowsItemBloodGroupMax).optional(),
+  "guardianName": zod.string().max(previewStudentAdmissionsBodyRowsItemGuardianNameMax).optional(),
+  "guardianEmail": zod.email().max(previewStudentAdmissionsBodyRowsItemGuardianEmailMax).optional(),
+  "guardianPhone": zod.string().max(previewStudentAdmissionsBodyRowsItemGuardianPhoneMax).optional(),
+  "guardianRelationship": zod.string().max(previewStudentAdmissionsBodyRowsItemGuardianRelationshipMax).optional()
 })).min(1).max(previewStudentAdmissionsBodyRowsMax)
 })
 
 
+export const previewStudentAdmissionsResponseItemsItemDateOfBirthRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 
 
 
@@ -551,7 +578,16 @@ export const PreviewStudentAdmissionsResponse = zod.object({
   "row": zod.int().min(1),
   "name": zod.string(),
   "email": zod.email(),
-  "admissionNo": zod.string()
+  "admissionNo": zod.string(),
+  "dateOfBirth": zod.string().regex(previewStudentAdmissionsResponseItemsItemDateOfBirthRegExp).nullish(),
+  "gender": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "bloodGroup": zod.string().nullish(),
+  "guardianName": zod.string().nullish(),
+  "guardianEmail": zod.email().nullish(),
+  "guardianPhone": zod.string().nullish(),
+  "guardianRelationship": zod.string().nullish()
 })),
   "errors": zod.array(zod.object({
   "row": zod.int().min(1),
@@ -573,6 +609,23 @@ export const createStudentAdmissionsBodyRowsItemEmailMax = 254;
 
 export const createStudentAdmissionsBodyRowsItemAdmissionNoMax = 40;
 
+export const createStudentAdmissionsBodyRowsItemDateOfBirthRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const createStudentAdmissionsBodyRowsItemGenderMax = 40;
+
+export const createStudentAdmissionsBodyRowsItemPhoneMax = 32;
+
+export const createStudentAdmissionsBodyRowsItemAddressMax = 500;
+
+export const createStudentAdmissionsBodyRowsItemBloodGroupMax = 8;
+
+export const createStudentAdmissionsBodyRowsItemGuardianNameMax = 120;
+
+export const createStudentAdmissionsBodyRowsItemGuardianEmailMax = 254;
+
+export const createStudentAdmissionsBodyRowsItemGuardianPhoneMax = 32;
+
+export const createStudentAdmissionsBodyRowsItemGuardianRelationshipMax = 40;
+
 export const createStudentAdmissionsBodyRowsMax = 20;
 
 
@@ -583,7 +636,16 @@ export const CreateStudentAdmissionsBody = zod.object({
   "rows": zod.array(zod.object({
   "name": zod.string().min(1).max(createStudentAdmissionsBodyRowsItemNameMax),
   "email": zod.email().max(createStudentAdmissionsBodyRowsItemEmailMax),
-  "admissionNo": zod.string().min(1).max(createStudentAdmissionsBodyRowsItemAdmissionNoMax)
+  "admissionNo": zod.string().min(1).max(createStudentAdmissionsBodyRowsItemAdmissionNoMax),
+  "dateOfBirth": zod.string().regex(createStudentAdmissionsBodyRowsItemDateOfBirthRegExp).optional(),
+  "gender": zod.string().max(createStudentAdmissionsBodyRowsItemGenderMax).optional(),
+  "phone": zod.string().max(createStudentAdmissionsBodyRowsItemPhoneMax).optional(),
+  "address": zod.string().max(createStudentAdmissionsBodyRowsItemAddressMax).optional(),
+  "bloodGroup": zod.string().max(createStudentAdmissionsBodyRowsItemBloodGroupMax).optional(),
+  "guardianName": zod.string().max(createStudentAdmissionsBodyRowsItemGuardianNameMax).optional(),
+  "guardianEmail": zod.email().max(createStudentAdmissionsBodyRowsItemGuardianEmailMax).optional(),
+  "guardianPhone": zod.string().max(createStudentAdmissionsBodyRowsItemGuardianPhoneMax).optional(),
+  "guardianRelationship": zod.string().max(createStudentAdmissionsBodyRowsItemGuardianRelationshipMax).optional()
 })).min(1).max(createStudentAdmissionsBodyRowsMax)
 })
 

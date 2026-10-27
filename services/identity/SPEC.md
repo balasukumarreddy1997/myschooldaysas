@@ -11,7 +11,7 @@ This is a convenience summary derived from `MASTER_SPEC.md`; the master spec rem
 
 ## Data and isolation
 
-The `identity` schema stores organizations, users, user roles, and guardian links. Guardian links carry `can_view_live` and `can_pay_fees` flags, added by migration `identity:003`. Tenant rows carry `org_id` and use forced RLS. The runtime database role is separate from the local migration role.
+The `identity` schema stores organizations, users, user roles, guardian links, and student profile/contact data. Guardian links carry `can_view_live` and `can_pay_fees` flags, added by migration `identity:003`. `identity.profiles` stores student date of birth, gender, phone, address, blood group, and contact-only guardian name/email/phone/relationship; migration `identity:004` adds this table with forced tenant RLS. Admission intake creates the profile in the same transaction as the student account and enrollment. Contact details do not create guardian accounts or access links. Tenant rows carry `org_id` and use forced RLS. The runtime database role is separate from the local migration role.
 
 ## Not implemented
 
