@@ -537,3 +537,234 @@
   .dashboard-primary-link,
   .dashboard-community-link { transition: none; }
 }
+
+/* Signed-in school workspace — a quiet extension of the welcome and dashboard identity. */
+.signed-in-shell > aside {
+  background:
+    radial-gradient(ellipse at 15% 0%, rgba(205, 181, 127, .11), transparent 37%),
+    linear-gradient(160deg, #204b3d 0%, #183e33 52%, #17382f 100%);
+  box-shadow: 8px 0 30px rgba(32, 46, 37, .08);
+}
+
+.signed-in-shell > aside > div:first-child {
+  margin-bottom: 34px;
+}
+
+.signed-in-shell > aside nav a {
+  position: relative;
+  min-height: 42px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  transition: background .18s, color .18s, border-color .18s;
+}
+
+.signed-in-shell > aside nav a:hover {
+  border-color: rgba(238, 226, 199, .12);
+  background: rgba(255, 255, 255, .075);
+}
+
+.signed-in-shell > aside nav a[aria-current="page"],
+.signed-in-shell > aside nav a.bg-white\/10 {
+  border-color: rgba(228, 209, 165, .18);
+  background: rgba(255, 255, 255, .105);
+}
+
+.signed-in-shell > main > header {
+  border-color: hsl(var(--border) / .8);
+  box-shadow: 0 3px 16px rgba(39, 46, 35, .025);
+}
+
+.signed-in-shell > main > header > div:first-child > div {
+  letter-spacing: .025em;
+}
+
+.signed-in-shell > main > header > div:last-child > span {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+}
+
+.signed-in-shell .page-enter {
+  animation-duration: .32s;
+}
+
+.directory-page,
+.timetable-page,
+.announcements-page {
+  min-width: 0;
+  color: hsl(var(--foreground));
+}
+
+.directory-page > .mb-7,
+.timetable-page > header,
+.announcements-page > header {
+  position: relative;
+  padding-bottom: 18px;
+  border-bottom: 1px solid hsl(var(--border) / .76);
+}
+
+.directory-page > .mb-7 > div:first-child,
+.timetable-page > header > div:first-child,
+.announcements-page > header > div:first-child > div:first-child {
+  color: #9a7845;
+}
+
+.dark .directory-page > .mb-7 > div:first-child,
+.dark .timetable-page > header > div:first-child,
+.dark .announcements-page > header > div:first-child > div:first-child {
+  color: #d4bb84;
+}
+
+.directory-page .surface,
+.timetable-page .surface,
+.announcements-page .surface {
+  box-shadow: 0 5px 19px rgba(53, 54, 42, .035);
+}
+
+.directory-page details.surface {
+  border-radius: 12px;
+  transition: border-color .18s, box-shadow .18s;
+}
+
+.directory-page details.surface[open] {
+  border-color: hsl(var(--primary) / .21);
+  box-shadow: 0 7px 24px rgba(53, 54, 42, .055);
+}
+
+.directory-page details > summary {
+  min-height: 76px;
+  background: linear-gradient(100deg, hsl(var(--card)), hsl(var(--background) / .42));
+}
+
+.directory-page details > summary:hover {
+  background: hsl(var(--secondary) / .34);
+}
+
+.directory-page details > div:last-child {
+  background: hsl(var(--card));
+}
+
+.directory-page details > div:last-child > div > div {
+  border: 1px solid hsl(var(--border));
+  border-radius: 9px;
+}
+
+.directory-page .surface.mb-5 {
+  border-radius: 12px;
+  box-shadow: 0 5px 19px rgba(53, 54, 42, .035);
+}
+
+.students-page .surface.overflow-hidden,
+.timetable-page .surface.overflow-hidden {
+  border-radius: 12px;
+}
+
+.students-page table thead,
+.timetable-page table thead {
+  background: hsl(var(--secondary) / .72);
+}
+
+.students-page tbody tr,
+.timetable-page tbody tr {
+  transition: background .16s;
+}
+
+.students-page tbody tr:hover,
+.timetable-page tbody tr:hover {
+  background: hsl(var(--brand-mint) / .22);
+}
+
+.announcements-page > section.surface {
+  border-radius: 13px;
+  box-shadow: 0 7px 24px rgba(53, 54, 42, .045);
+}
+
+.announcements-page > section > div:first-child {
+  background: linear-gradient(100deg, hsl(var(--background)), hsl(var(--secondary) / .36));
+}
+
+.announcements-page article {
+  transition: background .18s;
+}
+
+.announcements-page article:hover {
+  background-color: hsl(var(--secondary) / .18);
+}
+
+.announcements-page article h3 {
+  color: hsl(var(--foreground));
+}
+
+.announcements-page form.surface {
+  border-radius: 12px;
+  box-shadow: 0 7px 24px rgba(53, 54, 42, .045);
+}
+
+.timetable-page form.surface {
+  border-radius: 12px;
+  background:
+    linear-gradient(120deg, hsl(var(--card)), hsl(var(--background) / .45));
+}
+
+.timetable-page table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.timetable-page tbody td:first-child {
+  color: hsl(var(--primary));
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.timetable-page tbody td:nth-child(3) {
+  font-weight: 700;
+}
+
+.directory-page .field,
+.timetable-page .field,
+.announcements-page .field {
+  border-radius: 8px;
+}
+
+@media (max-width: 767px) {
+  .signed-in-shell > main > header {
+    height: 60px;
+  }
+
+  .directory-page > .mb-7,
+  .timetable-page > header,
+  .announcements-page > header {
+    padding-bottom: 15px;
+  }
+
+  .directory-page details > summary {
+    gap: 12px;
+  }
+
+  .students-page .surface.mb-5 {
+    align-items: stretch;
+  }
+
+  .students-page .surface.mb-5 label {
+    min-width: 0;
+  }
+
+  .students-page .surface.mb-5 select {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .announcements-page > section > div:first-child {
+    align-items: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signed-in-shell > aside nav a,
+  .directory-page details.surface,
+  .students-page tbody tr,
+  .timetable-page tbody tr,
+  .announcements-page article {
+    transition: none;
+  }
+}

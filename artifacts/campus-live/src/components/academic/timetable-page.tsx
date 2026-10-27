@@ -58,7 +58,7 @@ export function TimetablePage({ canManage }: { canManage: boolean }) {
   }
 
   return (
-    <div>
+    <div className="timetable-page">
       <header className="mb-7">
         <div className="mb-2 text-[10px] font-bold uppercase tracking-[.2em] text-[hsl(var(--primary))]">Academic schedule</div>
         <h1 className="display m-0 text-[30px] font-extrabold leading-tight tracking-[-.045em] md:text-[36px]">Timetable</h1>

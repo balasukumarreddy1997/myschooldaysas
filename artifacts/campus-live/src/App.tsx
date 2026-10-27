@@ -134,7 +134,7 @@ function AppShell({ user, path, onLogout, children }: { user: { name: string; em
     nav.push({ label: 'Fees', href: '/fees', icon: CreditCard });
     nav.push({ label: 'Privacy & consent', href: '/family/consents', icon: ShieldCheck });
   }
-  return <div className={`min-h-[100dvh] md:flex ${isDashboard ? 'dashboard-app-shell' : ''}`}>
+  return <div className={`signed-in-shell min-h-[100dvh] md:flex ${isDashboard ? 'dashboard-app-shell' : ''}`}>
     <aside className={`fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col bg-[hsl(var(--sidebar))] px-4 py-5 text-[hsl(var(--sidebar-foreground))] transition-transform md:translate-x-0 ${mobileNav ? 'translate-x-0' : '-translate-x-full'}`}>
       <div className="mb-9 flex items-center gap-3 px-2">
         <div className={`grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--primary))] text-white ${isDashboard ? 'dashboard-shell-crest' : ''}`}><GraduationCap size={22}/></div>
@@ -419,12 +419,12 @@ function ClassesPage({ roles }: { roles: string[] }) {
   const classes = useGetClasses(); const sections = useGetSections();
   const byClass = useMemo(() => (sections.data?.items ?? []).reduce<Record<string, SectionSummary[]>>((acc, section) => { (acc[section.classId] ??= []).push(section); return acc; }, {}), [sections.data]);
   const err = classes.error || sections.error;
-  return <><PageHeading eyebrow="Academic directory" title="Classes & sections" description="A clear view of the classes and sections in your school."/>
+  return <div className="directory-page classes-page"><PageHeading eyebrow="Academic directory" title="Classes & sections" description="A clear view of the classes and sections in your school."/>
     {canManage && classes.data && sections.data && <ClassPromotionWizard classes={classes.data.items} sections={sections.data.items}/>}
     <QueryState loading={classes.isLoading || sections.isLoading} error={err} empty={!classes.data?.items.length} retry={() => { classes.refetch(); sections.refetch(); }}>
       {classes.data && <div className="space-y-3">{classes.data.items.map(item => <details key={item.id} className="surface group overflow-hidden" open><summary data-testid={`class-summary-${item.id}`} className="flex cursor-pointer list-none flex-wrap items-center gap-4 p-4 md:p-5"><div className="grid h-11 w-11 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><BookOpen size={19}/></div><div className="min-w-[150px] flex-1"><div className="display text-[15px] font-extrabold">{item.name}</div><div className="mt-1 text-[11px] text-[hsl(var(--muted-foreground))]">Grade {item.gradeLevel}</div></div><div className="flex gap-5 text-center"><div><div className="display font-bold">{item.sectionCount}</div><div className="text-[10px] text-[hsl(var(--muted-foreground))]">Sections</div></div><div><div className="display font-bold">{item.studentCount}</div><div className="text-[10px] text-[hsl(var(--muted-foreground))]">Students</div></div></div><ChevronDown className="ml-2 text-[hsl(var(--muted-foreground))] transition group-open:rotate-180" size={17}/></summary><div className="border-t border-[hsl(var(--border))] px-4 py-3 md:px-5">{byClass[item.id]?.length ? <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{byClass[item.id].map(section => <div key={section.id} data-testid={`section-card-${section.id}`} className="space-y-3 rounded-lg bg-[hsl(var(--background))] p-3"><div className="flex items-center justify-between"><div><div className="text-xs font-bold">{section.name}</div><div className="mt-1 text-[10px] text-[hsl(var(--muted-foreground))]">{section.studentCount} students · capacity {section.capacity ?? 'not set'}</div></div><Users size={15} className="text-[hsl(var(--primary))]"/></div>{canManage && <SectionCapacityField sectionId={section.id} sectionName={section.name} capacity={section.capacity}/>}</div>)}</div> : <p className="text-xs text-[hsl(var(--muted-foreground))]">No sections have been assigned to this class.</p>}</div></details>)}</div>}
     </QueryState>
-  </>;
+  </div>;
 }
 
 function StudentsPage({ roles }: { roles: string[] }) {
@@ -453,7 +453,7 @@ function StudentsPage({ roles }: { roles: string[] }) {
   });
   const filterError = sections.error || (canManage ? classes.error : null);
   const filtersLoading = sections.isLoading || (canManage && classes.isLoading);
-  return <><PageHeading eyebrow="Academic directory" title={canManage ? "Student registry" : "Student roster"} description={canManage ? "Find and review students across every class and section." : "Find a student and review their current section."}/>
+  return <div className="directory-page students-page"><PageHeading eyebrow="Academic directory" title={canManage ? "Student registry" : "Student roster"} description={canManage ? "Find and review students across every class and section." : "Find a student and review their current section."}/>
     <div className="surface mb-5 flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
        <div className="relative min-w-[220px] flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={16}/><input aria-label="Search students" data-testid="input-search-students" className="field pl-9" placeholder={canManage ? "Search name, admission no., email, or guardian" : "Search by name or admission number"} value={search} onChange={e => { setSearch(e.target.value); setPage(0); setProfileStudentId(null); }}/></div>
        {canManage && <label className="flex items-center gap-2 text-xs font-semibold"><span>Class</span><select data-testid="select-student-class" className="field min-w-[145px]" value={classId} onChange={e => { setClassId(e.target.value); setSectionId(''); setPage(0); setProfileStudentId(null); }}><option value="">All classes</option>{classes.data?.items.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
@@ -474,7 +474,7 @@ function StudentsPage({ roles }: { roles: string[] }) {
         </div>}
       </QueryState>}
     {canManage && profileStudentId && <StudentProfileEditor studentId={profileStudentId} onClose={() => setProfileStudentId(null)}/>}
-  </>;
+  </div>;
 }
 
 function SessionsPage({ userRoles }: { userRoles: string[] }) {

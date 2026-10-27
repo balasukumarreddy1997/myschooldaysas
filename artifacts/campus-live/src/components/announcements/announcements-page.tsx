@@ -103,7 +103,7 @@ export function AnnouncementsPage({ roles, userId }: Props) {
     });
   }
 
-  return <div className="space-y-6">
+  return <div className="announcements-page space-y-6">
     <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
         <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.2em] text-[hsl(var(--primary))]"><span className="h-px w-7 bg-[hsl(var(--accent))]" />School community</div>
