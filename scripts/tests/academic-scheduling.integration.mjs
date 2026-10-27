@@ -375,6 +375,49 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
     assert.ok(createdAccountRows.every((created) => created.temporary_password_expires_at));
     assert.ok(createdAccountRows.every((created) => created.roles.includes("student")));
 
+    const singleStudentId = singleCreated.body.items[0].id;
+    const profilePath = `/academic/students/${singleStudentId}/profile`;
+    const loadedProfile = await api(profilePath, admin);
+    assert.equal(loadedProfile.status, 200, JSON.stringify(loadedProfile.body));
+    assert.equal(loadedProfile.body.profile.guardianName, "Integration Guardian");
+    assert.equal(loadedProfile.body.currentEnrollment.admissionNo, singleAdmission.rows[0].admissionNo.toUpperCase());
+    assert.equal((await api(profilePath, teacher)).status, 403);
+
+    const profileUpdate = {
+      dateOfBirth: "2015-04-12",
+      gender: "Female",
+      phone: null,
+      address: "13 Updated Example Road",
+      bloodGroup: "O+",
+      guardianName: "Integration Guardian",
+      guardianEmail: `guardian-${batchSuffix}@example.test`,
+      guardianPhone: "+91 9876500000",
+      guardianRelationship: "Mother",
+    };
+    const invalidProfileUpdate = await api(profilePath, admin, "PUT", {
+      ...profileUpdate,
+      guardianEmail: null,
+      guardianPhone: null,
+    });
+    assert.equal(invalidProfileUpdate.status, 400);
+    const deniedProfileUpdate = await api(profilePath, teacher, "PUT", profileUpdate);
+    assert.equal(deniedProfileUpdate.status, 403);
+    const savedProfile = await api(profilePath, admin, "PUT", profileUpdate);
+    assert.equal(savedProfile.status, 200, JSON.stringify(savedProfile.body));
+    assert.equal(savedProfile.body.profile.address, "13 Updated Example Road");
+    assert.equal(savedProfile.body.profile.phone, null);
+    const reloadedProfile = await api(profilePath, admin);
+    assert.equal(reloadedProfile.status, 200);
+    assert.equal(reloadedProfile.body.profile.address, "13 Updated Example Road");
+    assert.equal(reloadedProfile.body.profile.phone, null);
+    const guardianSearchUrl = `/academic/students?sectionId=${section.id}&q=${encodeURIComponent(profileUpdate.guardianEmail)}`;
+    const adminRegistrySearch = await api(guardianSearchUrl, admin);
+    assert.equal(adminRegistrySearch.status, 200, JSON.stringify(adminRegistrySearch.body));
+    assert.ok(adminRegistrySearch.body.items.some((student) => student.id === singleStudentId));
+    const teacherRegistrySearch = await api(guardianSearchUrl, teacher);
+    assert.equal(teacherRegistrySearch.status, 200, JSON.stringify(teacherRegistrySearch.body));
+    assert.ok(!teacherRegistrySearch.body.items.some((student) => student.id === singleStudentId));
+
     const remainingStudent = await api(
       `/academic/students/available?academicYear=${encodeURIComponent(admissionsBatchYear)}&limit=1&offset=0`,
       admin,

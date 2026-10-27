@@ -174,6 +174,80 @@ export interface StudentSummary {
   academicYear: string;
 }
 
+export interface StudentProfileFields {
+  /**
+     * @nullable
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  dateOfBirth: string | null;
+  /**
+     * @maxLength 40
+     * @nullable
+     */
+  gender: string | null;
+  /**
+     * @maxLength 32
+     * @nullable
+     */
+  phone: string | null;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  address: string | null;
+  /**
+     * @maxLength 8
+     * @nullable
+     */
+  bloodGroup: string | null;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  guardianName: string | null;
+  /**
+     * @maxLength 254
+     * @nullable
+     */
+  guardianEmail: string | null;
+  /**
+     * @maxLength 32
+     * @nullable
+     */
+  guardianPhone: string | null;
+  /**
+     * @maxLength 40
+     * @nullable
+     */
+  guardianRelationship: string | null;
+}
+
+export interface StudentCurrentEnrollment {
+  admissionNo: string;
+  academicYear: string;
+  className: string;
+  sectionName: string;
+}
+
+export type StudentProfileResponseStatus = typeof StudentProfileResponseStatus[keyof typeof StudentProfileResponseStatus];
+
+
+export const StudentProfileResponseStatus = {
+  active: 'active',
+  disabled: 'disabled',
+} as const;
+
+export interface StudentProfileResponse {
+  id: string;
+  name: string;
+  email: string;
+  status: StudentProfileResponseStatus;
+  currentEnrollment: StudentCurrentEnrollment | null;
+  profile: StudentProfileFields;
+}
+
+export type StudentProfileUpdateInput = StudentProfileFields;
+
 export interface StudentPage {
   items: StudentSummary[];
   total: number;

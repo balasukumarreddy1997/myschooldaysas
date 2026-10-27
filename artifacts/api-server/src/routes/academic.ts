@@ -5,6 +5,7 @@ import {
   CreateEnrollmentBody,
   GetAvailableStudentsQueryParams,
   GetGuardianLinksQueryParams,
+  GetStudentProfileParams,
   GetStudentsQueryParams,
   GrantConsentBody,
   RevokeConsentParams,
@@ -14,6 +15,8 @@ import {
   UpdateEnrollmentYearParams,
   UpdateSectionBody,
   UpdateSectionParams,
+  UpdateStudentProfileBody,
+  UpdateStudentProfileParams,
   PreviewStudentAdmissionsBody,
 } from "@workspace/api-zod";
 import { withOrg } from "@workspace/db";
@@ -695,7 +698,24 @@ router.get("/academic/students", requireAuth, async (req, res, next) => {
                AND gl.guardian_user_id = $6
           ))
         )
-        AND ($8::text IS NULL OR u.name ILIKE '%' || $8 || '%' OR e.admission_no ILIKE '%' || $8 || '%')`;
+        AND (
+          $8::text IS NULL
+          OR u.name ILIKE '%' || $8 || '%'
+          OR e.admission_no ILIKE '%' || $8 || '%'
+          OR ($3::boolean AND (
+            u.email ILIKE '%' || $8 || '%'
+            OR EXISTS (
+              SELECT 1 FROM identity.profiles profile
+               WHERE profile.org_id = e.org_id AND profile.user_id = u.id
+                 AND (
+                   profile.phone ILIKE '%' || $8 || '%'
+                   OR profile.guardian_name ILIKE '%' || $8 || '%'
+                   OR profile.guardian_email ILIKE '%' || $8 || '%'
+                   OR profile.guardian_phone ILIKE '%' || $8 || '%'
+                 )
+            )
+          ))
+        )`;
       const count = await client.query<{ total: string }>(
         `SELECT COUNT(*)::text AS total
            FROM academic.enrollments e
@@ -733,6 +753,180 @@ router.get("/academic/students", requireAuth, async (req, res, next) => {
       limit,
       offset,
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+async function readStudentProfile(client: PoolClient, orgId: string, studentId: string) {
+  const result = await client.query<{
+    id: string;
+    name: string;
+    email: string;
+    status: "active" | "disabled";
+    admission_no: string | null;
+    academic_year: string | null;
+    class_name: string | null;
+    section_name: string | null;
+    date_of_birth: string | null;
+    gender: string | null;
+    phone: string | null;
+    address: string | null;
+    blood_group: string | null;
+    guardian_name: string | null;
+    guardian_email: string | null;
+    guardian_phone: string | null;
+    guardian_relationship: string | null;
+  }>(
+    `SELECT u.id, u.name, u.email, u.status,
+            enrollment.admission_no, enrollment.academic_year,
+            enrollment.class_name, enrollment.section_name,
+            p.date_of_birth::text AS date_of_birth, p.gender, p.phone, p.address, p.blood_group,
+            p.guardian_name, p.guardian_email, p.guardian_phone, p.guardian_relationship
+       FROM identity.users u
+       LEFT JOIN identity.profiles p ON p.org_id = u.org_id AND p.user_id = u.id
+       LEFT JOIN LATERAL (
+         SELECT e.admission_no, e.academic_year, c.name AS class_name, s.name AS section_name
+           FROM academic.enrollments e
+           JOIN academic.sections s ON s.org_id = e.org_id AND s.id = e.section_id
+           JOIN academic.classes c ON c.org_id = s.org_id AND c.id = s.class_id
+          WHERE e.org_id = u.org_id AND e.student_user_id = u.id AND e.status = 'active'
+          ORDER BY e.academic_year DESC, e.created_at DESC
+          LIMIT 1
+       ) enrollment ON true
+      WHERE u.org_id = $1 AND u.id = $2
+        AND EXISTS (
+          SELECT 1 FROM identity.user_roles role
+           WHERE role.org_id = u.org_id AND role.user_id = u.id AND role.role = 'student'
+        )`,
+    [orgId, studentId],
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    status: row.status,
+    currentEnrollment: row.admission_no === null ? null : {
+      admissionNo: row.admission_no,
+      academicYear: row.academic_year!,
+      className: row.class_name!,
+      sectionName: row.section_name!,
+    },
+    profile: {
+      dateOfBirth: row.date_of_birth,
+      gender: row.gender,
+      phone: row.phone,
+      address: row.address,
+      bloodGroup: row.blood_group,
+      guardianName: row.guardian_name,
+      guardianEmail: row.guardian_email,
+      guardianPhone: row.guardian_phone,
+      guardianRelationship: row.guardian_relationship,
+    },
+  };
+}
+
+router.get("/academic/students/:studentId/profile", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!canManageAcademicSetup(user.roles)) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only administrators can view student profiles."));
+  }
+  const params = GetStudentProfileParams.safeParse(req.params);
+  if (!params.success) return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a valid student ID."));
+
+  try {
+    const profile = await withOrg(user.orgId, (client) =>
+      readStudentProfile(client, user.orgId, params.data.studentId),
+    );
+    if (!profile) return void res.status(404).json(errorBody("NOT_FOUND", "Student not found."));
+    res.json(profile);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.put("/academic/students/:studentId/profile", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!canManageAcademicSetup(user.roles)) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only administrators can update student profiles."));
+  }
+  const params = UpdateStudentProfileParams.safeParse(req.params);
+  const parsed = UpdateStudentProfileBody.safeParse(req.body);
+  if (!params.success || !parsed.success) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide valid student profile fields."));
+  }
+
+  const clean = (value: string | null) => value?.trim() || null;
+  const profile = {
+    dateOfBirth: clean(parsed.data.dateOfBirth),
+    gender: clean(parsed.data.gender),
+    phone: clean(parsed.data.phone),
+    address: clean(parsed.data.address),
+    bloodGroup: clean(parsed.data.bloodGroup),
+    guardianName: clean(parsed.data.guardianName),
+    guardianEmail: clean(parsed.data.guardianEmail)?.toLowerCase() ?? null,
+    guardianPhone: clean(parsed.data.guardianPhone),
+    guardianRelationship: clean(parsed.data.guardianRelationship),
+  };
+  if (profile.dateOfBirth) {
+    const parsedDate = new Date(`${profile.dateOfBirth}T00:00:00.000Z`);
+    if (Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== profile.dateOfBirth) {
+      return void res.status(400).json(errorBody("INVALID_REQUEST", "Date of birth must be a real date in YYYY-MM-DD format."));
+    }
+  }
+  const hasGuardianContact = !!(
+    profile.guardianName || profile.guardianEmail || profile.guardianPhone || profile.guardianRelationship
+  );
+  if (hasGuardianContact && !profile.guardianName) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Guardian name is required when contact details are provided."));
+  }
+  if (hasGuardianContact && !profile.guardianEmail && !profile.guardianPhone) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a guardian email or phone number."));
+  }
+
+  try {
+    const updated = await withOrg(user.orgId, async (client) => {
+      const student = await client.query(
+        `SELECT u.id
+           FROM identity.users u
+          WHERE u.org_id = $1 AND u.id = $2
+            AND EXISTS (
+              SELECT 1 FROM identity.user_roles role
+               WHERE role.org_id = u.org_id AND role.user_id = u.id AND role.role = 'student'
+            )`,
+        [user.orgId, params.data.studentId],
+      );
+      if (!student.rowCount) return null;
+      await client.query(
+        `INSERT INTO identity.profiles
+           (org_id, user_id, date_of_birth, gender, phone, address, blood_group,
+            guardian_name, guardian_email, guardian_phone, guardian_relationship, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now())
+         ON CONFLICT (org_id, user_id) DO UPDATE
+           SET date_of_birth = EXCLUDED.date_of_birth,
+               gender = EXCLUDED.gender,
+               phone = EXCLUDED.phone,
+               address = EXCLUDED.address,
+               blood_group = EXCLUDED.blood_group,
+               guardian_name = EXCLUDED.guardian_name,
+               guardian_email = EXCLUDED.guardian_email,
+               guardian_phone = EXCLUDED.guardian_phone,
+               guardian_relationship = EXCLUDED.guardian_relationship,
+               updated_at = now()`,
+        [
+          user.orgId, params.data.studentId, profile.dateOfBirth, profile.gender, profile.phone,
+          profile.address, profile.bloodGroup, profile.guardianName, profile.guardianEmail,
+          profile.guardianPhone, profile.guardianRelationship,
+        ],
+      );
+      return readStudentProfile(client, user.orgId, params.data.studentId);
+    });
+    if (!updated) return void res.status(404).json(errorBody("NOT_FOUND", "Student not found."));
+    res.json(updated);
   } catch (error) {
     next(error);
   }

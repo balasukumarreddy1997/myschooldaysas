@@ -103,6 +103,8 @@ import type {
   SectionCapacityUpdateInput,
   SectionSummary,
   StudentPage,
+  StudentProfileFields,
+  StudentProfileResponse,
   StudentSummary,
   TemporaryPasswordResult,
   TimetableSlot,
@@ -2123,6 +2125,196 @@ export function useGetStudents<TData = Awaited<ReturnType<typeof getStudents>>, 
 
 
 
+
+export const getGetStudentProfileUrl = (studentId: string,) => {
+
+
+
+
+  return `/api/academic/students/${studentId}/profile`
+}
+
+/**
+ * @summary Get a student's profile for an administrator
+ */
+export const getStudentProfile = async (studentId: string, options?: Parameters<typeof customFetch>[1]): Promise<StudentProfileResponse> => {
+
+  return customFetch<StudentProfileResponse>(getGetStudentProfileUrl(studentId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStudentProfileQueryKey = (studentId: string,) => {
+    return [
+    `/api/academic/students/${studentId}/profile`
+    ] as const;
+    }
+
+
+export const getGetStudentProfileQueryOptions = <TData = Awaited<ReturnType<typeof getStudentProfile>>, TError = ErrorType<void>>(studentId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudentProfile>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStudentProfileQueryKey(studentId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStudentProfile>>> = ({ signal }) => getStudentProfile(studentId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: studentId !== null && studentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStudentProfile>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetStudentProfileQueryResult = NonNullable<Awaited<ReturnType<typeof getStudentProfile>>>
+export type GetStudentProfileQueryError = ErrorType<void>
+
+
+export function useGetStudentProfile<TData = Awaited<ReturnType<typeof getStudentProfile>>, TError = ErrorType<void>>(
+ studentId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudentProfile>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getStudentProfile>>,
+          TError,
+          Awaited<ReturnType<typeof getStudentProfile>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetStudentProfile<TData = Awaited<ReturnType<typeof getStudentProfile>>, TError = ErrorType<void>>(
+ studentId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudentProfile>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getStudentProfile>>,
+          TError,
+          Awaited<ReturnType<typeof getStudentProfile>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetStudentProfile<TData = Awaited<ReturnType<typeof getStudentProfile>>, TError = ErrorType<void>>(
+ studentId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudentProfile>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get a student's profile for an administrator
+ */
+
+export function useGetStudentProfile<TData = Awaited<ReturnType<typeof getStudentProfile>>, TError = ErrorType<void>>(
+ studentId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudentProfile>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetStudentProfileQueryOptions(studentId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateStudentProfileUrl = (studentId: string,) => {
+
+
+
+
+  return `/api/academic/students/${studentId}/profile`
+}
+
+/**
+ * @summary Replace a student's profile fields
+ */
+export const updateStudentProfile = async (studentId: string,
+    studentProfileFields: StudentProfileFields, options?: Parameters<typeof customFetch>[1]): Promise<StudentProfileResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<StudentProfileResponse>(getUpdateStudentProfileUrl(studentId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(studentProfileFields)
+  }
+);}
+
+
+
+
+
+export const getUpdateStudentProfileMutationKey = () => ['updateStudentProfile'] as const;
+
+export const getUpdateStudentProfileMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateStudentProfile>>, TError,UpdateStudentProfileMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateStudentProfile>>, TError,UpdateStudentProfileMutationVariables, TContext> => {
+
+const mutationKey = getUpdateStudentProfileMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateStudentProfile>>, UpdateStudentProfileMutationVariables> = (props) => {
+          const {studentId,data} = props ?? {};
+
+          return  updateStudentProfile(studentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateStudentProfileMutationResult = NonNullable<Awaited<ReturnType<typeof updateStudentProfile>>>
+    export type UpdateStudentProfileMutationBody = BodyType<StudentProfileFields>
+    export type UpdateStudentProfileMutationError = ErrorType<void>
+    export type UpdateStudentProfileMutationVariables = {studentId: string;data: BodyType<StudentProfileFields>}
+
+    /**
+ * @summary Replace a student's profile fields
+ */
+export const useUpdateStudentProfile = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateStudentProfile>>, TError,UpdateStudentProfileMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateStudentProfile>>,
+        TError,
+        UpdateStudentProfileMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateStudentProfileMutationOptions(options), queryClient);
+    }
 
 export const getCreateEnrollmentUrl = () => {
 

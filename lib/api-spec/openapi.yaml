@@ -421,6 +421,46 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/StudentPage"
+  /academic/students/{studentId}/profile:
+    parameters:
+      - in: path
+        name: studentId
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getStudentProfile
+      tags: [academic]
+      summary: Get a student's profile for an administrator
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Student profile and current enrollment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentProfileResponse" }
+        "403": { description: Administrator role required }
+        "404": { description: Student not found }
+    put:
+      operationId: updateStudentProfile
+      tags: [academic]
+      summary: Replace a student's profile fields
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StudentProfileUpdateInput" }
+      responses:
+        "200":
+          description: Updated student profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentProfileResponse" }
+        "400": { description: Invalid profile data }
+        "403": { description: Administrator role required }
+        "404": { description: Student not found }
   /academic/enrollments:
     post:
       operationId: createEnrollment
@@ -1423,6 +1463,42 @@ components:
         sectionName: { type: string }
         status: { type: string, enum: [active, disabled] }
         academicYear: { type: string, minLength: 4, maxLength: 24 }
+    StudentProfileFields:
+      type: object
+      required: [dateOfBirth, gender, phone, address, bloodGroup, guardianName, guardianEmail, guardianPhone, guardianRelationship]
+      properties:
+        dateOfBirth: { type: [string, "null"], pattern: '^\d{4}-\d{2}-\d{2}$' }
+        gender: { type: [string, "null"], maxLength: 40 }
+        phone: { type: [string, "null"], maxLength: 32 }
+        address: { type: [string, "null"], maxLength: 500 }
+        bloodGroup: { type: [string, "null"], maxLength: 8 }
+        guardianName: { type: [string, "null"], maxLength: 120 }
+        guardianEmail: { type: [string, "null"], format: email, maxLength: 254 }
+        guardianPhone: { type: [string, "null"], maxLength: 32 }
+        guardianRelationship: { type: [string, "null"], maxLength: 40 }
+    StudentCurrentEnrollment:
+      type: object
+      required: [admissionNo, academicYear, className, sectionName]
+      properties:
+        admissionNo: { type: string }
+        academicYear: { type: string }
+        className: { type: string }
+        sectionName: { type: string }
+    StudentProfileResponse:
+      type: object
+      required: [id, name, email, status, currentEnrollment, profile]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        status: { type: string, enum: [active, disabled] }
+        currentEnrollment:
+          oneOf:
+            - { $ref: "#/components/schemas/StudentCurrentEnrollment" }
+            - { type: "null" }
+        profile: { $ref: "#/components/schemas/StudentProfileFields" }
+    StudentProfileUpdateInput:
+      $ref: "#/components/schemas/StudentProfileFields"
     StudentPage:
       type: object
       required: [items, total, limit, offset]
