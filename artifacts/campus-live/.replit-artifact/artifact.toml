@@ -22,6 +22,9 @@ args = [ "npm", "run", "build", "--workspace=@workspace/campus-live" ]
 [services.production.run]
 args = [ "npm", "run", "start", "--workspace=@workspace/campus-live" ]
 
+[services.production.health.startup]
+path = "/healthz"
+
 [services.env]
 PORT = "19557"
 BASE_PATH = "/"
