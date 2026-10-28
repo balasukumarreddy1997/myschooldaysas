@@ -4,6 +4,9 @@ const runtimeEnvSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     PORT: z.coerce.number().int().min(1).max(65535),
+    ENABLE_LIVE_CLASSES: z.enum(["true", "false"]).default("true").transform(value => value === "true"),
+    ENABLE_ONLINE_PAYMENTS: z.enum(["true", "false"]).default("true").transform(value => value === "true"),
+    ENABLE_REDIS: z.enum(["true", "false"]).default("true").transform(value => value === "true"),
     DATABASE_URL: z.string().url().optional(),
     JWT_SECRET: z.string().optional(),
     INTERNAL_API_KEY: z.string().optional(),
@@ -38,13 +41,9 @@ const runtimeEnvSchema = z
       "DATABASE_URL",
       "JWT_SECRET",
       "INTERNAL_API_KEY",
-      "REDIS_URL",
-      "LIVEKIT_PUBLIC_URL",
-      "LIVEKIT_API_KEY",
-      "LIVEKIT_API_SECRET",
-      "RAZORPAY_KEY_ID",
-      "RAZORPAY_KEY_SECRET",
-      "RAZORPAY_WEBHOOK_SECRET",
+      ...(env.ENABLE_REDIS ? ["REDIS_URL"] as const : []),
+      ...(env.ENABLE_LIVE_CLASSES ? ["LIVEKIT_PUBLIC_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET"] as const : []),
+      ...(env.ENABLE_ONLINE_PAYMENTS ? ["RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "RAZORPAY_WEBHOOK_SECRET"] as const : []),
     ] as const;
     for (const key of requiredKeys) {
       if (!env[key]) {

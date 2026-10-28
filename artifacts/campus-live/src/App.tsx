@@ -41,6 +41,7 @@ import { EnrollmentLifecycle } from '@/components/academic/enrollment-lifecycle'
 import { AdmissionsInbox, PublicAdmissionForm } from '@/components/admissions';
 import { AnnouncementsPage } from '@/components/announcements/announcements-page';
 import { PLATFORM_NAME, SCHOOL_NAME } from '@/lib/branding';
+import { liveClassesEnabled } from '@/lib/features';
 
 const queryClient = new QueryClient();
 const fmtDate = (iso?: string) => iso ? `${iso.slice(0, 10)} · ${iso.slice(11, 16)}` : 'Time not set';
@@ -95,7 +96,7 @@ function ProtectedApp() {
       return <div className="shell grain min-h-screen"><main className="mx-auto w-full max-w-5xl p-4 pt-8 md:p-8"><div className="mb-7 flex items-center justify-between"><div className="flex items-center gap-2 font-bold"><ShieldCheck size={18} className="text-[hsl(var(--primary))]"/>{SCHOOL_NAME}</div><button className="btn btn-muted" onClick={logout}><LogOut size={15}/>Sign out</button></div><ConsentsPage firstLogin /></main></div>;
     }
   }
-  if (path.startsWith('/classroom/')) return <ErrorBoundary resetKey={path}><ClassroomPage roles={user.roles}/></ErrorBoundary>;
+  if (path.startsWith('/classroom/')) return liveClassesEnabled ? <ErrorBoundary resetKey={path}><ClassroomPage roles={user.roles}/></ErrorBoundary> : <div className="shell grain p-8"><LiveClassesUnavailable /></div>;
   return <div className="shell grain"><AppShell user={user} path={path} onLogout={logout}>
     <ErrorBoundary resetKey={path}>
       <Switch>
@@ -105,7 +106,7 @@ function ProtectedApp() {
         <Route path="/admin/students" component={() => canViewStudentRoster(user.roles) ? <StudentsPage roles={user.roles} /> : <NotFound />} />
         <Route path="/admin/admissions" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <AdmissionsInbox/> : <NotFound/>} />
         <Route path="/admin/guardians" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <GuardianAccessPage/> : <NotFound/>} />
-        <Route path="/live/sessions" component={() => <SessionsPage userRoles={user.roles} />} />
+        <Route path="/live/sessions" component={() => liveClassesEnabled ? <SessionsPage userRoles={user.roles} /> : <LiveClassesUnavailable />} />
         <Route path="/boards/templates" component={() => <TemplatesPage roles={user.roles} />} />
         <Route path="/learning" component={() => <LearningPage roles={user.roles} />} />
         <Route path="/announcements" component={() => <AnnouncementsPage roles={user.roles} userId={user.id} />} />
@@ -130,7 +131,7 @@ function AppShell({ user, path, onLogout, children }: { user: { name: string; em
     { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
     { label: 'Classes', href: '/admin/classes', icon: BookOpen },
     ...(canViewStudentRoster(user.roles) ? [{ label: 'Students', href: '/admin/students', icon: Users }] : []),
-    { label: 'Live classes', href: '/live/sessions', icon: Video },
+    ...(liveClassesEnabled ? [{ label: 'Live classes', href: '/live/sessions', icon: Video }] : []),
     { label: 'Smartboards', href: '/boards/templates', icon: Library },
     { label: 'Learning', href: '/learning', icon: GraduationCap },
     { label: 'Announcements', href: '/announcements', icon: Radio },
@@ -348,6 +349,7 @@ function PageHeading({ eyebrow, title, description, action }: { eyebrow: string;
   return <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="mb-2 text-[10px] font-bold uppercase tracking-[.2em] text-[hsl(var(--primary))]">{eyebrow}</div><h1 className="display m-0 text-[30px] font-extrabold leading-tight tracking-[-.045em] md:text-[36px]">{title}</h1><p className="mb-0 mt-2 max-w-2xl text-[13px] text-[hsl(var(--muted-foreground))]">{description}</p></div>{action}</div>;
 }
 function LoadingScreen() { return <div className="grid min-h-[100dvh] place-items-center p-6"><div className="w-full max-w-sm space-y-3"><div className="skeleton h-5 w-36"/><div className="skeleton h-10 w-64"/><div className="skeleton h-24 w-full"/></div></div>; }
+function LiveClassesUnavailable() { return <section className="surface mx-auto max-w-xl p-8"><h1 className="display text-2xl font-bold">Live classes are coming later</h1><p className="my-4">Live classes are temporarily unavailable in this release. Your school timetable and learning activities remain available.</p><Link className="btn btn-primary" href="/dashboard">Back to dashboard</Link></section>; }
 function QueryState({ loading, error, empty, retry, children }: { loading: boolean; error?: unknown; empty: boolean; retry: () => void; children: ReactNode }) {
   if (loading) return <div className="space-y-3" aria-label="Loading"><div className="skeleton h-14 w-full"/><div className="skeleton h-14 w-full"/><div className="skeleton h-14 w-full"/></div>;
   if (error) return <div className="surface flex flex-col items-center p-8 text-center"><CircleAlert className="mb-3 text-[hsl(var(--destructive))]" size={24}/><b>We couldn’t load this yet</b><p className="text-sm text-[hsl(var(--muted-foreground))]">{errorText(error)}</p><button className="btn btn-muted" onClick={retry}>Retry</button></div>;
@@ -378,7 +380,7 @@ function DashboardPage() {
       </div>
       <div className="dashboard-welcome-actions">
         <Link href="/boards/templates" className="dashboard-secondary-link"><Library size={15}/> Smartboards</Link>
-        <Link href="/live/sessions" className="dashboard-primary-link">Explore live classes <ArrowRight size={16}/></Link>
+        {liveClassesEnabled ? <Link href="/live/sessions" className="dashboard-primary-link">Explore live classes <ArrowRight size={16}/></Link> : <Link href="/learning" className="dashboard-primary-link">Explore learning <ArrowRight size={16}/></Link>}
       </div>
     </section>
     <QueryState loading={overview.isLoading} error={overview.error} empty={!data} retry={() => overview.refetch()}>
@@ -435,7 +437,7 @@ function DashboardPage() {
           </div>
         </section>}
         <div className="dashboard-panels">
-          <section className="dashboard-panel dashboard-sessions" aria-labelledby="dashboard-sessions-title">
+          {liveClassesEnabled ? <section className="dashboard-panel dashboard-sessions" aria-labelledby="dashboard-sessions-title">
             <div className="dashboard-panel-heading">
               <div>
                 <div className="dashboard-panel-kicker">ON THE TIMETABLE</div>
@@ -449,7 +451,7 @@ function DashboardPage() {
               <div className="dashboard-session-copy"><div className="dashboard-session-title">{session.title}</div><div className="dashboard-session-meta">{session.teacherName} <span>·</span> {session.sections.join(', ') || (session.mode === 'class' ? 'Whole class' : 'Section')}</div></div>
               <div className="dashboard-session-time"><div><Clock3 size={13}/>{fmtDate(session.startAt)}</div><StatusTag status={session.status}/></div>
             </div>)}</div> : <InlineEmpty text="No upcoming sessions have been scheduled."/>}
-          </section>
+          </section> : <section className="dashboard-panel dashboard-sessions"><div className="dashboard-panel-heading"><div><div className="dashboard-panel-kicker">YOUR SCHOOL DAY</div><h2>Plan your day</h2><p>Find your lessons in the school timetable.</p></div><Link href="/timetable" className="dashboard-text-link">Open timetable <ArrowRight size={14}/></Link></div></section>}
           <section className="dashboard-panel dashboard-activity" aria-labelledby="dashboard-activity-title">
             <div className="dashboard-panel-heading dashboard-activity-heading">
               <div className="dashboard-activity-emblem"><Activity size={18}/></div>

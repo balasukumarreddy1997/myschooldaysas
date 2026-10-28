@@ -61,3 +61,45 @@ test("production config accepts structurally valid long values", () => {
   });
   assert.equal(config.NODE_ENV, "production");
 });
+
+const coreProduction = {
+  NODE_ENV: "production",
+  PORT: "8080",
+  DATABASE_URL: "postgres://localhost/campus",
+  JWT_SECRET: "jwt-test-fixture-more-than-thirty-two-characters",
+  INTERNAL_API_KEY: "internal-test-fixture-more-than-thirty-two-characters",
+  ENABLE_LIVE_CLASSES: "false",
+  ENABLE_ONLINE_PAYMENTS: "false",
+  ENABLE_REDIS: "false",
+};
+
+test("core-only production starts without optional provider credentials", () => {
+  const config = loadRuntimeConfig(coreProduction);
+  assert.equal(config.ENABLE_LIVE_CLASSES, false);
+  assert.equal(config.ENABLE_ONLINE_PAYMENTS, false);
+  assert.equal(config.ENABLE_REDIS, false);
+});
+
+test("core-only production still rejects missing authentication secrets", () => {
+  assert.throws(
+    () => loadRuntimeConfig({ ...coreProduction, JWT_SECRET: undefined }),
+    /JWT_SECRET: Required in production/,
+  );
+});
+
+test("re-enabled features still require their production credentials", () => {
+  for (const [flag, credential] of [
+    ["ENABLE_LIVE_CLASSES", "LIVEKIT_API_SECRET"],
+    ["ENABLE_ONLINE_PAYMENTS", "RAZORPAY_KEY_SECRET"],
+    ["ENABLE_REDIS", "REDIS_URL"],
+  ]) {
+    assert.throws(
+      () => loadRuntimeConfig({ ...coreProduction, [flag!]: "true" }),
+      new RegExp(`${credential}: Required in production`),
+    );
+  }
+});
+
+test("invalid feature switches cannot silently disable security requirements", () => {
+  assert.throws(() => loadRuntimeConfig({ ...coreProduction, ENABLE_LIVE_CLASSES: "0" }));
+});

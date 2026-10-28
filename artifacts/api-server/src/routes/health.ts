@@ -67,7 +67,7 @@ const readinessRoutes: FastifyPluginAsync = async (fastify) => {
 fastify.get("/ready", async (_request, reply) => {
   try {
     await pool.query("SELECT 1");
-    await checkRedis();
+    if (process.env.ENABLE_REDIS !== "false") await checkRedis();
     return reply.send({ status: "ready" });
   } catch {
     return reply.code(503).send({ status: "not_ready" });

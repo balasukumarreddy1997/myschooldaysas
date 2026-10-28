@@ -1,4 +1,4 @@
-modules = ["nodejs-24", "postgresql-16", "python-base-3.13"]
+modules = ["nodejs-24", "python-base-3.13", "postgresql-16"]
 
 [deployment]
 router = "application"
@@ -17,3 +17,12 @@ timeoutMs = 120000
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.production]
+ENABLE_LIVE_CLASSES = "false"
+ENABLE_ONLINE_PAYMENTS = "false"
+ENABLE_REDIS = "false"
+NEXT_PUBLIC_ENABLE_LIVE_CLASSES = "false"
+NEXT_PUBLIC_ENABLE_ONLINE_PAYMENTS = "false"

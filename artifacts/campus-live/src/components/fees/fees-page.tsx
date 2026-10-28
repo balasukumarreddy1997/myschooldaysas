@@ -14,6 +14,7 @@ import {
   usePayFeeInvoice,
 } from "@workspace/api-client-react";
 import { SCHOOL_NAME } from "@/lib/branding";
+import { onlinePaymentsEnabled } from "@/lib/features";
 import './school-work-pages.css';
 
 const adminRoles = ["super_admin", "org_admin", "campus_admin"];
@@ -171,7 +172,7 @@ export function FeesPage({ roles }: FeesPageProps) {
         <header>
           <p className="eyebrow">Family account</p>
           <h1 className="display text-3xl font-extrabold">Fees and receipts</h1>
-          <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">View invoices for your linked children and pay eligible balances.</p>
+          <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">{onlinePaymentsEnabled ? "View invoices for your linked children and pay eligible balances." : "View invoices and receipts for your linked children. Online payments are temporarily unavailable; contact the school for payment instructions."}</p>
         </header>
         {notice && <div className="surface p-4 text-sm" role="status">{notice}</div>}
         {myInvoices.isError && <div className="surface p-5 text-sm text-red-700">Fee information could not be loaded. Refresh and try again.</div>}
@@ -196,13 +197,13 @@ export function FeesPage({ roles }: FeesPageProps) {
                       <div><p className="text-xs text-[hsl(var(--muted-foreground))]">Due date</p><p className="mt-1 font-semibold">{dateText(invoice.dueDate)}</p></div>
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
-                      {invoice.canPay && invoice.status === "unpaid" && (
+                      {onlinePaymentsEnabled && invoice.canPay && invoice.status === "unpaid" && (
                         <button className="btn btn-primary" disabled={pay.isPending} onClick={() => pay.mutate({ invoiceId: invoice.id })}>
                           {pay.isPending ? "Processing…" : "Pay now"}
                         </button>
                       )}
-                      {!invoice.canPay && invoice.status === "unpaid" && (
-                        <span className="text-sm text-[hsl(var(--muted-foreground))]">Payment is not enabled for this account.</span>
+                      {(!onlinePaymentsEnabled || !invoice.canPay) && invoice.status === "unpaid" && (
+                        <span className="text-sm text-[hsl(var(--muted-foreground))]">{onlinePaymentsEnabled ? "Payment is not enabled for this account." : "Online payments are unavailable. Contact the school."}</span>
                       )}
                       {invoice.receiptNumber && (
                         <Link className="btn btn-muted" href={`/fees/receipts/${encodeURIComponent(invoice.receiptNumber)}`}>View receipt</Link>

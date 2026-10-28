@@ -254,7 +254,8 @@ const routes: FastifyPluginAsync = async (fastify) => {
       res.json({
         items: items.rows.map((row) => mapInvoice(
           row,
-          canParentPayInvoice(row.can_pay === true, row.status, process.env.NODE_ENV),
+          process.env.ENABLE_ONLINE_PAYMENTS !== "false" &&
+            canParentPayInvoice(row.can_pay === true, row.status, process.env.NODE_ENV),
         )),
         total: items.rowCount ?? 0,
       });
