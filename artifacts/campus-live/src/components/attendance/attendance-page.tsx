@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { getGetSchoolAttendanceQueryKey, useGetAcademicTeacherAssignments, useGetSchoolAttendance, useGetSections, useMarkSchoolAttendance } from '@workspace/api-client-react';
 import type { SchoolAttendanceInput, SchoolAttendancePage, SchoolAttendanceStudent } from '@workspace/api-client-react';
 import { CalendarDays, Check, CircleAlert, ClipboardCheck, RotateCcw, Save, UsersRound } from 'lucide-react';
+import '../fees/school-work-pages.css';
 
 type Props = { roles: string[] };
 type Mark = { status: 'present' | 'absent' | 'late' | 'leave' | null; remark: string };
@@ -38,14 +39,14 @@ export function AttendancePage({ roles }: Props) {
   const counts = students.reduce<Record<string, number>>((acc, item) => { const status = rowMark(item).status; if (status) acc[status] = (acc[status] ?? 0) + 1; return acc; }, {});
   const markAll = (status: Mark['status']) => setEdits(Object.fromEntries(students.map(item => [item.studentId, { status, remark: rowMark(item).remark }])));
 
-  if (!authorized) return <section className="surface p-8 text-center"><CircleAlert className="mx-auto mb-3 text-[hsl(var(--accent))]"/><h1 className="display text-xl font-extrabold">Attendance is staff-only</h1><p className="mb-0 text-sm text-[hsl(var(--muted-foreground))]">Your account can view learning information, but cannot record attendance.</p></section>;
+  if (!authorized) return <section className="surface school-access-denied p-8 text-center"><CircleAlert className="mx-auto mb-3 text-[hsl(var(--accent))]"/><h1 className="display text-xl font-extrabold">Attendance is staff-only</h1><p className="mb-0 text-sm text-[hsl(var(--muted-foreground))]">Your account can view learning information, but cannot record attendance.</p></section>;
   const saveMarks = () => {
     if (!page || !complete) return;
     const data: SchoolAttendanceInput = { sectionId: page.sectionId, date: page.date, marks: students.map(item => ({ studentId: item.studentId, status: rowMark(item).status as 'present' | 'absent' | 'late' | 'leave', remark: rowMark(item).remark.trim() })) };
     save.mutate({ data }, { onSuccess: () => { setEdits({}); setNotice('Attendance saved for this section.'); } });
   };
 
-  return <div className="space-y-6">
+  return <div className="attendance-page space-y-6">
     <header className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
       <div><div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.2em] text-[hsl(var(--primary))]"><span className="h-px w-7 bg-[hsl(var(--accent))]"/>Daily register</div><h1 className="display m-0 text-[32px] font-extrabold tracking-[-.045em] md:text-[38px]">Attendance</h1><p className="mb-0 mt-2 max-w-xl text-[13px] text-[hsl(var(--muted-foreground))]">A reliable record of who was here, and who needs a check-in.</p></div>
       <div className="flex flex-col gap-2 sm:flex-row">

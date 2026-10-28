@@ -1,0 +1,178 @@
+/* Shared presentation layer for the school-day register, finance ledger and admissions desk. */
+.attendance-page,
+.fees-admin-page,
+.fees-family-page,
+.fee-receipt-page,
+.admissions-page {
+  --school-forest: #21483b;
+  --school-gold: #a8874f;
+  color: hsl(var(--foreground));
+}
+
+.attendance-page > header,
+.fees-admin-page > header,
+.fees-family-page > header,
+.admissions-page > header {
+  position: relative;
+  padding: 2px 0 18px;
+  border-bottom: 1px solid hsl(var(--border) / .78);
+}
+
+.attendance-page > header > div:first-child > div:first-child,
+.fees-admin-page > header .eyebrow,
+.fees-family-page > header .eyebrow,
+.admissions-page > header > div:first-child > p:first-child {
+  color: var(--school-gold);
+}
+
+.dark .attendance-page > header > div:first-child > div:first-child,
+.dark .fees-admin-page > header .eyebrow,
+.dark .fees-family-page > header .eyebrow,
+.dark .admissions-page > header > div:first-child > p:first-child {
+  color: #d4bb84;
+}
+
+.attendance-page .surface,
+.fees-admin-page .surface,
+.fees-family-page .surface,
+.fee-receipt-page.surface,
+.admissions-page .surface {
+  border-radius: 12px;
+  box-shadow: 0 6px 22px rgba(55, 58, 42, .035);
+}
+
+.attendance-page > section.surface,
+.fees-admin-page .fees-issue-panel,
+.fees-admin-page .fees-invoice-table,
+.admissions-page > section.surface {
+  overflow: hidden;
+}
+
+.attendance-page > section.surface > div:first-child,
+.fees-admin-page .fees-invoice-table > div:first-child {
+  background: linear-gradient(100deg, hsl(var(--card)), hsl(var(--secondary) / .48));
+}
+
+.attendance-page > section.surface > div:nth-child(2) {
+  background: hsl(var(--background) / .74);
+}
+
+.attendance-page .grid.grid-cols-4 button {
+  min-height: 40px;
+  border-radius: 8px;
+  font-size: 11px;
+  letter-spacing: .01em;
+}
+
+.attendance-page .grid.grid-cols-4 button:focus-visible,
+.attendance-page button:focus-visible,
+.fees-admin-page a:focus-visible,
+.fees-admin-page button:focus-visible,
+.fees-family-page a:focus-visible,
+.fees-family-page button:focus-visible,
+.fee-receipt-page a:focus-visible,
+.admissions-page button:focus-visible,
+.admissions-page a:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+
+.attendance-page .divide-y > div {
+  transition: background-color .16s;
+}
+.attendance-page .divide-y > div:hover { background: hsl(var(--secondary) / .2); }
+
+.fees-admin-page .fees-issue-panel {
+  background: linear-gradient(135deg, hsl(var(--card)), hsl(var(--secondary) / .24));
+}
+
+.fees-admin-page .fees-invoice-table table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.fees-admin-page .fees-invoice-table thead { background: hsl(var(--secondary) / .72); }
+.fees-admin-page .fees-invoice-table tbody tr { transition: background-color .15s; }
+.fees-admin-page .fees-invoice-table tbody tr:hover { background: hsl(var(--brand-mint) / .22); }
+.fees-admin-page .fees-invoice-table th {
+  font-size: 10px;
+  letter-spacing: .09em;
+}
+
+.fees-family-page .family-invoice {
+  position: relative;
+  overflow: hidden;
+  transition: border-color .18s, transform .18s, box-shadow .18s;
+}
+.fees-family-page .family-invoice::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--school-gold);
+  content: "";
+}
+.fees-family-page .family-invoice:hover {
+  transform: translateY(-1px);
+  border-color: hsl(var(--primary) / .24);
+  box-shadow: 0 9px 25px rgba(55, 58, 42, .07);
+}
+.fee-receipt-page > article,
+.fee-receipt-page.surface {
+  border-color: hsl(var(--border));
+  background:
+    linear-gradient(145deg, hsl(var(--card)), hsl(var(--background) / .45));
+  box-shadow: 0 12px 34px rgba(55, 58, 42, .07);
+}
+.fee-receipt-page article dl {
+  border-color: hsl(var(--border));
+}
+
+.admissions-page > section.surface > div:first-child {
+  background: linear-gradient(100deg, hsl(var(--card)), hsl(var(--secondary) / .43));
+}
+.admissions-page input[type="search"] { min-height: 44px; }
+.admissions-page > section > div.grid > div:first-child button {
+  min-height: 90px;
+}
+.admissions-page > section > div.grid > div:first-child button[aria-pressed="true"] {
+  box-shadow: inset 3px 0 0 var(--school-gold);
+}
+.admissions-page article > div.rounded-xl {
+  border-color: hsl(var(--border));
+  background: linear-gradient(145deg, hsl(var(--background)), hsl(var(--secondary) / .22));
+}
+.admissions-page article section ol li { min-height: 35px; }
+
+.school-access-denied { border-top: 3px solid var(--school-gold); }
+
+@media (max-width: 767px) {
+  .attendance-page,
+  .fees-admin-page,
+  .fees-family-page,
+  .fee-receipt-page,
+  .admissions-page { min-width: 0; }
+  .attendance-page > header,
+  .fees-admin-page > header,
+  .fees-family-page > header,
+  .admissions-page > header { padding-bottom: 14px; }
+  .attendance-page > header > div:last-child { width: 100%; }
+  .attendance-page > header > div:last-child > select { flex: 1; min-width: 0; }
+  .attendance-page .grid.grid-cols-4 { gap: 4px; }
+  .attendance-page .grid.grid-cols-4 button { min-height: 42px; padding-inline: 2px; font-size: 10px; }
+  .fees-admin-page .fees-issue-panel { padding: 16px; }
+  .fees-admin-page .fees-issue-panel form { grid-template-columns: minmax(0, 1fr); }
+  .fees-family-page .family-invoice { padding: 17px; }
+  .fee-receipt-page article { padding: 21px; }
+  .admissions-page article { padding: 16px; }
+  .admissions-page > section > div.grid { min-height: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .attendance-page .divide-y > div,
+  .fees-family-page .family-invoice,
+  .fees-admin-page .fees-invoice-table tbody tr { transition: none; }
+}
+
+@media print {
+  .fee-receipt-page > article,
+  .fee-receipt-page.surface { background: white; border: 0; }
+}

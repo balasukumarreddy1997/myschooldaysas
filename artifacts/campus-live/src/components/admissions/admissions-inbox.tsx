@@ -9,6 +9,7 @@ import {
 } from "@workspace/api-client-react";
 import type { AdmissionEnquiry, AdmissionEnquiryStatus, GetAdmissionEnquiriesParams } from "@workspace/api-client-react";
 import { AlertCircle, CalendarDays, Check, ChevronRight, Clock3, Mail, MessageSquareText, Phone, RefreshCw, Search, UserRound } from "lucide-react";
+import '../fees/school-work-pages.css';
 
 const statuses: AdmissionEnquiryStatus[] = ["new", "contacted", "visit_scheduled", "application_issued", "closed", "lost"];
 const statusLabel = (status: AdmissionEnquiryStatus) => status.replaceAll("_", " ");
@@ -84,7 +85,7 @@ export function AdmissionsInbox() {
   const count = enquiries.data?.total ?? 0;
 
   return (
-    <div className="mx-auto max-w-[1500px] space-y-6">
+    <div className="admissions-page mx-auto max-w-[1500px] space-y-6">
       <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <p className="mb-2 text-[10px] font-bold uppercase tracking-[.2em] text-[hsl(var(--primary))]">Admissions workspace</p>

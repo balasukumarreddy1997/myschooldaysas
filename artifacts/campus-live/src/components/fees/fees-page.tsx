@@ -14,6 +14,7 @@ import {
   usePayFeeInvoice,
 } from "@workspace/api-client-react";
 import { SCHOOL_NAME } from "@/lib/branding";
+import './school-work-pages.css';
 
 const adminRoles = ["super_admin", "org_admin", "campus_admin"];
 const money = (paise: number) => `₹${(paise / 100).toFixed(2)}`;
@@ -78,7 +79,7 @@ export function FeesPage({ roles }: FeesPageProps) {
     const sectionItems = sections.data?.items ?? [];
     const invoiceItems = invoices.data?.items ?? [];
     return (
-      <div className="mx-auto max-w-6xl space-y-6">
+      <div className="fees-admin-page mx-auto max-w-6xl space-y-6">
         <header>
           <p className="eyebrow">School finance</p>
           <h1 className="display text-3xl font-extrabold">Fee invoices</h1>
@@ -87,7 +88,7 @@ export function FeesPage({ roles }: FeesPageProps) {
           </p>
         </header>
 
-        <section className="surface p-5 md:p-6">
+        <section className="surface fees-issue-panel p-5 md:p-6">
           <h2 className="display text-lg font-bold">Issue section invoices</h2>
           <form className="mt-4 grid gap-4 md:grid-cols-2" onSubmit={submitInvoices}>
             <label className="block text-sm font-semibold">
@@ -130,7 +131,7 @@ export function FeesPage({ roles }: FeesPageProps) {
           {invoices.isError && <p className="mt-3 text-sm text-red-700">Invoices could not be loaded. Refresh and try again.</p>}
         </section>
 
-        <section className="surface overflow-hidden">
+        <section className="surface fees-invoice-table overflow-hidden">
           <div className="border-b border-[hsl(var(--border))] p-5">
             <h2 className="display text-lg font-bold">Recent invoices</h2>
           </div>
@@ -166,7 +167,7 @@ export function FeesPage({ roles }: FeesPageProps) {
   if (isParent) {
     const items = myInvoices.data?.items ?? [];
     return (
-      <div className="mx-auto max-w-5xl space-y-6">
+      <div className="fees-family-page mx-auto max-w-5xl space-y-6">
         <header>
           <p className="eyebrow">Family account</p>
           <h1 className="display text-3xl font-extrabold">Fees and receipts</h1>
@@ -178,7 +179,7 @@ export function FeesPage({ roles }: FeesPageProps) {
           : items.length === 0 ? <div className="surface p-6 text-sm text-[hsl(var(--muted-foreground))]">There are no invoices for your linked children.</div>
             : <div className="space-y-4">
               {items.map((invoice) => (
-                <article className="surface p-5 md:p-6" key={invoice.id}>
+                <article className="surface family-invoice p-5 md:p-6" key={invoice.id}>
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">{invoice.studentName}</p>
@@ -215,17 +216,17 @@ export function FeesPage({ roles }: FeesPageProps) {
     );
   }
 
-  return <div className="surface p-6 text-sm">Fee access is available to school administrators and parents.</div>;
+  return <div className="fees-access-notice surface p-6 text-sm">Fee access is available to school administrators and parents.</div>;
 }
 
 export function FeeReceiptPage() {
   const { receiptNumber = "" } = useParams<{ receiptNumber: string }>();
   const receipt = useGetFeeReceipt(receiptNumber);
-  if (receipt.isLoading) return <div className="surface mx-auto max-w-2xl p-6">Loading receipt…</div>;
-  if (receipt.isError || !receipt.data) return <div className="surface mx-auto max-w-2xl p-6 text-sm text-red-700">Receipt could not be loaded.</div>;
+  if (receipt.isLoading) return <div className="fee-receipt-page surface mx-auto max-w-2xl p-6">Loading receipt…</div>;
+  if (receipt.isError || !receipt.data) return <div className="fee-receipt-page surface mx-auto max-w-2xl p-6 text-sm text-red-700">Receipt could not be loaded.</div>;
   const item = receipt.data;
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="fee-receipt-page mx-auto max-w-2xl">
       <style>{`@media print { body * { visibility: hidden !important; } #fee-receipt, #fee-receipt * { visibility: visible !important; } #fee-receipt { position: absolute; inset: 0 auto auto 0; width: 100%; box-shadow: none !important; } }`}</style>
       <article id="fee-receipt" className="surface p-7 md:p-10">
         <div className="flex items-start justify-between gap-4">
