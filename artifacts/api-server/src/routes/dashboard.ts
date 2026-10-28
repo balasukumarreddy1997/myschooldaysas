@@ -106,7 +106,138 @@ router.get("/dashboard/overview", requireAuth, async (req, res, next) => {
           LIMIT 6`,
         [user.orgId, isAdmin, user.id, isTeacher, isStudent, isParent],
       );
-      return { stats: stats.rows[0], sessions: sessions.rows };
+
+      const activity = await client.query(
+        `SELECT id, label, description, occurred_at
+           FROM (
+             SELECT 'attendance-' || audit.id::text AS id,
+                    'Attendance recorded'::text AS label,
+                    classes.name || ' · ' || sections.name || ' · ' ||
+                      COALESCE(audit.metadata->>'markCount', '0') || ' students marked' AS description,
+                    audit.created_at AS occurred_at
+               FROM school.attendance_audit_log audit
+               JOIN school.attendance_sessions attendance
+                 ON attendance.org_id = audit.org_id AND attendance.id = audit.session_id
+               JOIN academic.sections sections
+                 ON sections.org_id = attendance.org_id AND sections.id = attendance.section_id
+               JOIN academic.classes classes
+                 ON classes.org_id = sections.org_id AND classes.id = sections.class_id
+              WHERE audit.org_id = $1
+                AND (
+                  $2::boolean
+                  OR ($3::boolean AND EXISTS (
+                    SELECT 1 FROM academic.section_teachers assigned
+                     WHERE assigned.org_id = attendance.org_id
+                       AND assigned.section_id = attendance.section_id
+                       AND assigned.teacher_user_id = $4
+                  ))
+                )
+             UNION ALL
+             SELECT 'payment-' || payment.id::text AS id,
+                    'Fee payment received'::text AS label,
+                    COALESCE(student.name, 'Student') || ' · ' || invoice.description AS description,
+                    payment.captured_at AS occurred_at
+               FROM fees.payments payment
+               JOIN fees.invoices invoice
+                 ON invoice.org_id = payment.org_id AND invoice.id = payment.invoice_id
+               JOIN identity.users student
+                 ON student.org_id = invoice.org_id AND student.id = invoice.student_user_id
+              WHERE payment.org_id = $1 AND payment.status = 'captured' AND $2::boolean
+           ) school_activity
+          ORDER BY occurred_at DESC
+          LIMIT 8`,
+        [user.orgId, isAdmin, isTeacher, user.id],
+      );
+
+      let adminInsights;
+      if (isAdmin) {
+        const attendance = await client.query(
+          `SELECT CURRENT_DATE::text AS attendance_date,
+                  COUNT(marks.id)::int AS marked_students,
+                  COUNT(*) FILTER (WHERE marks.status IN ('present', 'late'))::int AS present_students,
+                  ROUND(
+                    100.0 * COUNT(*) FILTER (WHERE marks.status IN ('present', 'late'))
+                    / NULLIF(COUNT(marks.id), 0),
+                    1
+                  ) AS attendance_percent
+             FROM school.attendance_sessions attendance
+             JOIN school.attendance_marks marks
+               ON marks.org_id = attendance.org_id AND marks.session_id = attendance.id
+            WHERE attendance.org_id = $1
+              AND attendance.attendance_date = CURRENT_DATE
+              AND attendance.period IS NULL`,
+          [user.orgId],
+        );
+        const fees = await client.query(
+          `SELECT
+             COALESCE((
+               SELECT SUM(payment.amount_paise)
+                 FROM fees.payments payment
+                WHERE payment.org_id = $1
+                  AND payment.status = 'captured'
+                  AND payment.captured_at >= date_trunc('month', now())
+                  AND payment.captured_at < date_trunc('month', now()) + interval '1 month'
+             ), 0)::text AS collected_this_month_paise,
+             COALESCE((
+               SELECT SUM(invoice.amount_paise)
+                 FROM fees.invoices invoice
+                WHERE invoice.org_id = $1 AND invoice.status = 'unpaid'
+             ), 0)::text AS outstanding_paise,
+             (
+               SELECT COUNT(*)::int
+                 FROM fees.invoices invoice
+                WHERE invoice.org_id = $1
+                  AND invoice.status = 'unpaid'
+                  AND invoice.due_date < CURRENT_DATE
+             ) AS overdue_invoice_count`,
+          [user.orgId],
+        );
+        const collectionTrend = await client.query(
+          `SELECT to_char(months.month_start, 'YYYY-MM') AS month,
+                  COALESCE(SUM(payment.amount_paise), 0)::text AS collected_paise
+             FROM generate_series(
+                    date_trunc('month', now()) - interval '5 months',
+                    date_trunc('month', now()),
+                    interval '1 month'
+                  ) AS months(month_start)
+             LEFT JOIN fees.payments payment
+               ON payment.org_id = $1
+              AND payment.status = 'captured'
+              AND payment.captured_at >= months.month_start
+              AND payment.captured_at < months.month_start + interval '1 month'
+            GROUP BY months.month_start
+            ORDER BY months.month_start`,
+          [user.orgId],
+        );
+        const attendanceRow = attendance.rows[0];
+        const feeRow = fees.rows[0];
+        adminInsights = {
+          attendanceToday: {
+            attendanceDate: attendanceRow.attendance_date,
+            markedStudents: Number(attendanceRow.marked_students),
+            presentStudents: Number(attendanceRow.present_students),
+            attendancePercent: attendanceRow.attendance_percent === null
+              ? null
+              : Number(attendanceRow.attendance_percent),
+          },
+          fees: {
+            collectedThisMonthPaise: Number(feeRow.collected_this_month_paise),
+            outstandingPaise: Number(feeRow.outstanding_paise),
+            overdueInvoiceCount: Number(feeRow.overdue_invoice_count),
+            collectionTrend: collectionTrend.rows.map((row: any) => ({
+              month: row.month,
+              collectedPaise: Number(row.collected_paise),
+            })),
+          },
+        };
+      }
+
+      return {
+        stats: stats.rows[0],
+        sessions: sessions.rows,
+        activity: activity.rows,
+        adminInsights,
+      };
     });
 
     const stats = dashboard.stats ?? { students: 0, classes: 0, sections: 0, teachers: 0 };
@@ -139,7 +270,13 @@ router.get("/dashboard/overview", requireAuth, async (req, res, next) => {
         parentView: row.parent_view,
         sections: row.sections,
       })),
-      recentActivity: [],
+      recentActivity: dashboard.activity.map((row: any) => ({
+        id: row.id,
+        label: row.label,
+        description: row.description,
+        occurredAt: row.occurred_at,
+      })),
+      ...(dashboard.adminInsights ? { adminInsights: dashboard.adminInsights } : {}),
     });
   } catch (error) {
     next(error);

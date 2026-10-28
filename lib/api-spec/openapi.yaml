@@ -1825,6 +1825,40 @@ components:
         recentActivity:
           type: array
           items: { $ref: "#/components/schemas/ActivityItem" }
+        adminInsights:
+          $ref: "#/components/schemas/DashboardAdminInsights"
+    DashboardAdminInsights:
+      type: object
+      required: [attendanceToday, fees]
+      properties:
+        attendanceToday:
+          $ref: "#/components/schemas/DashboardAttendanceSummary"
+        fees:
+          $ref: "#/components/schemas/DashboardFeeSummary"
+    DashboardAttendanceSummary:
+      type: object
+      required: [attendanceDate, markedStudents, presentStudents, attendancePercent]
+      properties:
+        attendanceDate: { type: string, format: date }
+        markedStudents: { type: integer, minimum: 0 }
+        presentStudents: { type: integer, minimum: 0 }
+        attendancePercent: { type: number, minimum: 0, maximum: 100, nullable: true }
+    DashboardFeeSummary:
+      type: object
+      required: [collectedThisMonthPaise, outstandingPaise, overdueInvoiceCount, collectionTrend]
+      properties:
+        collectedThisMonthPaise: { type: integer, minimum: 0 }
+        outstandingPaise: { type: integer, minimum: 0 }
+        overdueInvoiceCount: { type: integer, minimum: 0 }
+        collectionTrend:
+          type: array
+          items: { $ref: "#/components/schemas/DashboardCollectionPoint" }
+    DashboardCollectionPoint:
+      type: object
+      required: [month, collectedPaise]
+      properties:
+        month: { type: string, pattern: "^\\d{4}-\\d{2}$" }
+        collectedPaise: { type: integer, minimum: 0 }
     DashboardMetric:
       type: object
       required: [label, value, change, tone]

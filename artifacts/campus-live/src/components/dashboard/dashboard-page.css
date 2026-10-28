@@ -768,3 +768,201 @@
     transition: none;
   }
 }
+
+/* Dashboard: a school-day ledger, with the paper-and-forest character of St Joseph's. */
+.dashboard-page {
+  --dash-forest: #21483b;
+  --dash-gold: #ae8d52;
+  --dash-paper: hsl(var(--background));
+  max-width: 1220px;
+}
+
+.dashboard-welcome {
+  position: relative;
+  min-height: 144px;
+  align-items: center;
+  margin: -2px 0 20px;
+  padding: 22px 25px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 13px;
+  background:
+    radial-gradient(ellipse at 90% 12%, rgba(184, 155, 94, .15), transparent 32%),
+    linear-gradient(112deg, hsl(var(--card)) 0%, hsl(var(--secondary) / .4) 100%);
+  box-shadow: 0 8px 24px rgba(55, 58, 42, .035);
+}
+
+.dashboard-welcome::after {
+  position: absolute;
+  top: 0;
+  right: 27%;
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(transparent, hsl(var(--border)), transparent);
+  content: "";
+}
+
+.dashboard-welcome-copy { position: relative; z-index: 1; }
+.dashboard-eyebrow { font-size: 9px; letter-spacing: .2em; }
+.dashboard-welcome h1 { margin-top: 11px; font-size: clamp(30px, 3.2vw, 41px); }
+.dashboard-welcome-copy > p { font-size: 12px; }
+.dashboard-welcome-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+}
+.dashboard-primary-link { min-height: 42px; border-radius: 8px; font-size: 10px; }
+.dashboard-secondary-link {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 13px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  color: hsl(var(--foreground));
+  font-size: 10px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform .18s, border-color .18s, background .18s;
+}
+.dashboard-secondary-link:hover { transform: translateY(-1px); border-color: hsl(var(--primary) / .35); background: hsl(var(--card)); }
+.dashboard-content { gap: 15px; }
+.dashboard-metrics { gap: 10px; }
+.dashboard-metric {
+  min-height: 126px;
+  padding: 15px 16px;
+  border-radius: 9px;
+  box-shadow: none;
+}
+.dashboard-metric::after { right: -38px; bottom: -49px; width: 110px; height: 110px; }
+.dashboard-metric-top { font-size: 10px; }
+.dashboard-metric-icon { width: 30px; height: 30px; border-radius: 50%; }
+.dashboard-metric-value { margin-top: 13px; font-size: 29px; }
+.dashboard-metric-change { margin-top: 7px; font-size: 9px; }
+.dashboard-metric-warning { border-color: hsl(var(--accent) / .34); background: linear-gradient(145deg, hsl(var(--card)), hsl(var(--accent) / .07)); }
+
+.dashboard-admin-insights {
+  display: grid;
+  grid-template-columns: minmax(230px, .85fr) minmax(0, 1.65fr);
+  overflow: hidden;
+  border: 1px solid hsl(var(--border));
+  border-radius: 11px;
+  background: hsl(var(--card));
+  box-shadow: 0 5px 18px rgba(50, 57, 44, .03);
+}
+.dashboard-insight-attendance, .dashboard-insight-fees { min-width: 0; padding: 18px 20px; }
+.dashboard-insight-attendance { background: linear-gradient(150deg, hsl(var(--secondary) / .55), hsl(var(--card)) 78%); }
+.dashboard-insight-fees { border-left: 1px solid hsl(var(--border)); }
+.dashboard-insight-heading { display: flex; align-items: center; gap: 10px; }
+.dashboard-insight-symbol {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: hsl(var(--brand-mint));
+  color: hsl(var(--brand-mint-ink));
+}
+.dashboard-insight-symbol.gold { background: hsl(var(--accent) / .14); color: #967543; }
+.dashboard-insight-heading .dashboard-panel-kicker { margin-bottom: 3px; font-size: 8px; }
+.dashboard-insight-heading h2 { margin: 0; font-family: var(--app-font-display); font-size: 14px; font-weight: 800; letter-spacing: -.03em; }
+.dashboard-attendance-readout { display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 13px; margin: 17px 0 13px; }
+.dashboard-attendance-readout > strong { grid-row: span 2; color: hsl(var(--primary)); font-family: var(--app-font-display); font-size: 34px; letter-spacing: -.07em; line-height: 1; }
+.dashboard-attendance-readout > strong small { margin-left: 2px; font-size: 15px; }
+.dashboard-attendance-detail { display: flex; flex-wrap: wrap; gap: 3px 9px; color: hsl(var(--muted-foreground)); font-size: 9px; }
+.dashboard-attendance-detail span:first-child { color: hsl(var(--foreground)); font-weight: 700; }
+.dashboard-progress-track { height: 4px; overflow: hidden; margin-top: 8px; border-radius: 5px; background: hsl(var(--border)); }
+.dashboard-progress-track span { display: block; height: 100%; border-radius: inherit; background: hsl(var(--primary)); }
+.dashboard-attendance-unmarked { display: grid; gap: 4px; margin: 18px 0 16px; }
+.dashboard-attendance-unmarked strong { font-family: var(--app-font-display); font-size: 16px; }
+.dashboard-attendance-unmarked span { color: hsl(var(--muted-foreground)); font-size: 10px; line-height: 1.5; }
+.dashboard-insight-link { display: inline-flex; align-items: center; gap: 6px; color: hsl(var(--primary)); font-size: 9px; font-weight: 800; text-decoration: none; }
+.dashboard-insight-link:hover { text-decoration: underline; }
+.dashboard-fee-totals { display: grid; grid-template-columns: 1fr 1fr auto; gap: 13px; margin: 15px 0 4px; }
+.dashboard-fee-totals > div { display: grid; gap: 4px; min-width: 0; }
+.dashboard-fee-totals span { color: hsl(var(--muted-foreground)); font-size: 9px; }
+.dashboard-fee-totals strong { font-family: var(--app-font-display); font-size: 17px; font-weight: 800; letter-spacing: -.04em; }
+.dashboard-fee-totals .dashboard-overdue { align-content: start; padding-left: 12px; border-left: 1px solid hsl(var(--border)); }
+.dashboard-fee-totals .dashboard-overdue strong { color: #a46c32; }
+.dashboard-trend { margin-top: 7px; }
+.dashboard-trend-label { display: flex; justify-content: space-between; color: hsl(var(--muted-foreground)); font-size: 8px; }
+.dashboard-trend-label span:first-child { color: hsl(var(--foreground)); font-weight: 700; }
+.dashboard-trend svg { display: block; width: 100%; height: 50px; overflow: visible; margin-top: 2px; }
+.dashboard-chart-axis { stroke: hsl(var(--border)); stroke-width: .6; }
+.dashboard-chart-line { fill: none; stroke: hsl(var(--primary)); stroke-width: 1.8; vector-effect: non-scaling-stroke; }
+.dashboard-chart-dot { fill: hsl(var(--card)); stroke: hsl(var(--primary)); stroke-width: 1.4; vector-effect: non-scaling-stroke; }
+.dashboard-trend-months { display: flex; justify-content: space-between; margin-top: -3px; color: hsl(var(--muted-foreground)); font-size: 7px; }
+.dashboard-trend-empty { margin: 10px 0 8px; color: hsl(var(--muted-foreground)); font-size: 9px; }
+.dashboard-insight-fees > .dashboard-insight-link { margin-top: 8px; }
+
+.dashboard-panels { grid-template-columns: minmax(0, 1.35fr) minmax(285px, .85fr); gap: 12px; }
+.dashboard-panel { padding: 18px; border-radius: 10px; box-shadow: 0 4px 15px rgba(50, 57, 44, .025); }
+.dashboard-panel-heading { margin-bottom: 14px; }
+.dashboard-panel-heading h2 { font-size: 16px; }
+.dashboard-panel-kicker { color: #9a7845; }
+.dashboard-session-list { gap: 7px; }
+.dashboard-session { border-radius: 7px; padding: 10px; }
+.dashboard-activity-list { gap: 11px; }
+.dashboard-activity-time { font-variant-numeric: tabular-nums; }
+.dashboard-toolband {
+  position: relative;
+  display: flex;
+  min-height: 112px;
+  align-items: center;
+  gap: 17px;
+  overflow: hidden;
+  padding: 19px 22px;
+  border: 1px solid rgba(234, 224, 193, .18);
+  border-radius: 11px;
+  background:
+    radial-gradient(ellipse at 79% 0%, rgba(200, 174, 115, .18), transparent 33%),
+    linear-gradient(110deg, #20483a, #183b31);
+  color: #f7f4eb;
+}
+.dashboard-toolband::after { position: absolute; top: -80px; right: 18%; width: 200px; height: 200px; border: 1px solid rgba(239, 226, 193, .13); border-radius: 50%; content: ""; }
+.dashboard-toolband-mark { z-index: 1; display: grid; width: 45px; height: 45px; flex: 0 0 auto; place-items: center; border: 1px solid rgba(231, 213, 171, .3); border-radius: 50%; color: #ddc58f; }
+.dashboard-toolband-copy { z-index: 1; flex: 1; }
+.dashboard-toolband-copy span { color: #ddc58f; font-size: 8px; font-weight: 800; letter-spacing: .17em; }
+.dashboard-toolband-copy strong { display: block; margin-top: 5px; font-family: var(--app-font-display); font-size: 17px; letter-spacing: -.04em; }
+.dashboard-toolband-copy p { margin: 4px 0 0; color: rgba(247, 244, 235, .68); font-size: 9px; }
+.dashboard-community-link { min-height: 37px; border-radius: 7px; background: #d6bd85; color: #263a32; font-size: 9px; }
+.dashboard-footer { padding-top: 5px; }
+
+@media (max-width: 1050px) {
+  .dashboard-welcome::after { right: 32%; }
+  .dashboard-admin-insights { grid-template-columns: minmax(220px, .8fr) minmax(0, 1.4fr); }
+  .dashboard-panels { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 767px) {
+  .dashboard-welcome { min-height: 0; align-items: flex-start; margin: 0 0 14px; padding: 18px; }
+  .dashboard-welcome::after { display: none; }
+  .dashboard-welcome h1 { font-size: 31px; }
+  .dashboard-welcome-actions { justify-content: flex-start; }
+  .dashboard-admin-insights { grid-template-columns: 1fr; }
+  .dashboard-insight-attendance, .dashboard-insight-fees { padding: 16px; }
+  .dashboard-insight-fees { border-top: 1px solid hsl(var(--border)); border-left: 0; }
+  .dashboard-fee-totals { gap: 8px; }
+  .dashboard-fee-totals strong { font-size: 15px; }
+  .dashboard-toolband { min-height: 0; flex-wrap: wrap; padding: 17px; }
+  .dashboard-toolband-mark { width: 39px; height: 39px; }
+  .dashboard-toolband-copy { min-width: calc(100% - 60px); }
+  .dashboard-toolband-copy strong { font-size: 15px; }
+  .dashboard-community-link { margin-left: 56px; }
+}
+@media (max-width: 420px) {
+  .dashboard-metric { min-height: 112px; padding: 12px; }
+  .dashboard-metric-value { font-size: 23px; overflow-wrap: anywhere; }
+  .dashboard-metric-top { align-items: flex-start; }
+  .dashboard-metric-icon { width: 27px; height: 27px; }
+  .dashboard-session-time { margin-left: 0; }
+  .dashboard-toolband-copy { min-width: calc(100% - 55px); }
+  .dashboard-toolband-copy p { max-width: 245px; line-height: 1.45; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-secondary-link { transition: none; }
+}

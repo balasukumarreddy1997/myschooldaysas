@@ -64,6 +64,18 @@ function App() {
   </Switch></QueryClientProvider>;
 }
 
+function canViewStudentRoster(roles: string[]) {
+  return roles.some(role => [
+    'super_admin',
+    'org_admin',
+    'campus_admin',
+    'hod',
+    'teacher',
+    'class_teacher',
+    'parent',
+  ].includes(role));
+}
+
 function ProtectedApp() {
   const [path, setPath] = useLocation();
   const me = useGetMe({ query: { retry: false } });
@@ -90,7 +102,7 @@ function ProtectedApp() {
         <Route path="/" component={() => <DashboardPage />} />
         <Route path="/dashboard" component={() => <DashboardPage />} />
         <Route path="/admin/classes" component={() => <ClassesPage roles={user.roles} />} />
-        <Route path="/admin/students" component={() => <StudentsPage roles={user.roles} />} />
+        <Route path="/admin/students" component={() => canViewStudentRoster(user.roles) ? <StudentsPage roles={user.roles} /> : <NotFound />} />
         <Route path="/admin/admissions" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <AdmissionsInbox/> : <NotFound/>} />
         <Route path="/admin/guardians" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <GuardianAccessPage/> : <NotFound/>} />
         <Route path="/live/sessions" component={() => <SessionsPage userRoles={user.roles} />} />
@@ -117,7 +129,7 @@ function AppShell({ user, path, onLogout, children }: { user: { name: string; em
   const nav = [
     { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
     { label: 'Classes', href: '/admin/classes', icon: BookOpen },
-    { label: 'Students', href: '/admin/students', icon: Users },
+    ...(canViewStudentRoster(user.roles) ? [{ label: 'Students', href: '/admin/students', icon: Users }] : []),
     { label: 'Live classes', href: '/live/sessions', icon: Video },
     { label: 'Smartboards', href: '/boards/templates', icon: Library },
     { label: 'Learning', href: '/learning', icon: GraduationCap },
@@ -142,7 +154,7 @@ function AppShell({ user, path, onLogout, children }: { user: { name: string; em
         <button aria-label="Close navigation" className="ml-auto text-white/60 md:hidden" onClick={() => setMobileNav(false)}><X size={18}/></button>
       </div>
       <div className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.17em] text-white/40">Workspace</div>
-      <nav className="space-y-1">
+       <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto">
         {nav.map(item => {
           const Icon = item.icon; const active = path === item.href || (item.href !== '/dashboard' && path.startsWith(item.href));
           return <Link key={item.href} href={item.href} onClick={() => setMobileNav(false)} data-testid={`link-nav-${item.label.toLowerCase().replaceAll(' ', '-')}`} className={`flex h-11 items-center gap-3 rounded-xl px-3 text-[13px] font-semibold transition ${active ? 'bg-white/10 text-white' : 'text-white/65 hover:bg-white/5 hover:text-white'}`}>
@@ -346,14 +358,28 @@ function QueryState({ loading, error, empty, retry, children }: { loading: boole
 function DashboardPage() {
   const overview = useGetDashboardOverview();
   const data = overview.data;
+  const adminInsights = data?.adminInsights;
+  const formatRupees = (paise: number) => new Intl.NumberFormat('en-IN', {
+    style: 'currency', currency: 'INR', maximumFractionDigits: 2,
+  }).format(paise / 100);
+  const trend = adminInsights?.fees.collectionTrend ?? [];
+  const maxCollected = Math.max(0, ...trend.map(point => point.collectedPaise));
+  const chartPoints = trend.map((point, index) => {
+    const x = trend.length < 2 ? 50 : 8 + (index / (trend.length - 1)) * 84;
+    const y = maxCollected === 0 ? 68 : 68 - (point.collectedPaise / maxCollected) * 48;
+    return `${x},${y}`;
+  }).join(' ');
   return <div className="dashboard-page">
     <section className="dashboard-welcome" aria-labelledby="dashboard-welcome-title">
       <div className="dashboard-welcome-copy">
-        <div className="dashboard-eyebrow"><span aria-hidden="true"/>Your school, at a glance</div>
+        <div className="dashboard-eyebrow"><span aria-hidden="true"/>ST JOSEPH’S · SCHOOL DAY</div>
         <h1 id="dashboard-welcome-title">Good to see you{data?.userName ? <>, <em>{data.userName.split(' ')[0]}</em></> : null}.</h1>
-        <p>A clear view of what’s happening across your learning day.</p>
+        <p>A considered view of the work moving through your school today.</p>
       </div>
-      <Link href="/live/sessions" className="dashboard-primary-link">Explore live classes <ArrowRight size={16}/></Link>
+      <div className="dashboard-welcome-actions">
+        <Link href="/boards/templates" className="dashboard-secondary-link"><Library size={15}/> Smartboards</Link>
+        <Link href="/live/sessions" className="dashboard-primary-link">Explore live classes <ArrowRight size={16}/></Link>
+      </div>
     </section>
     <QueryState loading={overview.isLoading} error={overview.error} empty={!data} retry={() => overview.refetch()}>
       {data && <div className="dashboard-content">
@@ -367,6 +393,47 @@ function DashboardPage() {
             </article>;
           })}
         </section>
+        {adminInsights && <section className="dashboard-admin-insights" aria-label="Administrator insights" data-testid="dashboard-admin-insights">
+          <div className="dashboard-insight-attendance" data-testid="dashboard-attendance-insight">
+            <div className="dashboard-insight-heading">
+              <div className="dashboard-insight-symbol"><CalendarCheck size={17}/></div>
+              <div><span className="dashboard-panel-kicker">ATTENDANCE · {adminInsights.attendanceToday.attendanceDate}</span><h2>Today’s register</h2></div>
+            </div>
+            {adminInsights.attendanceToday.attendancePercent === null
+              ? <div className="dashboard-attendance-unmarked"><strong>Not recorded yet</strong><span>No attendance marks have been recorded for today.</span></div>
+              : <div className="dashboard-attendance-readout">
+                <strong>{adminInsights.attendanceToday.attendancePercent}<small>%</small></strong>
+                <div className="dashboard-attendance-detail"><span>{adminInsights.attendanceToday.presentStudents} present</span><span>{adminInsights.attendanceToday.markedStudents} students marked</span></div>
+                <div className="dashboard-progress-track" aria-label={`${adminInsights.attendanceToday.attendancePercent}% attendance`}><span style={{ width: `${Math.max(0, Math.min(100, adminInsights.attendanceToday.attendancePercent))}%` }}/></div>
+              </div>}
+            <Link href="/attendance" className="dashboard-insight-link">Open attendance <ArrowRight size={13}/></Link>
+          </div>
+          <div className="dashboard-insight-fees" data-testid="dashboard-fees-insight">
+            <div className="dashboard-insight-heading">
+              <div className="dashboard-insight-symbol gold"><CreditCard size={17}/></div>
+              <div><span className="dashboard-panel-kicker">FEES · THIS MONTH</span><h2>Collection overview</h2></div>
+            </div>
+            <div className="dashboard-fee-totals">
+              <div><span>Collected</span><strong>{formatRupees(adminInsights.fees.collectedThisMonthPaise)}</strong></div>
+              <div><span>Outstanding</span><strong>{formatRupees(adminInsights.fees.outstandingPaise)}</strong></div>
+              <div className="dashboard-overdue"><span>Overdue invoices</span><strong>{adminInsights.fees.overdueInvoiceCount}</strong></div>
+            </div>
+            {trend.length > 0 ? <div className="dashboard-trend" aria-label="Fee collection trend" data-testid="dashboard-fee-trend">
+              <div className="dashboard-trend-label"><span>Collection trend</span><span>Last 6 months</span></div>
+              <svg viewBox="0 0 100 76" preserveAspectRatio="none" role="img" aria-label="Monthly fee collections">
+                <line x1="5" y1="69" x2="95" y2="69" className="dashboard-chart-axis"/>
+                <polyline points={chartPoints} className="dashboard-chart-line"/>
+                {trend.map((point, index) => {
+                  const x = trend.length < 2 ? 50 : 8 + (index / (trend.length - 1)) * 84;
+                  const y = maxCollected === 0 ? 68 : 68 - (point.collectedPaise / maxCollected) * 48;
+                  return <circle key={point.month} cx={x} cy={y} r="1.7" className="dashboard-chart-dot"/>;
+                })}
+              </svg>
+              <div className="dashboard-trend-months">{trend.map(point => <span key={point.month}>{new Intl.DateTimeFormat('en', { month: 'short', timeZone: 'UTC' }).format(new Date(`${point.month}-01T00:00:00Z`))}</span>)}</div>
+            </div> : <p className="dashboard-trend-empty">Monthly collection history will appear here.</p>}
+            <Link href="/fees" className="dashboard-insight-link">Review fees <ArrowRight size={13}/></Link>
+          </div>
+        </section>}
         <div className="dashboard-panels">
           <section className="dashboard-panel dashboard-sessions" aria-labelledby="dashboard-sessions-title">
             <div className="dashboard-panel-heading">
@@ -394,9 +461,9 @@ function DashboardPage() {
             </article>)}</div> : <InlineEmpty text="No recent updates to show."/>}
           </section>
         </div>
-        <section className="dashboard-community">
-          <div className="dashboard-community-ornament" aria-hidden="true"><span/><span/><span/></div>
-          <div className="dashboard-community-copy"><div className="dashboard-community-kicker"><span/>Learning in sync</div><h2>One school day. Many ways to connect.</h2><p>Find live classes and classroom resources shared with your role.</p></div>
+        <section className="dashboard-toolband" aria-label="Learning tools">
+          <div className="dashboard-toolband-mark"><BookOpen size={21}/></div>
+          <div className="dashboard-toolband-copy"><span>THE CLASSROOM, READY WHEN YOU ARE</span><strong>Bring the lesson to life.</strong><p>Open a shared board and pick up where the school day is.</p></div>
           <Link href="/boards/templates" className="dashboard-community-link">Browse smartboards <ArrowRight size={15}/></Link>
         </section>
         <footer className="dashboard-footer"><BookOpen size={14}/><span>Learning, belonging, becoming.</span><span className="dashboard-footer-rule"/><span>{SCHOOL_NAME.toUpperCase()}</span></footer>

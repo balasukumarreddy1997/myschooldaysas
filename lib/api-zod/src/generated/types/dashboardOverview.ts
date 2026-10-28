@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ActivityItem } from './activityItem';
+import type { DashboardAdminInsights } from './dashboardAdminInsights';
 import type { DashboardMetric } from './dashboardMetric';
 import type { LiveSession } from './liveSession';
 import type { Role } from './role';
@@ -16,4 +17,5 @@ export interface DashboardOverview {
   metrics: DashboardMetric[];
   upcomingSessions: LiveSession[];
   recentActivity: ActivityItem[];
+  adminInsights?: DashboardAdminInsights;
 }

@@ -397,6 +397,24 @@ export const GetMeResponse = zod.object({
 /**
  * @summary Get role-scoped dashboard summary
  */
+export const getDashboardOverviewResponseAdminInsightsAttendanceTodayMarkedStudentsMin = 0;
+
+export const getDashboardOverviewResponseAdminInsightsAttendanceTodayPresentStudentsMin = 0;
+
+export const getDashboardOverviewResponseAdminInsightsAttendanceTodayAttendancePercentMin = 0;
+export const getDashboardOverviewResponseAdminInsightsAttendanceTodayAttendancePercentMax = 100;
+
+export const getDashboardOverviewResponseAdminInsightsFeesCollectedThisMonthPaiseMin = 0;
+
+export const getDashboardOverviewResponseAdminInsightsFeesOutstandingPaiseMin = 0;
+
+export const getDashboardOverviewResponseAdminInsightsFeesOverdueInvoiceCountMin = 0;
+
+export const getDashboardOverviewResponseAdminInsightsFeesCollectionTrendItemMonthRegExp = new RegExp('^\\d{4}-\\d{2}$');
+export const getDashboardOverviewResponseAdminInsightsFeesCollectionTrendItemCollectedPaiseMin = 0;
+
+
+
 export const GetDashboardOverviewResponse = zod.object({
   "userName": zod.string(),
   "role": zod.enum(['super_admin', 'org_admin', 'campus_admin', 'hod', 'teacher', 'class_teacher', 'student', 'parent']),
@@ -421,7 +439,24 @@ export const GetDashboardOverviewResponse = zod.object({
   "label": zod.string(),
   "description": zod.string(),
   "occurredAt": zod.coerce.date()
+})),
+  "adminInsights": zod.object({
+  "attendanceToday": zod.object({
+  "attendanceDate": zod.coerce.date(),
+  "markedStudents": zod.int().min(getDashboardOverviewResponseAdminInsightsAttendanceTodayMarkedStudentsMin),
+  "presentStudents": zod.int().min(getDashboardOverviewResponseAdminInsightsAttendanceTodayPresentStudentsMin),
+  "attendancePercent": zod.number().min(getDashboardOverviewResponseAdminInsightsAttendanceTodayAttendancePercentMin).max(getDashboardOverviewResponseAdminInsightsAttendanceTodayAttendancePercentMax).nullable()
+}),
+  "fees": zod.object({
+  "collectedThisMonthPaise": zod.int().min(getDashboardOverviewResponseAdminInsightsFeesCollectedThisMonthPaiseMin),
+  "outstandingPaise": zod.int().min(getDashboardOverviewResponseAdminInsightsFeesOutstandingPaiseMin),
+  "overdueInvoiceCount": zod.int().min(getDashboardOverviewResponseAdminInsightsFeesOverdueInvoiceCountMin),
+  "collectionTrend": zod.array(zod.object({
+  "month": zod.string().regex(getDashboardOverviewResponseAdminInsightsFeesCollectionTrendItemMonthRegExp),
+  "collectedPaise": zod.int().min(getDashboardOverviewResponseAdminInsightsFeesCollectionTrendItemCollectedPaiseMin)
 }))
+})
+}).optional()
 })
 
 

@@ -122,12 +122,49 @@ export interface ActivityItem {
   occurredAt: string;
 }
 
+export interface DashboardAttendanceSummary {
+  attendanceDate: string;
+  /** @minimum 0 */
+  markedStudents: number;
+  /** @minimum 0 */
+  presentStudents: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     * @nullable
+     */
+  attendancePercent: number | null;
+}
+
+export interface DashboardCollectionPoint {
+  /** @pattern ^\d{4}-\d{2}$ */
+  month: string;
+  /** @minimum 0 */
+  collectedPaise: number;
+}
+
+export interface DashboardFeeSummary {
+  /** @minimum 0 */
+  collectedThisMonthPaise: number;
+  /** @minimum 0 */
+  outstandingPaise: number;
+  /** @minimum 0 */
+  overdueInvoiceCount: number;
+  collectionTrend: DashboardCollectionPoint[];
+}
+
+export interface DashboardAdminInsights {
+  attendanceToday: DashboardAttendanceSummary;
+  fees: DashboardFeeSummary;
+}
+
 export interface DashboardOverview {
   userName: string;
   role: Role;
   metrics: DashboardMetric[];
   upcomingSessions: LiveSession[];
   recentActivity: ActivityItem[];
+  adminInsights?: DashboardAdminInsights;
 }
 
 export interface ClassSummary {
