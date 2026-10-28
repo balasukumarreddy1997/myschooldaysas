@@ -8,3 +8,4 @@
 - [RLS write fixtures](rls-write-fixtures.md) — use distinct support rows for natural-key tables so unique constraints do not mask RLS behavior.
 - [Enrollment transition migrations](enrollment-transition-migrations.md) — active-only unique indexes require matching seed upsert predicates and reliable migration-version recording.
 - [PostgreSQL parameter placeholders](postgres-parameter-placeholders.md) — composed SQL fragments need contiguous positional placeholders and explicit bindings.
+- [Publishing startup diagnosis](publishing-startup-diagnosis.md) — generic root-probe errors do not identify the failed service; check production configuration before changing probes.
